@@ -15,13 +15,15 @@ import (
 
 var address string
 
+const addressFlag = "listenAddr"
+
 func parseFlags() {
-	flag.StringVar(&address, "address", "", "")
+	flag.StringVar(&address, addressFlag, "", "")
 
 	flag.Parse()
 
 	if address == "" {
-		log.Fatalf("missing require flag address")
+		log.Fatalf("missing required flag %q", addressFlag)
 	}
 }
 
