@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
+	"github.com/tedsuo/rata"
 )
 
 var address string
@@ -28,21 +28,31 @@ func parseFlags() {
 func main() {
 	parseFlags()
 
-	fmt.Println("will listen on " + address)
-
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("[]"))
 	})
 
+	routes := rata.Routes{
+		{Name: "list_containers", Method: "GET", Path: "/containers"},
+	}
+
+	handlers := rata.Handlers{
+		"list_containers": handler,
+	}
+
+	rataHandler, err := rata.NewRouter(routes, handlers)
+
+	httpServer := http_server.New(address, rataHandler)
+
 	members := grouper.Members{
-		{"http_server", http_server.New(address, handler)},
+		{"http_server", httpServer},
 	}
 
 	group := grouper.NewOrdered(os.Interrupt, members)
 
 	monitor := ifrit.Invoke(sigmon.New(group))
 
-	err := <-monitor.Wait()
+	err = <-monitor.Wait()
 	if err != nil {
 		panic(err)
 	}
