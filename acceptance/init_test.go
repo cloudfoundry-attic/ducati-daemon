@@ -1,4 +1,4 @@
-package main_test
+package acceptance_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -12,7 +12,7 @@ var ducatidPath string
 
 func TestDucatid(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Ducatid Suite")
+	RunSpecs(t, "Ducati Daemon Acceptance Suite")
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
