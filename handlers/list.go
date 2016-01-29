@@ -1,14 +1,18 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
 
+type marshaler interface {
+	Marshal(input interface{}) ([]byte, error)
+}
+
 type ListHandler struct {
-	Store store.Store
+	Store     store.Store
+	Marshaler marshaler
 }
 
 func (h *ListHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -17,9 +21,11 @@ func (h *ListHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	jsonResponse, err := json.Marshal(containers)
+	jsonResponse, err := h.Marshaler.Marshal(containers)
 	if err != nil {
-		panic(err)
+		resp.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
 	resp.Write(jsonResponse)
 }

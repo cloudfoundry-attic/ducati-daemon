@@ -15,3 +15,9 @@ type UnmarshalFunc func([]byte, interface{}) error
 func (u UnmarshalFunc) Unmarshal(input []byte, output interface{}) error {
 	return u(input, output)
 }
+
+type MarshalFunc func(interface{}) ([]byte, error)
+
+func (u MarshalFunc) Marshal(input interface{}) ([]byte, error) {
+	return u(input)
+}

@@ -41,7 +41,8 @@ func main() {
 	dataStore := store.New()
 
 	listHandler := &handlers.ListHandler{
-		Store: dataStore,
+		Store:     dataStore,
+		Marshaler: marshal.MarshalFunc(json.Marshal),
 	}
 
 	postHandler := &handlers.PostHandler{
