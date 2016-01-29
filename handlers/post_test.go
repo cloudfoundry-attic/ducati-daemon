@@ -20,9 +20,11 @@ var _ = Describe("Post", func() {
 	var request *http.Request
 	var container models.Container
 	var unmarshaler *fakes.Unmarshaler
+	var logger *fakes.Logger
 
 	BeforeEach(func() {
 		dataStore = &fakes.Store{}
+		logger = &fakes.Logger{}
 
 		unmarshaler = &fakes.Unmarshaler{}
 		unmarshaler.UnmarshalStub = json.Unmarshal
@@ -30,6 +32,7 @@ var _ = Describe("Post", func() {
 		handler = &handlers.PostHandler{
 			Store:       dataStore,
 			Unmarshaler: unmarshaler,
+			Logger:      logger,
 		}
 
 		container = models.Container{
@@ -67,7 +70,7 @@ var _ = Describe("Post", func() {
 	})
 
 	Context("when the store Put fails", func() {
-		It("should return a 502 error", func() {
+		It("should return a 502 and log the error", func() {
 			request, err := http.NewRequest("POST", "/containers", strings.NewReader(`{"ID": "something"}`))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -77,6 +80,11 @@ var _ = Describe("Post", func() {
 			handler.ServeHTTP(resp, request)
 
 			Expect(resp.Code).To(Equal(http.StatusBadGateway))
+
+			Expect(logger.ErrorCallCount()).To(Equal(1))
+			action, err, _ := logger.ErrorArgsForCall(0)
+			Expect(action).To(Equal("store-put"))
+			Expect(err).To(MatchError("go away"))
 		})
 	})
 

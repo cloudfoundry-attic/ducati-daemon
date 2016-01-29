@@ -13,12 +13,15 @@ type marshaler interface {
 type ListHandler struct {
 	Store     store.Store
 	Marshaler marshaler
+	Logger    Logger
 }
 
 func (h *ListHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	containers, err := h.Store.All()
 	if err != nil {
-		panic(err)
+		h.Logger.Error("store-list", err)
+		resp.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	jsonResponse, err := h.Marshaler.Marshal(containers)

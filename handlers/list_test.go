@@ -19,14 +19,17 @@ var _ = Describe("List", func() {
 	var handler *handlers.ListHandler
 	var marshaler *fakes.Marshaler
 	var containers []models.Container
+	var logger *fakes.Logger
 
 	BeforeEach(func() {
 		dataStore = &fakes.Store{}
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
+		logger = &fakes.Logger{}
 		handler = &handlers.ListHandler{
 			Store:     dataStore,
 			Marshaler: marshaler,
+			Logger:    logger,
 		}
 		containers = []models.Container{
 			models.Container{ID: "some-container"},
@@ -81,6 +84,23 @@ var _ = Describe("List", func() {
 			handler.ServeHTTP(resp, req)
 
 			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+		})
+	})
+
+	Context("when listing from the store fails", func() {
+		It("should return a 500 error and log", func() {
+			dataStore.AllReturns(nil, errors.New("teapot"))
+			req, err := http.NewRequest("GET", "/containers", nil)
+			Expect(err).NotTo(HaveOccurred())
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+
+			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+
+			Expect(logger.ErrorCallCount()).To(Equal(1))
+			action, err, _ := logger.ErrorArgsForCall(0)
+			Expect(action).To(Equal("store-list"))
+			Expect(err).To(MatchError("teapot"))
 		})
 	})
 })

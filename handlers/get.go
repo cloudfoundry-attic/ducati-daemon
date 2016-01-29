@@ -10,6 +10,7 @@ import (
 type GetHandler struct {
 	Store     store.Store
 	Marshaler marshaler
+	Logger    Logger
 }
 
 func (h *GetHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -21,6 +22,7 @@ func (h *GetHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
+		h.Logger.Error("store-get", err)
 		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}

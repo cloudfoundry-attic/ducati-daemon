@@ -18,6 +18,7 @@ type unmarshaler interface {
 type PostHandler struct {
 	Store       storePutter
 	Unmarshaler unmarshaler
+	Logger      Logger
 }
 
 func (h *PostHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -36,6 +37,7 @@ func (h *PostHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	err = h.Store.Put(container)
 	if err != nil {
+		h.Logger.Error("store-put", err, nil)
 		resp.WriteHeader(http.StatusBadGateway)
 		return
 	}

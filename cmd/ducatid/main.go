@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -42,23 +43,29 @@ func main() {
 
 	dataStore := store.New()
 
+	logger := lager.NewLogger("ducati-d")
+
 	listHandler := &handlers.ListHandler{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
+		Logger:    logger,
 	}
 
 	postHandler := &handlers.PostHandler{
 		Store:       dataStore,
 		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
+		Logger:      logger,
 	}
 
 	getHandler := &handlers.GetHandler{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
+		Logger:    logger,
 	}
 
 	deleteHandler := &handlers.DeleteHandler{
-		Store: dataStore,
+		Store:  dataStore,
+		Logger: logger,
 	}
 
 	handlers := rata.Handlers{

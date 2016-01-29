@@ -8,7 +8,8 @@ import (
 )
 
 type DeleteHandler struct {
-	Store store.Store
+	Store  store.Store
+	Logger Logger
 }
 
 func (h *DeleteHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -20,6 +21,7 @@ func (h *DeleteHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
+		h.Logger.Error("store-delete", err, nil)
 		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}

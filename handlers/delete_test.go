@@ -14,17 +14,20 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Get", func() {
+var _ = Describe("Delete", func() {
 	var dataStore *fakes.Store
 	var handler *handlers.DeleteHandler
 	var marshaler *fakes.Marshaler
+	var logger *fakes.Logger
 
 	BeforeEach(func() {
 		dataStore = &fakes.Store{}
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
+		logger = &fakes.Logger{}
 		handler = &handlers.DeleteHandler{
-			Store: dataStore,
+			Store:  dataStore,
+			Logger: logger,
 		}
 		dataStore.DeleteReturns(nil)
 	})
@@ -58,13 +61,18 @@ var _ = Describe("Get", func() {
 			dataStore.DeleteReturns(errors.New("WUT"))
 		})
 
-		It("should return a 500", func() {
+		It("should return a 500 and log the error", func() {
 			req, err := http.NewRequest("DELETE", "/containers/some-container", nil)
 			Expect(err).NotTo(HaveOccurred())
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, req)
 
 			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+
+			Expect(logger.ErrorCallCount()).To(Equal(1))
+			action, err, _ := logger.ErrorArgsForCall(0)
+			Expect(action).To(Equal("store-delete"))
+			Expect(err).To(MatchError("WUT"))
 		})
 	})
 })
