@@ -35,6 +35,7 @@ func main() {
 
 	routes := rata.Routes{
 		{Name: "list_containers", Method: "GET", Path: "/containers"},
+		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
 		{Name: "add_container", Method: "POST", Path: "/containers"},
 	}
 
@@ -50,9 +51,15 @@ func main() {
 		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
 	}
 
+	getHandler := &handlers.GetHandler{
+		Store:     dataStore,
+		Marshaler: marshal.MarshalFunc(json.Marshal),
+	}
+
 	handlers := rata.Handlers{
 		"list_containers": listHandler,
 		"add_container":   postHandler,
+		"get_container":   getHandler,
 	}
 
 	rataHandler, err := rata.NewRouter(routes, handlers)

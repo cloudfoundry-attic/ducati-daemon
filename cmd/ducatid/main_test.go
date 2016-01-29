@@ -51,30 +51,44 @@ var _ = Describe("Main", func() {
 
 		resp, err := http.Get(url)
 		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
 
 		jsonBytes, err := ioutil.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(jsonBytes).To(MatchJSON("[]"))
 	})
 
-	Context("when a container has been added", func() {
-		It("can retrieve the container", func() {
-			url := fmt.Sprintf("http://%s/containers", address)
+	Context("when there are containers", func() {
+		var url string
+		var addedContainers []models.Container
+
+		BeforeEach(func() {
+			url = fmt.Sprintf("http://%s/containers", address)
 
 			Eventually(serverIsAvailable).Should(Succeed())
 
-			container := models.Container{
-				ID: "some-container-id",
+			addedContainers = []models.Container{
+				{ID: "container-0-id"},
+				{ID: "container-1-id"},
 			}
-			containerJSON, err := json.Marshal(container)
-			Expect(err).NotTo(HaveOccurred())
 
-			resp, err := http.Post(url, "application/json", bytes.NewReader(containerJSON))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+			for _, container := range addedContainers {
+				containerJSON, err := json.Marshal(container)
+				Expect(err).NotTo(HaveOccurred())
 
-			resp, err = http.Get(url)
+				resp, err := http.Post(url, "application/json", bytes.NewReader(containerJSON))
+				Expect(err).NotTo(HaveOccurred())
+				defer resp.Body.Close()
+				Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+			}
+		})
+
+		It("can get a list of containers", func() {
+			resp, err := http.Get(url)
 			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
 			jsonBytes, err := ioutil.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
@@ -82,7 +96,24 @@ var _ = Describe("Main", func() {
 			var containers []models.Container
 			err = json.Unmarshal(jsonBytes, &containers)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(containers).To(ConsistOf(container))
+			Expect(containers).To(ConsistOf(addedContainers))
+		})
+
+		It("can retrieve a particular container", func() {
+			url = fmt.Sprintf("http://%s/containers/%s", address, "container-0-id")
+			resp, err := http.Get(url)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+			jsonBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+
+			var foundContainer models.Container
+			err = json.Unmarshal(jsonBytes, &foundContainer)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(foundContainer).To(Equal(addedContainers[0]))
 		})
 	})
 })

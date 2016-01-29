@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -12,6 +13,8 @@ type Store interface {
 	Get(id string) (models.Container, error)
 	All() ([]models.Container, error)
 }
+
+var NotFoundError = errors.New("record not found")
 
 type store struct {
 	containers map[string]models.Container
