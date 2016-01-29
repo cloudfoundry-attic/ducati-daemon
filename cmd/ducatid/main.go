@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log"
-	"net/http"
 	"os"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
+	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -30,16 +33,25 @@ func parseFlags() {
 func main() {
 	parseFlags()
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("[]"))
-	})
-
 	routes := rata.Routes{
 		{Name: "list_containers", Method: "GET", Path: "/containers"},
+		{Name: "add_container", Method: "POST", Path: "/containers"},
+	}
+
+	dataStore := store.New()
+
+	listHandler := &handlers.ListHandler{
+		Store: dataStore,
+	}
+
+	postHandler := &handlers.PostHandler{
+		Store:       dataStore,
+		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
 	}
 
 	handlers := rata.Handlers{
-		"list_containers": handler,
+		"list_containers": listHandler,
+		"add_container":   postHandler,
 	}
 
 	rataHandler, err := rata.NewRouter(routes, handlers)

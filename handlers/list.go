@@ -3,20 +3,18 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
 
-type Container struct {
-	ID string `json:"id"`
-}
-
 type ListHandler struct {
-	Containers []Container
+	Store store.Store
 }
 
 func (h *ListHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	containers := h.Containers
-	if containers == nil {
-		containers = []Container{}
+	containers, err := h.Store.All()
+	if err != nil {
+		panic(err)
 	}
 
 	jsonResponse, err := json.Marshal(containers)

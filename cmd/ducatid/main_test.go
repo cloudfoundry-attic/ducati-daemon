@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -8,6 +10,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -24,6 +27,7 @@ var _ = Describe("Main", func() {
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 	})
+
 	AfterEach(func() {
 		session.Kill()
 	})
@@ -53,4 +57,32 @@ var _ = Describe("Main", func() {
 		Expect(jsonBytes).To(MatchJSON("[]"))
 	})
 
+	Context("when a container has been added", func() {
+		It("can retrieve the container", func() {
+			url := fmt.Sprintf("http://%s/containers", address)
+
+			Eventually(serverIsAvailable).Should(Succeed())
+
+			container := models.Container{
+				ID: "some-container-id",
+			}
+			containerJSON, err := json.Marshal(container)
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := http.Post(url, "application/json", bytes.NewReader(containerJSON))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+
+			resp, err = http.Get(url)
+			Expect(err).NotTo(HaveOccurred())
+
+			jsonBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+
+			var containers []models.Container
+			err = json.Unmarshal(jsonBytes, &containers)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(ConsistOf(container))
+		})
+	})
 })
