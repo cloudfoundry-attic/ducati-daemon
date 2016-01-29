@@ -9,12 +9,12 @@ import (
 )
 
 type Store struct {
-	PutStub        func(container models.Container) error
-	putMutex       sync.RWMutex
-	putArgsForCall []struct {
+	CreateStub        func(container models.Container) error
+	createMutex       sync.RWMutex
+	createArgsForCall []struct {
 		container models.Container
 	}
-	putReturns struct {
+	createReturns struct {
 		result1 error
 	}
 	GetStub        func(id string) (models.Container, error)
@@ -43,34 +43,34 @@ type Store struct {
 	}
 }
 
-func (fake *Store) Put(container models.Container) error {
-	fake.putMutex.Lock()
-	fake.putArgsForCall = append(fake.putArgsForCall, struct {
+func (fake *Store) Create(container models.Container) error {
+	fake.createMutex.Lock()
+	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		container models.Container
 	}{container})
-	fake.putMutex.Unlock()
-	if fake.PutStub != nil {
-		return fake.PutStub(container)
+	fake.createMutex.Unlock()
+	if fake.CreateStub != nil {
+		return fake.CreateStub(container)
 	} else {
-		return fake.putReturns.result1
+		return fake.createReturns.result1
 	}
 }
 
-func (fake *Store) PutCallCount() int {
-	fake.putMutex.RLock()
-	defer fake.putMutex.RUnlock()
-	return len(fake.putArgsForCall)
+func (fake *Store) CreateCallCount() int {
+	fake.createMutex.RLock()
+	defer fake.createMutex.RUnlock()
+	return len(fake.createArgsForCall)
 }
 
-func (fake *Store) PutArgsForCall(i int) models.Container {
-	fake.putMutex.RLock()
-	defer fake.putMutex.RUnlock()
-	return fake.putArgsForCall[i].container
+func (fake *Store) CreateArgsForCall(i int) models.Container {
+	fake.createMutex.RLock()
+	defer fake.createMutex.RUnlock()
+	return fake.createArgsForCall[i].container
 }
 
-func (fake *Store) PutReturns(result1 error) {
-	fake.PutStub = nil
-	fake.putReturns = struct {
+func (fake *Store) CreateReturns(result1 error) {
+	fake.CreateStub = nil
+	fake.createReturns = struct {
 		result1 error
 	}{result1}
 }

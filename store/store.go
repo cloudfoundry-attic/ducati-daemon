@@ -8,13 +8,14 @@ import (
 
 //go:generate counterfeiter -o ../fakes/store.go --fake-name Store . Store
 type Store interface {
-	Put(container models.Container) error
+	Create(container models.Container) error
 	Get(id string) (models.Container, error)
 	All() ([]models.Container, error)
 	Delete(id string) error
 }
 
 var NotFoundError = errors.New("record not found")
+var RecordExistsError = errors.New("record already exists")
 
 type store struct {
 	containers map[string]models.Container
@@ -26,8 +27,13 @@ func New() Store {
 	}
 }
 
-func (s *store) Put(container models.Container) error {
+func (s *store) Create(container models.Container) error {
+	if _, ok := s.containers[container.ID]; ok {
+		return RecordExistsError
+	}
+
 	s.containers[container.ID] = container
+
 	return nil
 }
 

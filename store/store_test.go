@@ -14,12 +14,26 @@ var _ = Describe("Store", func() {
 		dataStore = store.New()
 	})
 
-	Describe("Put", func() {
+	Describe("Create", func() {
 		It("saves the container", func() {
 			container := models.Container{ID: "some-id"}
 
-			err := dataStore.Put(container)
+			err := dataStore.Create(container)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when a container with the same id already exists", func() {
+			It("should return a RecordExistsError", func() {
+				container := models.Container{ID: "some-id"}
+
+				err := dataStore.Create(container)
+				Expect(err).NotTo(HaveOccurred())
+
+				containerDuplicate := models.Container{ID: "some-id"}
+
+				err = dataStore.Create(containerDuplicate)
+				Expect(err).To(Equal(store.RecordExistsError))
+			})
 		})
 	})
 
@@ -32,7 +46,7 @@ var _ = Describe("Store", func() {
 					ID: "some-container",
 				}
 
-				err := dataStore.Put(expectedContainer)
+				err := dataStore.Create(expectedContainer)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -62,7 +76,7 @@ var _ = Describe("Store", func() {
 			}
 
 			for _, c := range expectedContainers {
-				Expect(dataStore.Put(c)).To(Succeed())
+				Expect(dataStore.Create(c)).To(Succeed())
 			}
 		})
 
@@ -82,7 +96,7 @@ var _ = Describe("Store", func() {
 			}
 
 			for _, c := range theContainers {
-				Expect(dataStore.Put(c)).To(Succeed())
+				Expect(dataStore.Create(c)).To(Succeed())
 			}
 		})
 

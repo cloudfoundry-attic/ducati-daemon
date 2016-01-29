@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
 
-type storePutter interface {
-	Put(container models.Container) error
+type storeCreator interface {
+	Create(container models.Container) error
 }
 
 type unmarshaler interface {
@@ -16,7 +17,7 @@ type unmarshaler interface {
 }
 
 type PostHandler struct {
-	Store       storePutter
+	Store       storeCreator
 	Unmarshaler unmarshaler
 	Logger      Logger
 }
@@ -35,12 +36,17 @@ func (h *PostHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = h.Store.Put(container)
+	err = h.Store.Create(container)
 	if err != nil {
+		if err == store.RecordExistsError {
+			resp.WriteHeader(http.StatusConflict)
+			return
+		}
+
 		h.Logger.Error("store-put", err, nil)
 		resp.WriteHeader(http.StatusBadGateway)
 		return
 	}
 
-	resp.WriteHeader(http.StatusNoContent)
+	resp.WriteHeader(http.StatusCreated)
 }

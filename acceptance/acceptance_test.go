@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -79,7 +80,7 @@ var _ = Describe("Main", func() {
 				resp, err := http.Post(url, "application/json", bytes.NewReader(containerJSON))
 				Expect(err).NotTo(HaveOccurred())
 				defer resp.Body.Close()
-				Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+				Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 			}
 		})
 
@@ -135,6 +136,18 @@ var _ = Describe("Main", func() {
 			defer resp.Body.Close()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+		})
+
+		Context("when another container is POSTed with the same id", func() {
+			It("should return a 409 Conflict status code", func() {
+				url = fmt.Sprintf("http://%s/containers", address)
+
+				containerJSON := `{ "id": "container-0-id" }`
+				resp, err := http.Post(url, "application/json", strings.NewReader(containerJSON))
+				Expect(err).NotTo(HaveOccurred())
+				defer resp.Body.Close()
+				Expect(resp.StatusCode).To(Equal(http.StatusConflict))
+			})
 		})
 	})
 })

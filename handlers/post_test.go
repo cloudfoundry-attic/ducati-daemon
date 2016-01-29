@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -39,7 +40,7 @@ var _ = Describe("Post", func() {
 			ID: "my-new-container",
 		}
 
-		dataStore.PutReturns(nil)
+		dataStore.CreateReturns(nil)
 
 		var err error
 		request, err = http.NewRequest("POST", "/containers", strings.NewReader(`{ "id": "my-new-container" }`))
@@ -51,10 +52,10 @@ var _ = Describe("Post", func() {
 		handler.ServeHTTP(resp, request)
 
 		Expect(unmarshaler.UnmarshalCallCount()).To(Equal(1))
-		Expect(resp.Code).To(Equal(http.StatusNoContent))
+		Expect(resp.Code).To(Equal(http.StatusCreated))
 
-		Expect(dataStore.PutCallCount()).To(Equal(1))
-		Expect(dataStore.PutArgsForCall(0)).To(Equal(container))
+		Expect(dataStore.CreateCallCount()).To(Equal(1))
+		Expect(dataStore.CreateArgsForCall(0)).To(Equal(container))
 	})
 
 	Context("when unmarshaling fails", func() {
@@ -65,18 +66,31 @@ var _ = Describe("Post", func() {
 
 			Expect(resp.Code).To(Equal(http.StatusBadRequest))
 
-			Expect(dataStore.PutCallCount()).To(Equal(0))
+			Expect(dataStore.CreateCallCount()).To(Equal(0))
 		})
 	})
 
-	Context("when the store Put fails", func() {
+	Context("when the store Create fails", func() {
+		Context("because the record already exists", func() {
+			It("should return 409 conflict", func() {
+				resp := httptest.NewRecorder()
+				request, err := http.NewRequest("POST", "/containers", strings.NewReader(`{ "id": "my-new-container" }`))
+				Expect(err).NotTo(HaveOccurred())
+
+				dataStore.CreateReturns(store.RecordExistsError)
+				handler.ServeHTTP(resp, request)
+
+				Expect(resp.Code).To(Equal(http.StatusConflict))
+			})
+		})
+
 		It("should return a 502 and log the error", func() {
 			request, err := http.NewRequest("POST", "/containers", strings.NewReader(`{"ID": "something"}`))
 			Expect(err).NotTo(HaveOccurred())
 
 			resp := httptest.NewRecorder()
 
-			dataStore.PutReturns(errors.New("go away"))
+			dataStore.CreateReturns(errors.New("go away"))
 			handler.ServeHTTP(resp, request)
 
 			Expect(resp.Code).To(Equal(http.StatusBadGateway))
@@ -99,7 +113,7 @@ var _ = Describe("Post", func() {
 
 			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 
-			Expect(dataStore.PutCallCount()).To(Equal(0))
+			Expect(dataStore.CreateCallCount()).To(Equal(0))
 			Expect(unmarshaler.UnmarshalCallCount()).To(Equal(0))
 		})
 	})
