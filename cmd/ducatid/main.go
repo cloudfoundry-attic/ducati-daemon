@@ -37,6 +37,7 @@ func main() {
 		{Name: "list_containers", Method: "GET", Path: "/containers"},
 		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
 		{Name: "add_container", Method: "POST", Path: "/containers"},
+		{Name: "delete_container", Method: "DELETE", Path: "/containers/:container_id"},
 	}
 
 	dataStore := store.New()
@@ -56,10 +57,15 @@ func main() {
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 	}
 
+	deleteHandler := &handlers.DeleteHandler{
+		Store: dataStore,
+	}
+
 	handlers := rata.Handlers{
-		"list_containers": listHandler,
-		"add_container":   postHandler,
-		"get_container":   getHandler,
+		"list_containers":  listHandler,
+		"add_container":    postHandler,
+		"get_container":    getHandler,
+		"delete_container": deleteHandler,
 	}
 
 	rataHandler, err := rata.NewRouter(routes, handlers)

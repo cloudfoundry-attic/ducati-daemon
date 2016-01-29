@@ -33,6 +33,14 @@ type Store struct {
 		result1 []models.Container
 		result2 error
 	}
+	DeleteStub        func(id string) error
+	deleteMutex       sync.RWMutex
+	deleteArgsForCall []struct {
+		id string
+	}
+	deleteReturns struct {
+		result1 error
+	}
 }
 
 func (fake *Store) Put(container models.Container) error {
@@ -123,6 +131,38 @@ func (fake *Store) AllReturns(result1 []models.Container, result2 error) {
 		result1 []models.Container
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *Store) Delete(id string) error {
+	fake.deleteMutex.Lock()
+	fake.deleteArgsForCall = append(fake.deleteArgsForCall, struct {
+		id string
+	}{id})
+	fake.deleteMutex.Unlock()
+	if fake.DeleteStub != nil {
+		return fake.DeleteStub(id)
+	} else {
+		return fake.deleteReturns.result1
+	}
+}
+
+func (fake *Store) DeleteCallCount() int {
+	fake.deleteMutex.RLock()
+	defer fake.deleteMutex.RUnlock()
+	return len(fake.deleteArgsForCall)
+}
+
+func (fake *Store) DeleteArgsForCall(i int) string {
+	fake.deleteMutex.RLock()
+	defer fake.deleteMutex.RUnlock()
+	return fake.deleteArgsForCall[i].id
+}
+
+func (fake *Store) DeleteReturns(result1 error) {
+	fake.DeleteStub = nil
+	fake.deleteReturns = struct {
+		result1 error
+	}{result1}
 }
 
 var _ store.Store = new(Store)

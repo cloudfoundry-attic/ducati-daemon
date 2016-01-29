@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 )
@@ -12,6 +11,7 @@ type Store interface {
 	Put(container models.Container) error
 	Get(id string) (models.Container, error)
 	All() ([]models.Container, error)
+	Delete(id string) error
 }
 
 var NotFoundError = errors.New("record not found")
@@ -37,7 +37,7 @@ func (s *store) Get(id string) (models.Container, error) {
 		return container, nil
 	}
 
-	return models.Container{}, fmt.Errorf("container not found: %s", id)
+	return models.Container{}, NotFoundError
 }
 
 func (s *store) All() ([]models.Container, error) {
@@ -48,4 +48,13 @@ func (s *store) All() ([]models.Container, error) {
 	}
 
 	return containers, nil
+}
+
+func (s *store) Delete(id string) error {
+	if _, ok := s.containers[id]; !ok {
+		return NotFoundError
+	}
+
+	delete(s.containers, id)
+	return nil
 }

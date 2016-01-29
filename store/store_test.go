@@ -44,9 +44,9 @@ var _ = Describe("Store", func() {
 		})
 
 		Context("when the container has not been put in the store", func() {
-			It("raises an error", func() {
+			It("should return a NotFoundError", func() {
 				_, err := dataStore.Get("some-unknown-id")
-				Expect(err).To(MatchError("container not found: some-unknown-id"))
+				Expect(err).To(Equal(store.NotFoundError))
 			})
 		})
 	})
@@ -56,9 +56,9 @@ var _ = Describe("Store", func() {
 
 		BeforeEach(func() {
 			expectedContainers = []models.Container{
-				models.Container{ID: "some-id-1"},
-				models.Container{ID: "some-id-2"},
-				models.Container{ID: "some-id-3"},
+				{ID: "some-id-1"},
+				{ID: "some-id-2"},
+				{ID: "some-id-3"},
 			}
 
 			for _, c := range expectedContainers {
@@ -70,6 +70,37 @@ var _ = Describe("Store", func() {
 			containers, err := dataStore.All()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(ConsistOf(expectedContainers))
+		})
+	})
+
+	Describe("Delete", func() {
+		BeforeEach(func() {
+			theContainers := []models.Container{
+				{ID: "some-id-1"},
+				{ID: "some-id-2"},
+				{ID: "some-id-3"},
+			}
+
+			for _, c := range theContainers {
+				Expect(dataStore.Put(c)).To(Succeed())
+			}
+		})
+
+		Context("when there is a container to delete", func() {
+			It("should remove the container", func() {
+				Expect(dataStore.Delete("some-id-2")).To(Succeed())
+				Expect(dataStore.All()).To(ConsistOf(
+					[]models.Container{
+						{ID: "some-id-1"},
+						{ID: "some-id-3"},
+					}))
+			})
+		})
+
+		Context("when there is no container with the given id", func() {
+			It("should return a NotFoundError", func() {
+				Expect(dataStore.Delete("doesn't-exist")).To(Equal(store.NotFoundError))
+			})
 		})
 	})
 })

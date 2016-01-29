@@ -115,5 +115,26 @@ var _ = Describe("Main", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(foundContainer).To(Equal(addedContainers[0]))
 		})
+
+		It("can delete a container", func() {
+			url = fmt.Sprintf("http://%s/containers/%s", address, "container-0-id")
+
+			By("issuing a DELETE request")
+			req, err := http.NewRequest("DELETE", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+
+			By("checking that the GET now returns a 404")
+			resp, err = http.Get(url)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+		})
 	})
 })
