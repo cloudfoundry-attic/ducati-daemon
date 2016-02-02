@@ -1,0 +1,92 @@
+package client_test
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/client"
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/onsi/gomega/ghttp"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+)
+
+var _ = Describe("Client", func() {
+	var (
+		c         client.DaemonClient
+		server    *ghttp.Server
+		marshaler *fakes.Marshaler
+		container models.Container
+	)
+
+	BeforeEach(func() {
+		server = ghttp.NewServer()
+		marshaler = &fakes.Marshaler{}
+		c = client.DaemonClient{
+			BaseURL:   server.URL(),
+			Marshaler: marshaler,
+		}
+
+		marshaler.MarshalReturns([]byte(`{"id":"some-container"}`), nil)
+
+		container = models.Container{
+			ID: "some-container",
+		}
+	})
+
+	AfterEach(func() {
+		server.Close()
+	})
+
+	Describe("SaveContainer", func() {
+		It("should call the backend to save the container", func() {
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/containers"),
+				ghttp.VerifyJSON(`{"id":"some-container"}`),
+				ghttp.RespondWith(http.StatusCreated, nil),
+			))
+
+			Expect(c.SaveContainer(container)).To(Succeed())
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+			Expect(marshaler.MarshalCallCount()).To(Equal(1))
+			Expect(marshaler.MarshalArgsForCall(0)).To(Equal(container))
+		})
+
+		Context("when an error occurs", func() {
+			Context("when the container fails to marshal", func() {
+				It("should return an error", func() {
+					marshaler.MarshalReturns(nil, errors.New("explosion with marshal"))
+
+					err := c.SaveContainer(container)
+					Expect(err).To(MatchError("failed to marshal container: explosion with marshal"))
+				})
+			})
+
+			Context("when the request cannot be constructed", func() {
+				It("should return an error", func() {
+					c = client.DaemonClient{
+						BaseURL:   "%%%%",
+						Marshaler: marshaler,
+					}
+
+					err := c.SaveContainer(container)
+					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+				})
+			})
+
+			Context("when the http request fails", func() {
+				It("should return an error", func() {
+					server.AppendHandlers(ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers"),
+						ghttp.RespondWith(http.StatusInternalServerError, nil),
+					))
+
+					err := c.SaveContainer(container)
+					Expect(err).To(MatchError(`expected to receive 201 but got 500 for data {"id":"some-container"}`))
+				})
+			})
+		})
+	})
+})
