@@ -16,9 +16,8 @@ func TestDucatid(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	ducatidPath, err := gexec.Build("github.com/cloudfoundry-incubator/ducati-daemon/cmd/ducatid", "-race")
+	ducatidPath, err := gexec.Build("github.com/cloudfoundry-incubator/ducati-daemon/cmd/ducatid")
 	Expect(err).NotTo(HaveOccurred())
-
 	return []byte(ducatidPath)
 }, func(pathsByte []byte) {
 	ducatidPath = string(pathsByte)

@@ -89,4 +89,54 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
+
+	Describe("RemoveContainer", func() {
+		It("should call the backend to remove the container", func() {
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("DELETE", "/containers/some-container"),
+				ghttp.RespondWith(http.StatusNoContent, nil),
+			))
+
+			Expect(c.RemoveContainer("some-container")).To(Succeed())
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+		})
+
+		Context("when an error occurs", func() {
+			Context("when the container does not exist", func() {
+				It("it should return a RecordNotFound error", func() {
+					server.AppendHandlers(ghttp.CombineHandlers(
+						ghttp.VerifyRequest("DELETE", "/containers/non-existent-container-id"),
+						ghttp.RespondWith(http.StatusNotFound, nil),
+					))
+
+					err := c.RemoveContainer("non-existent-container-id")
+					Expect(err).To(Equal(client.RecordNotFoundError))
+				})
+			})
+
+			Context("when the request cannot be constructed", func() {
+				It("should return an error", func() {
+					c = client.DaemonClient{
+						BaseURL:   "%%%%",
+						Marshaler: marshaler,
+					}
+
+					err := c.RemoveContainer("whatever")
+					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+				})
+			})
+
+			Context("when the http request fails", func() {
+				It("should return an error", func() {
+					server.AppendHandlers(ghttp.CombineHandlers(
+						ghttp.VerifyRequest("DELETE", "/containers/whatever"),
+						ghttp.RespondWith(http.StatusInternalServerError, nil),
+					))
+
+					err := c.RemoveContainer("whatever")
+					Expect(err).To(MatchError(`expected to receive 204 but got 500`))
+				})
+			})
+		})
+	})
 })
