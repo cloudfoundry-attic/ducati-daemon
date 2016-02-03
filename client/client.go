@@ -10,9 +10,9 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 )
 
-func New(listenAddr string) *DaemonClient {
+func New(baseURL string) *DaemonClient {
 	return &DaemonClient{
-		BaseURL:   fmt.Sprintf("http://%s", listenAddr),
+		BaseURL:   baseURL,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 	}
 }
