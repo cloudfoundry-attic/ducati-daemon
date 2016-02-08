@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
+	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 )
@@ -15,14 +17,16 @@ var RecordNotFoundError error = errors.New("record not found")
 
 func New(baseURL string) *DaemonClient {
 	return &DaemonClient{
-		BaseURL:   baseURL,
-		Marshaler: marshal.MarshalFunc(json.Marshal),
+		BaseURL:     baseURL,
+		Marshaler:   marshal.MarshalFunc(json.Marshal),
+		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
 	}
 }
 
 type DaemonClient struct {
-	BaseURL   string
-	Marshaler marshal.Marshaler
+	BaseURL     string
+	Marshaler   marshal.Marshaler
+	Unmarshaler marshal.Unmarshaler
 }
 
 func (d *DaemonClient) SaveContainer(container models.Container) error {
@@ -37,8 +41,8 @@ func (d *DaemonClient) SaveContainer(container models.Container) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("expected to receive %d but got %d for data %s", http.StatusCreated, resp.StatusCode, postData)
+	if statusError := checkStatus("SaveContainer", resp.StatusCode, http.StatusCreated); statusError != nil {
+		return statusError
 	}
 
 	return nil
@@ -56,11 +60,45 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		if resp.StatusCode == http.StatusNotFound {
-			return RecordNotFoundError
-		}
-		return fmt.Errorf("expected to receive %d but got %d", http.StatusNoContent, resp.StatusCode)
+	if resp.StatusCode == http.StatusNotFound {
+		return RecordNotFoundError
+	}
+
+	if statusError := checkStatus("RemoveContainer", resp.StatusCode, http.StatusNoContent); statusError != nil {
+		return statusError
+	}
+
+	return nil
+}
+
+func (d *DaemonClient) AllocateIP(networkName string) (types.Result, error) {
+	resp, err := http.Post(d.BaseURL+"/ipam/"+networkName, "", nil)
+	if err != nil {
+		return types.Result{}, fmt.Errorf("failed to construct request: %s", err)
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return types.Result{}, nil // not tested
+	}
+
+	if statusError := checkStatus("AllocateIP", resp.StatusCode, http.StatusCreated); statusError != nil {
+		return types.Result{}, statusError
+	}
+
+	var ipamResult types.Result
+	err = d.Unmarshaler.Unmarshal(respBytes, &ipamResult)
+	if err != nil {
+		return types.Result{}, fmt.Errorf("failed to unmarshal IPAM result: %s", err)
+	}
+
+	return ipamResult, nil
+}
+
+func checkStatus(method string, receivedStatus, expectedStatus int) error {
+	if receivedStatus != expectedStatus {
+		return fmt.Errorf("unexpected status code on %s: expected %d but got %d", method, expectedStatus, receivedStatus)
 	}
 
 	return nil
