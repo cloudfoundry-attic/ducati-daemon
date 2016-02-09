@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
+	"github.com/tedsuo/rata"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,23 +18,26 @@ import (
 
 var _ = Describe("Get", func() {
 	var dataStore *fakes.Store
-	var handler *handlers.GetHandler
 	var marshaler *fakes.Marshaler
 	var container models.Container
 	var logger *fakes.Logger
+	var handler http.Handler
+	var request *http.Request
 
 	BeforeEach(func() {
 		dataStore = &fakes.Store{}
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
 		logger = &fakes.Logger{}
-		handler = &handlers.GetHandler{
+		getHandler := &handlers.GetHandler{
 			Store:     dataStore,
 			Marshaler: marshaler,
 			Logger:    logger,
 		}
 		container = models.Container{ID: "some-container"}
 		dataStore.GetReturns(container, nil)
+
+		handler, request = rataWrap(getHandler, "GET", "/containers/:container_id", rata.Params{"container_id": "some-container"})
 	})
 
 	It("should return a requested container as JSON", func() {
@@ -46,6 +50,8 @@ var _ = Describe("Get", func() {
 		err = json.Unmarshal(resp.Body.Bytes(), &receivedContainer)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(receivedContainer).To(Equal(container))
+
+		Expect(dataStore.GetArgsForCall(0)).To(Equal("some-container"))
 	})
 
 	It("should marshal the container received from the datastore", func() {
