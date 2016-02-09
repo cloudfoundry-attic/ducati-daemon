@@ -118,9 +118,3 @@ var _ = Describe("Post", func() {
 		})
 	})
 })
-
-type badReader struct{}
-
-func (r *badReader) Read(buffer []byte) (int, error) {
-	return 0, errors.New("bad")
-}
