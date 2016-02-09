@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
@@ -33,5 +34,9 @@ func (h *GetHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	resp.Write(jsonResponse)
+	_, err = resp.Write(jsonResponse)
+	if err != nil {
+		h.Logger.Error("store-get", fmt.Errorf("failed writing body: %s", err))
+		return
+	}
 }

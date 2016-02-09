@@ -105,4 +105,19 @@ var _ = Describe("Get", func() {
 			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
+
+	Context("when writing the response body fails", func() {
+		It("should log the error", func() {
+			req, err := http.NewRequest("GET", "/containers/some-container", nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			badResponseWriter := &badResponseWriter{}
+			handler.ServeHTTP(badResponseWriter, req)
+
+			Expect(logger.ErrorCallCount()).To(Equal(1))
+			action, err, _ := logger.ErrorArgsForCall(0)
+			Expect(action).To(Equal("store-get"))
+			Expect(err).To(MatchError("failed writing body: some bad writer"))
+		})
+	})
 })
