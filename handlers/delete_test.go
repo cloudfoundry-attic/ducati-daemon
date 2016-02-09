@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
+	"github.com/tedsuo/rata"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,28 +17,29 @@ import (
 
 var _ = Describe("Delete", func() {
 	var dataStore *fakes.Store
-	var handler *handlers.DeleteHandler
 	var marshaler *fakes.Marshaler
 	var logger *fakes.Logger
+	var handler http.Handler
+	var request *http.Request
 
 	BeforeEach(func() {
 		dataStore = &fakes.Store{}
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
 		logger = &fakes.Logger{}
-		handler = &handlers.DeleteHandler{
+		deleteHandler := &handlers.DeleteHandler{
 			Store:  dataStore,
 			Logger: logger,
 		}
+		handler, request = rataWrap(deleteHandler, "POST", "/containers/:container_id", rata.Params{"container_id": "some-container"})
 		dataStore.DeleteReturns(nil)
 	})
 
 	It("should return a 204 when container is deleted", func() {
-		req, err := http.NewRequest("DELETE", "/containers/some-container", nil)
-		Expect(err).NotTo(HaveOccurred())
 		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, req)
+		handler.ServeHTTP(resp, request)
 
+		Expect(dataStore.DeleteArgsForCall(0)).To(Equal("some-container"))
 		Expect(resp.Code).To(Equal(http.StatusNoContent))
 	})
 
@@ -47,10 +49,8 @@ var _ = Describe("Delete", func() {
 		})
 
 		It("should return a 404", func() {
-			req, err := http.NewRequest("DELETE", "/containers/some-container", nil)
-			Expect(err).NotTo(HaveOccurred())
 			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, req)
+			handler.ServeHTTP(resp, request)
 
 			Expect(resp.Code).To(Equal(http.StatusNotFound))
 		})
@@ -62,10 +62,8 @@ var _ = Describe("Delete", func() {
 		})
 
 		It("should return a 500 and log the error", func() {
-			req, err := http.NewRequest("DELETE", "/containers/some-container", nil)
-			Expect(err).NotTo(HaveOccurred())
 			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, req)
+			handler.ServeHTTP(resp, request)
 
 			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 
