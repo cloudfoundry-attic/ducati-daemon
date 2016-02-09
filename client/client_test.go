@@ -51,6 +51,7 @@ var _ = Describe("Client", func() {
 			server.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/containers"),
 				ghttp.VerifyJSON(`{"id":"some-container"}`),
+				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWith(http.StatusCreated, nil),
 			))
 
@@ -171,6 +172,7 @@ var _ = Describe("Client", func() {
 
 			server.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/ipam/some-network-name"),
+				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWithJSONEncoded(http.StatusCreated, returnedResult),
 			))
 		})

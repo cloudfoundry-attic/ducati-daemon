@@ -72,7 +72,7 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 }
 
 func (d *DaemonClient) AllocateIP(networkName string) (types.Result, error) {
-	resp, err := http.Post(d.BaseURL+"/ipam/"+networkName, "", nil)
+	resp, err := http.Post(d.BaseURL+"/ipam/"+networkName, "application/json", nil)
 	if err != nil {
 		return types.Result{}, fmt.Errorf("failed to construct request: %s", err)
 	}
