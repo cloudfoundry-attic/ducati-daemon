@@ -36,7 +36,7 @@ func (h *GetHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	_, err = resp.Write(jsonResponse)
 	if err != nil {
-		h.Logger.Error("store-get", fmt.Errorf("failed writing body: %s", err))
+		h.Logger.Error("container-get", fmt.Errorf("failed writing body: %s", err))
 		return
 	}
 }

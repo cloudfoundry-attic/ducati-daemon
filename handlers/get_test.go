@@ -122,7 +122,7 @@ var _ = Describe("Get", func() {
 
 			Expect(logger.ErrorCallCount()).To(Equal(1))
 			action, err, _ := logger.ErrorArgsForCall(0)
-			Expect(action).To(Equal("store-get"))
+			Expect(action).To(Equal("container-get"))
 			Expect(err).To(MatchError("failed writing body: some bad writer"))
 		})
 	})
