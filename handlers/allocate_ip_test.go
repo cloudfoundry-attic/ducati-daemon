@@ -10,6 +10,7 @@ import (
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/rata"
@@ -101,24 +102,73 @@ var _ = Describe("Allocate IP", func() {
 	})
 
 	Context("when things go wrong", func() {
-		Context("when the allocator fails to allocate", func() {
+		Context("when the allocator returns a NoMoreAddressesError", func() {
 			BeforeEach(func() {
-				ipAllocator.AllocateIPReturns(&types.Result{}, errors.New("failed to allocate"))
+				ipAllocator.AllocateIPReturns(nil, ipam.NoMoreAddressesError)
+			})
+
+			It("should log and return a 409 status with JSON body encoding the error message", func() {
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(marshaler.MarshalCallCount()).To(Equal(1))
+				Expect(resp.Code).To(Equal(http.StatusConflict))
+
+				Expect(resp.Body.String()).To(MatchJSON(`{ "error": "no addresses available" }`))
+
+				Expect(logger.ErrorCallCount()).To(Equal(1))
+				action, err, _ := logger.ErrorArgsForCall(0)
+				Expect(action).To(Equal("allocate-ip"))
+				Expect(err).To(Equal(ipam.NoMoreAddressesError))
+			})
+
+			Context("when marshaling the error fails", func() {
+				BeforeEach(func() {
+					ipAllocator.AllocateIPReturns(nil, ipam.NoMoreAddressesError)
+					marshaler.MarshalReturns([]byte(`bad`), errors.New("banana"))
+				})
+
+				It("should log the error", func() {
+					resp := httptest.NewRecorder()
+					handler.ServeHTTP(resp, request)
+
+					Expect(resp.Code).To(Equal(http.StatusConflict))
+
+					Expect(logger.ErrorCallCount()).To(Equal(2))
+					action, err, _ := logger.ErrorArgsForCall(0)
+					Expect(action).To(Equal("allocate-ip"))
+					Expect(err).To(Equal(ipam.NoMoreAddressesError))
+
+					action, err, _ = logger.ErrorArgsForCall(1)
+					Expect(action).To(Equal("allocate-ip-error-marshaling"))
+					Expect(err).To(MatchError("banana"))
+
+					Expect(resp.Body.String()).To(BeEmpty())
+				})
+			})
+		})
+
+		Context("when the allocator errors in some other fashion", func() {
+			BeforeEach(func() {
+				ipAllocator.AllocateIPReturns(&types.Result{}, errors.New(`{"boom":"bang"}`))
 			})
 
 			It("should return 500 and log the error", func() {
 				resp := httptest.NewRecorder()
 				handler.ServeHTTP(resp, request)
 
-				Expect(marshaler.MarshalCallCount()).To(Equal(0))
+				Expect(marshaler.MarshalCallCount()).To(Equal(1))
 				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+
+				Expect(resp.Body.String()).To(MatchJSON(`{ "error": "{\"boom\":\"bang\"}" }`))
 
 				Expect(logger.ErrorCallCount()).To(Equal(1))
 				action, err, _ := logger.ErrorArgsForCall(0)
 				Expect(action).To(Equal("allocate-ip"))
-				Expect(err).To(MatchError("failed to allocate"))
+				Expect(err).To(MatchError(`{"boom":"bang"}`))
 			})
 		})
+
 	})
 
 	Context("when marshaling the result fails", func() {

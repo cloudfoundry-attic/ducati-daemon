@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 )
@@ -83,8 +84,14 @@ func (d *DaemonClient) AllocateIP(networkID, containerID string) (types.Result, 
 		return types.Result{}, nil // not tested
 	}
 
-	if statusError := checkStatus("AllocateIP", resp.StatusCode, http.StatusCreated); statusError != nil {
-		return types.Result{}, statusError
+	switch resp.StatusCode {
+	case http.StatusCreated:
+	case http.StatusConflict:
+		return types.Result{}, ipam.NoMoreAddressesError
+	default:
+		if statusError := checkStatus("AllocateIP", resp.StatusCode, http.StatusCreated); statusError != nil {
+			return types.Result{}, statusError
+		}
 	}
 
 	var ipamResult types.Result

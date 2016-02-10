@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/tedsuo/rata"
 )
 
@@ -28,7 +29,13 @@ func (h *AllocateIPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Reques
 	result, err := h.IPAllocator.AllocateIP(networkID, containerID)
 	if err != nil {
 		h.Logger.Error("allocate-ip", err)
-		resp.WriteHeader(http.StatusInternalServerError)
+		switch err {
+		case ipam.NoMoreAddressesError:
+			resp.WriteHeader(http.StatusConflict)
+		default:
+			resp.WriteHeader(http.StatusInternalServerError)
+		}
+		h.marshalError(resp, err)
 		return
 	}
 
@@ -46,4 +53,18 @@ func (h *AllocateIPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Reques
 		h.Logger.Error("allocate-ip", fmt.Errorf("failed writing body: %s", err))
 		return
 	}
+}
+
+type errorBody struct {
+	Error string `json:"error"`
+}
+
+func (h *AllocateIPHandler) marshalError(resp http.ResponseWriter, err error) {
+	marshaledError, err := h.Marshaler.Marshal(errorBody{Error: err.Error()})
+	if err != nil {
+		h.Logger.Error("allocate-ip-error-marshaling", err)
+		return
+	}
+
+	resp.Write(marshaledError)
 }

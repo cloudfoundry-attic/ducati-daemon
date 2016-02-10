@@ -9,6 +9,7 @@ import (
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/onsi/gomega/ghttp"
 
@@ -194,6 +195,18 @@ var _ = Describe("Client", func() {
 
 					_, err := c.AllocateIP("some-container-id", "some-container-id")
 					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+				})
+			})
+
+			Context("when the http response code is a 409 Conflict", func() {
+				It("should return an ipam.NoMoreAddressesError", func() {
+					server.SetHandler(0, ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/ipam/some-container-id/some-container-id"),
+						ghttp.RespondWith(http.StatusConflict, `{ "error": "boom" }`),
+					))
+
+					_, err := c.AllocateIP("some-container-id", "some-container-id")
+					Expect(err).To(Equal(ipam.NoMoreAddressesError))
 				})
 			})
 

@@ -159,7 +159,7 @@ var _ = Describe("Ipam", func() {
 
 			It("returns a meaningful error", func() {
 				_, err := allocator.AllocateIP("network-id", "container-id")
-				Expect(err).To(MatchError("address unavailable"))
+				Expect(err).To(Equal(ipam.NoMoreAddressesError))
 			})
 		})
 

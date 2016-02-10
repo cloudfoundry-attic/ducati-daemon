@@ -27,6 +27,8 @@ type Config struct {
 	Routes  []Route
 }
 
+var NoMoreAddressesError = errors.New("no addresses available")
+
 //go:generate counterfeiter -o ../fakes/store_factory.go --fake-name StoreFactory . storeFactory
 type storeFactory interface {
 	Create(path string) (AllocatorStore, error)
@@ -86,7 +88,7 @@ func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 		ip = nextIP(ip)
 
 		if !config.Subnet.Contains(ip) {
-			return nil, errors.New("address unavailable")
+			return nil, NoMoreAddressesError
 		}
 
 		if config.Gateway.Equal(ip) {
