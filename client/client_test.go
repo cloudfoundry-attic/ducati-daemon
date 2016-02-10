@@ -35,10 +35,10 @@ var _ = Describe("Client", func() {
 			Unmarshaler: unmarshaler,
 		}
 
-		marshaler.MarshalReturns([]byte(`{"id":"some-container"}`), nil)
+		marshaler.MarshalReturns([]byte(`{"id":"some-container-id"}`), nil)
 
 		container = models.Container{
-			ID: "some-container",
+			ID: "some-container-id",
 		}
 	})
 
@@ -50,7 +50,7 @@ var _ = Describe("Client", func() {
 		It("should call the backend to save the container", func() {
 			server.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/containers"),
-				ghttp.VerifyJSON(`{"id":"some-container"}`),
+				ghttp.VerifyJSON(`{"id":"some-container-id"}`),
 				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWith(http.StatusCreated, nil),
 			))
@@ -171,7 +171,7 @@ var _ = Describe("Client", func() {
 			}
 
 			server.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/ipam/some-network-name"),
+				ghttp.VerifyRequest("POST", "/ipam/some-container-id/some-container-id"),
 				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWithJSONEncoded(http.StatusCreated, returnedResult),
 			))
@@ -180,7 +180,7 @@ var _ = Describe("Client", func() {
 		It("should call the backend to allocate an IP", func() {
 			unmarshaler.UnmarshalStub = json.Unmarshal
 
-			receivedResult, err := c.AllocateIP("some-network-name")
+			receivedResult, err := c.AllocateIP("some-container-id", "some-container-id")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(server.ReceivedRequests()).Should(HaveLen(1))
 
@@ -192,7 +192,7 @@ var _ = Describe("Client", func() {
 				It("should return an error", func() {
 					c.BaseURL = "%%%%"
 
-					_, err := c.AllocateIP("some-network-name")
+					_, err := c.AllocateIP("some-container-id", "some-container-id")
 					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
 				})
 			})
@@ -200,11 +200,11 @@ var _ = Describe("Client", func() {
 			Context("when the http response code is unexpected", func() {
 				It("should return an error", func() {
 					server.SetHandler(0, ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/ipam/some-network-name"),
+						ghttp.VerifyRequest("POST", "/ipam/some-container-id/some-container-id"),
 						ghttp.RespondWith(http.StatusTeapot, `{{{`),
 					))
 
-					_, err := c.AllocateIP("some-network-name")
+					_, err := c.AllocateIP("some-container-id", "some-container-id")
 					Expect(err).To(MatchError(`unexpected status code on AllocateIP: expected 201 but got 418`))
 				})
 			})
@@ -213,7 +213,7 @@ var _ = Describe("Client", func() {
 				It("should return an error", func() {
 					unmarshaler.UnmarshalReturns(errors.New("explosion with marshal"))
 
-					_, err := c.AllocateIP("some-network-name")
+					_, err := c.AllocateIP("some-container-id", "some-container-id")
 					Expect(err).To(MatchError("failed to unmarshal IPAM result: explosion with marshal"))
 				})
 			})

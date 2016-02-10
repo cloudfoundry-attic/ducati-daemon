@@ -23,7 +23,7 @@ var _ = Describe("Main", func() {
 
 	BeforeEach(func() {
 		address = fmt.Sprintf("127.0.0.1:%d", 4001+GinkgoParallelNode())
-		ducatiCmd := exec.Command(ducatidPath, "-listenAddr", address)
+		ducatiCmd := exec.Command(ducatidPath, "-listenAddr", address, "-localSubnet", "192.168.99.0/24")
 		var err error
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
@@ -31,6 +31,7 @@ var _ = Describe("Main", func() {
 
 	AfterEach(func() {
 		session.Kill()
+		Eventually(session).Should(gexec.Exit())
 	})
 
 	It("should boot and gracefully terminate", func() {

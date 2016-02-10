@@ -9,6 +9,12 @@ import (
 )
 
 type Logger struct {
+	DebugStub        func(action string, data ...lager.Data)
+	debugMutex       sync.RWMutex
+	debugArgsForCall []struct {
+		action string
+		data   []lager.Data
+	}
 	ErrorStub        func(action string, err error, data ...lager.Data)
 	errorMutex       sync.RWMutex
 	errorArgsForCall []struct {
@@ -16,6 +22,30 @@ type Logger struct {
 		err    error
 		data   []lager.Data
 	}
+}
+
+func (fake *Logger) Debug(action string, data ...lager.Data) {
+	fake.debugMutex.Lock()
+	fake.debugArgsForCall = append(fake.debugArgsForCall, struct {
+		action string
+		data   []lager.Data
+	}{action, data})
+	fake.debugMutex.Unlock()
+	if fake.DebugStub != nil {
+		fake.DebugStub(action, data...)
+	}
+}
+
+func (fake *Logger) DebugCallCount() int {
+	fake.debugMutex.RLock()
+	defer fake.debugMutex.RUnlock()
+	return len(fake.debugArgsForCall)
+}
+
+func (fake *Logger) DebugArgsForCall(i int) (string, []lager.Data) {
+	fake.debugMutex.RLock()
+	defer fake.debugMutex.RUnlock()
+	return fake.debugArgsForCall[i].action, fake.debugArgsForCall[i].data
 }
 
 func (fake *Logger) Error(action string, err error, data ...lager.Data) {
