@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
@@ -36,7 +37,8 @@ func (d *DaemonClient) SaveContainer(container models.Container) error {
 		return fmt.Errorf("failed to marshal container: %s", err)
 	}
 
-	resp, err := http.Post(d.BaseURL+"/containers", "application/json", bytes.NewReader(postData))
+	url := d.buildURL("containers")
+	resp, err := http.Post(url, "application/json", bytes.NewReader(postData))
 	if err != nil {
 		return fmt.Errorf("failed to perform request: %s", err)
 	}
@@ -50,7 +52,8 @@ func (d *DaemonClient) SaveContainer(container models.Container) error {
 }
 
 func (d *DaemonClient) RemoveContainer(containerID string) error {
-	req, err := http.NewRequest("DELETE", d.BaseURL+"/containers/"+containerID, nil)
+	url := d.buildURL("containers", containerID)
+	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to construct request: %s", err)
 	}
@@ -73,7 +76,8 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 }
 
 func (d *DaemonClient) AllocateIP(networkID, containerID string) (types.Result, error) {
-	resp, err := http.Post(d.BaseURL+"/ipam/"+networkID+"/"+containerID, "application/json", nil)
+	url := d.buildURL("ipam", networkID, containerID)
+	resp, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		return types.Result{}, fmt.Errorf("failed to perform request: %s", err)
 	}
@@ -104,7 +108,7 @@ func (d *DaemonClient) AllocateIP(networkID, containerID string) (types.Result, 
 }
 
 func (d *DaemonClient) ReleaseIP(networkID, containerID string) error {
-	url := fmt.Sprintf("%s/ipam/%s/%s", d.BaseURL, networkID, containerID)
+	url := d.buildURL("ipam", networkID, containerID)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to construct request: %s", err)
@@ -128,4 +132,8 @@ func checkStatus(method string, receivedStatus, expectedStatus int) error {
 	}
 
 	return nil
+}
+
+func (d *DaemonClient) buildURL(routeElements ...string) string {
+	return d.BaseURL + "/" + strings.Join(routeElements, "/")
 }
