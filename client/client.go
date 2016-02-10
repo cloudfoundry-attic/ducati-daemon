@@ -38,7 +38,7 @@ func (d *DaemonClient) SaveContainer(container models.Container) error {
 
 	resp, err := http.Post(d.BaseURL+"/containers", "application/json", bytes.NewReader(postData))
 	if err != nil {
-		return fmt.Errorf("failed to construct request: %s", err)
+		return fmt.Errorf("failed to perform request: %s", err)
 	}
 	defer resp.Body.Close()
 
@@ -57,7 +57,7 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to construct request: %s", err)
+		return fmt.Errorf("failed to perform request: %s", err)
 	}
 	defer resp.Body.Close()
 
@@ -75,7 +75,7 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 func (d *DaemonClient) AllocateIP(networkID, containerID string) (types.Result, error) {
 	resp, err := http.Post(d.BaseURL+"/ipam/"+networkID+"/"+containerID, "application/json", nil)
 	if err != nil {
-		return types.Result{}, fmt.Errorf("failed to construct request: %s", err)
+		return types.Result{}, fmt.Errorf("failed to perform request: %s", err)
 	}
 	defer resp.Body.Close()
 

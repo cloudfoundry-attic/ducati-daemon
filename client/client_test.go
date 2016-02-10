@@ -72,7 +72,7 @@ var _ = Describe("Client", func() {
 				})
 			})
 
-			Context("when the request cannot be constructed", func() {
+			Context("when the request cannot be performed", func() {
 				It("should return an error", func() {
 					c = client.DaemonClient{
 						BaseURL:   "%%%%",
@@ -80,7 +80,7 @@ var _ = Describe("Client", func() {
 					}
 
 					err := c.SaveContainer(container)
-					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
 				})
 			})
 
@@ -134,7 +134,19 @@ var _ = Describe("Client", func() {
 				})
 			})
 
-			Context("when the http request fails", func() {
+			Context("when the request fails", func() {
+				BeforeEach(func() {
+					c.BaseURL = "http://0.0.0.0:1"
+				})
+
+				It("returns a error", func() {
+					err := c.RemoveContainer("whatever")
+					Expect(err).To(MatchError(ContainSubstring("failed to perform request")))
+					Expect(err).To(MatchError(ContainSubstring("connection refused")))
+				})
+			})
+
+			Context("when the response status code is unexpected", func() {
 				It("should return an error", func() {
 					server.AppendHandlers(ghttp.CombineHandlers(
 						ghttp.VerifyRequest("DELETE", "/containers/whatever"),
@@ -189,12 +201,12 @@ var _ = Describe("Client", func() {
 		})
 
 		Context("when an error occurs", func() {
-			Context("when the request cannot be constructed", func() {
+			Context("when the request cannot be performed", func() {
 				It("should return an error", func() {
 					c.BaseURL = "%%%%"
 
 					_, err := c.AllocateIP("some-network-id", "some-container-id")
-					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
 				})
 			})
 
