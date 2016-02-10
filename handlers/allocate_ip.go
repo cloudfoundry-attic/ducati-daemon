@@ -27,7 +27,6 @@ func (h *AllocateIPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Reques
 
 	result, err := h.IPAllocator.AllocateIP(networkID, containerID)
 	if err != nil {
-		fmt.Printf("foo error: %s\n", err)
 		h.Logger.Error("allocate-ip", err)
 		resp.WriteHeader(http.StatusInternalServerError)
 		return

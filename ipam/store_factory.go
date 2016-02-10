@@ -1,9 +1,9 @@
 package ipam
 
-import "github.com/appc/cni/plugins/ipam/host-local/backend/disk"
+import "sync"
 
 type StoreFactory struct{}
 
-func (sf *StoreFactory) Create(path string) (AllocatorStore, error) {
-	return disk.New(path)
+func (sf *StoreFactory) Create(networkID string) (AllocatorStore, error) {
+	return NewStore(&sync.Mutex{}), nil
 }
