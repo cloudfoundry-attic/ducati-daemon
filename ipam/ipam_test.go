@@ -19,6 +19,8 @@ var _ = Describe("Ipam", func() {
 		configFactory *fakes.ConfigFactory
 		configLocker  *fakes.Locker
 		allocator     *ipam.Allocator
+		allocated     map[string]struct{}
+		config        ipam.Config
 	)
 
 	BeforeEach(func() {
@@ -29,35 +31,30 @@ var _ = Describe("Ipam", func() {
 		configFactory = &fakes.ConfigFactory{}
 		configLocker = &fakes.Locker{}
 
+		config = ipam.Config{
+			Subnet: net.IPNet{
+				IP:   net.ParseIP("192.168.2.0"),
+				Mask: net.CIDRMask(24, 32),
+			},
+		}
+		configFactory.CreateReturns(config, nil)
+
+		allocated = map[string]struct{}{}
+		store.ReserveStub = func(containerID string, ip net.IP) (bool, error) {
+			s := ip.String()
+			if _, ok := allocated[s]; ok {
+				return false, nil
+			}
+			allocated[s] = struct{}{}
+			return true, nil
+		}
+
+		storeFactory.CreateReturns(store, nil)
+
 		allocator = ipam.New(storeFactory, storeLocker, configFactory, configLocker)
 	})
 
 	Describe("AllocateIP", func() {
-		var allocated map[string]struct{}
-		var config ipam.Config
-
-		BeforeEach(func() {
-			config = ipam.Config{
-				Subnet: net.IPNet{
-					IP:   net.ParseIP("192.168.2.0"),
-					Mask: net.CIDRMask(24, 32),
-				},
-			}
-			configFactory.CreateReturns(config, nil)
-
-			allocated = map[string]struct{}{}
-			store.ReserveStub = func(containerID string, ip net.IP) (bool, error) {
-				s := ip.String()
-				if _, ok := allocated[s]; ok {
-					return false, nil
-				}
-				allocated[s] = struct{}{}
-				return true, nil
-			}
-
-			storeFactory.CreateReturns(store, nil)
-		})
-
 		It("reserves an IP", func() {
 			result, err := allocator.AllocateIP("network-id", "container-id")
 			Expect(err).NotTo(HaveOccurred())
@@ -203,6 +200,45 @@ var _ = Describe("Ipam", func() {
 					"192.168.2.4/24",
 					"192.168.2.5/24",
 				}))
+			})
+		})
+	})
+
+	Describe("ReleaseIP", func() {
+		It("releases the IP from the store", func() {
+			_, err := allocator.AllocateIP("network-id", "container-id")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(storeFactory.CreateCallCount()).To(Equal(1))
+
+			err = allocator.ReleaseIP("network-id", "container-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			By("reusing the reference to the store for the network")
+			Expect(store.ReleaseByIDCallCount()).To(Equal(1))
+
+			containerID := store.ReleaseByIDArgsForCall(0)
+			Expect(containerID).To(Equal("container-id"))
+		})
+
+		Context("when acquiring the store fails", func() {
+			BeforeEach(func() {
+				storeFactory.CreateReturns(nil, errors.New("no store for you"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := allocator.ReleaseIP("network-id", "container-id")
+				Expect(err).To(MatchError(`failed to create allocator store: no store for you`))
+			})
+		})
+
+		Context("when the store returns an error from ReleaseByID", func() {
+			BeforeEach(func() {
+				store.ReleaseByIDReturns(errors.New("nope"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := allocator.ReleaseIP("network-id", "container-id")
+				Expect(err).To(MatchError(`store failed to release: nope`))
 			})
 		})
 	})

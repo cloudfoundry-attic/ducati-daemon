@@ -50,6 +50,7 @@ func main() {
 		{Name: "add_container", Method: "POST", Path: "/containers"},
 		{Name: "delete_container", Method: "DELETE", Path: "/containers/:container_id"},
 		{Name: "allocate_ip", Method: "POST", Path: "/ipam/:network_id/:container_id"},
+		{Name: "release_ip", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
 	}
 
 	dataStore := store.New()
@@ -103,12 +104,19 @@ func main() {
 		Logger:      logger,
 	}
 
+	releaseIPHandler := &handlers.ReleaseIPHandler{
+		IPAllocator: ipAllocator,
+		Marshaler:   marshal.MarshalFunc(json.Marshal),
+		Logger:      logger,
+	}
+
 	handlers := rata.Handlers{
 		"list_containers":  listHandler,
 		"add_container":    postHandler,
 		"get_container":    getHandler,
 		"delete_container": deleteHandler,
 		"allocate_ip":      allocateIPHandler,
+		"release_ip":       releaseIPHandler,
 	}
 
 	rataHandler, err := rata.NewRouter(routes, handlers)

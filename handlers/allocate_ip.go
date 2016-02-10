@@ -35,7 +35,7 @@ func (h *AllocateIPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Reques
 		default:
 			resp.WriteHeader(http.StatusInternalServerError)
 		}
-		h.marshalError(resp, err)
+		marshalError(h.Logger, resp, h.Marshaler, err)
 		return
 	}
 
@@ -53,18 +53,4 @@ func (h *AllocateIPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Reques
 		h.Logger.Error("allocate-ip", fmt.Errorf("failed writing body: %s", err))
 		return
 	}
-}
-
-type errorBody struct {
-	Error string `json:"error"`
-}
-
-func (h *AllocateIPHandler) marshalError(resp http.ResponseWriter, err error) {
-	marshaledError, err := h.Marshaler.Marshal(errorBody{Error: err.Error()})
-	if err != nil {
-		h.Logger.Error("allocate-ip-error-marshaling", err)
-		return
-	}
-
-	resp.Write(marshaledError)
 }

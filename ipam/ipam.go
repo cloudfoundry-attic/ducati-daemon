@@ -117,7 +117,17 @@ func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 }
 
 func (a *Allocator) ReleaseIP(networkID, containerID string) error {
-	panic("boom")
+	store, err := a.getStore(networkID)
+	if err != nil {
+		return err
+	}
+
+	err = store.ReleaseByID(containerID)
+	if err != nil {
+		return fmt.Errorf("store failed to release: %s", err)
+	}
+
+	return nil
 }
 
 func (a *Allocator) getConfig(networkID string) (*Config, error) {
