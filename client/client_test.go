@@ -232,4 +232,51 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
+
+	Describe("ReleaseIP", func() {
+		BeforeEach(func() {
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("DELETE", "/ipam/some-network-id/some-container-id"),
+				ghttp.RespondWithJSONEncoded(http.StatusNoContent, nil),
+			))
+		})
+
+		It("should call the backend to release an IP", func() {
+			err := c.ReleaseIP("some-network-id", "some-container-id")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+		})
+
+		Context("when the request cannot be constructed", func() {
+			It("should return an error", func() {
+				c.BaseURL = "%%%%"
+
+				err := c.ReleaseIP("some-network-id", "some-container-id")
+				Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+			})
+		})
+
+		Context("when the http response code is unexpected", func() {
+			It("should return an error", func() {
+				server.SetHandler(0, ghttp.CombineHandlers(
+					ghttp.VerifyRequest("DELETE", "/ipam/some-network-id/some-container-id"),
+					ghttp.RespondWithJSONEncoded(http.StatusTeapot, nil),
+				))
+
+				err := c.ReleaseIP("some-network-id", "some-container-id")
+				Expect(err).To(MatchError(`unexpected status code on ReleaseIP: expected 204 but got 418`))
+			})
+		})
+
+		Context("when the request fails", func() {
+			BeforeEach(func() {
+				c.BaseURL = "http://0.0.0.0:1"
+			})
+
+			It("returns a error", func() {
+				err := c.ReleaseIP("some-network-id", "some-container-id")
+				Expect(err).To(MatchError(ContainSubstring("connection refused")))
+			})
+		})
+	})
 })

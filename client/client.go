@@ -103,6 +103,25 @@ func (d *DaemonClient) AllocateIP(networkID, containerID string) (types.Result, 
 	return ipamResult, nil
 }
 
+func (d *DaemonClient) ReleaseIP(networkID, containerID string) error {
+	url := fmt.Sprintf("%s/ipam/%s/%s", d.BaseURL, networkID, containerID)
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to construct request: %s", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if statusError := checkStatus("ReleaseIP", resp.StatusCode, http.StatusNoContent); statusError != nil {
+		return statusError
+	}
+
+	return nil
+}
+
 func checkStatus(method string, receivedStatus, expectedStatus int) error {
 	if receivedStatus != expectedStatus {
 		return fmt.Errorf("unexpected status code on %s: expected %d but got %d", method, expectedStatus, receivedStatus)
