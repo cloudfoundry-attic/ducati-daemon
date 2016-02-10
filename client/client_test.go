@@ -24,16 +24,29 @@ var _ = Describe("Client", func() {
 		marshaler   *fakes.Marshaler
 		unmarshaler *fakes.Unmarshaler
 		container   models.Container
+
+		roundTripper *fakes.RoundTripper
+		httpClient   *http.Client
 	)
 
 	BeforeEach(func() {
 		server = ghttp.NewServer()
 		marshaler = &fakes.Marshaler{}
 		unmarshaler = &fakes.Unmarshaler{}
+
+		roundTripper = &fakes.RoundTripper{}
+		transport := http.DefaultTransport
+		roundTripper.RoundTripStub = transport.RoundTrip
+
+		httpClient = &http.Client{
+			Transport: roundTripper,
+		}
+
 		c = client.DaemonClient{
 			BaseURL:     server.URL(),
 			Marshaler:   marshaler,
 			Unmarshaler: unmarshaler,
+			HttpClient:  httpClient,
 		}
 
 		marshaler.MarshalReturns([]byte(`{"id":"some-container-id"}`), nil)
@@ -48,18 +61,27 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("SaveContainer", func() {
-		It("should call the backend to save the container", func() {
+		BeforeEach(func() {
 			server.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/containers"),
 				ghttp.VerifyJSON(`{"id":"some-container-id"}`),
 				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWith(http.StatusCreated, nil),
 			))
+		})
 
+		It("should call the backend to save the container", func() {
 			Expect(c.SaveContainer(container)).To(Succeed())
 			Expect(server.ReceivedRequests()).Should(HaveLen(1))
 			Expect(marshaler.MarshalCallCount()).To(Equal(1))
 			Expect(marshaler.MarshalArgsForCall(0)).To(Equal(container))
+		})
+
+		It("uses the provided HTTP client", func() {
+			Expect(c.SaveContainer(container)).To(Succeed())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/containers"))
 		})
 
 		Context("when an error occurs", func() {
@@ -85,12 +107,15 @@ var _ = Describe("Client", func() {
 			})
 
 			Context("when the http request fails", func() {
-				It("should return an error", func() {
+				BeforeEach(func() {
+					server.Reset()
 					server.AppendHandlers(ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers"),
 						ghttp.RespondWith(http.StatusInternalServerError, nil),
 					))
+				})
 
+				It("should return an error", func() {
 					err := c.SaveContainer(container)
 					Expect(err).To(MatchError(`unexpected status code on SaveContainer: expected 201 but got 500`))
 				})
@@ -99,24 +124,36 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("RemoveContainer", func() {
-		It("should call the backend to remove the container", func() {
+		BeforeEach(func() {
 			server.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("DELETE", "/containers/some-container"),
 				ghttp.RespondWith(http.StatusNoContent, nil),
 			))
+		})
 
+		It("should call the backend to remove the container", func() {
 			Expect(c.RemoveContainer("some-container")).To(Succeed())
 			Expect(server.ReceivedRequests()).Should(HaveLen(1))
 		})
 
+		It("uses the provided HTTP client", func() {
+			Expect(c.RemoveContainer("some-container")).To(Succeed())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/containers/some-container"))
+		})
+
 		Context("when an error occurs", func() {
 			Context("when the container does not exist", func() {
-				It("it should return a RecordNotFound error", func() {
+				BeforeEach(func() {
+					server.Reset()
 					server.AppendHandlers(ghttp.CombineHandlers(
 						ghttp.VerifyRequest("DELETE", "/containers/non-existent-container-id"),
 						ghttp.RespondWith(http.StatusNotFound, nil),
 					))
+				})
 
+				It("it should return a RecordNotFound error", func() {
 					err := c.RemoveContainer("non-existent-container-id")
 					Expect(err).To(Equal(client.RecordNotFoundError))
 				})
@@ -147,12 +184,15 @@ var _ = Describe("Client", func() {
 			})
 
 			Context("when the response status code is unexpected", func() {
-				It("should return an error", func() {
+				BeforeEach(func() {
+					server.Reset()
 					server.AppendHandlers(ghttp.CombineHandlers(
 						ghttp.VerifyRequest("DELETE", "/containers/whatever"),
 						ghttp.RespondWith(http.StatusInternalServerError, nil),
 					))
+				})
 
+				It("should return an error", func() {
 					err := c.RemoveContainer("whatever")
 					Expect(err).To(MatchError(`unexpected status code on RemoveContainer: expected 204 but got 500`))
 				})
@@ -198,6 +238,14 @@ var _ = Describe("Client", func() {
 			Expect(server.ReceivedRequests()).Should(HaveLen(1))
 
 			Expect(receivedResult).To(Equal(returnedResult))
+		})
+
+		It("uses the provided HTTP client", func() {
+			_, err := c.AllocateIP("some-network-id", "some-container-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/ipam/some-network-id/some-container-id"))
 		})
 
 		Context("when an error occurs", func() {
@@ -257,6 +305,14 @@ var _ = Describe("Client", func() {
 			err := c.ReleaseIP("some-network-id", "some-container-id")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+		})
+
+		It("uses the provided HTTP client", func() {
+			err := c.ReleaseIP("some-network-id", "some-container-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/ipam/some-network-id/some-container-id"))
 		})
 
 		Context("when the request cannot be constructed", func() {

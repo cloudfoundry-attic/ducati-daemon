@@ -17,11 +17,12 @@ import (
 
 var RecordNotFoundError error = errors.New("record not found")
 
-func New(baseURL string) *DaemonClient {
+func New(baseURL string, httpClient *http.Client) *DaemonClient {
 	return &DaemonClient{
 		BaseURL:     baseURL,
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
 		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
+		HttpClient:  httpClient,
 	}
 }
 
@@ -29,6 +30,7 @@ type DaemonClient struct {
 	BaseURL     string
 	Marshaler   marshal.Marshaler
 	Unmarshaler marshal.Unmarshaler
+	HttpClient  *http.Client
 }
 
 func (d *DaemonClient) SaveContainer(container models.Container) error {
@@ -38,7 +40,7 @@ func (d *DaemonClient) SaveContainer(container models.Container) error {
 	}
 
 	url := d.buildURL("containers")
-	resp, err := http.Post(url, "application/json", bytes.NewReader(postData))
+	resp, err := d.HttpClient.Post(url, "application/json", bytes.NewReader(postData))
 	if err != nil {
 		return fmt.Errorf("failed to perform request: %s", err)
 	}
@@ -58,7 +60,7 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 		return fmt.Errorf("failed to construct request: %s", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := d.HttpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to perform request: %s", err)
 	}
@@ -77,7 +79,7 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 
 func (d *DaemonClient) AllocateIP(networkID, containerID string) (types.Result, error) {
 	url := d.buildURL("ipam", networkID, containerID)
-	resp, err := http.Post(url, "application/json", nil)
+	resp, err := d.HttpClient.Post(url, "application/json", nil)
 	if err != nil {
 		return types.Result{}, fmt.Errorf("failed to perform request: %s", err)
 	}
@@ -114,7 +116,7 @@ func (d *DaemonClient) ReleaseIP(networkID, containerID string) error {
 		return fmt.Errorf("failed to construct request: %s", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := d.HttpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -136,4 +138,9 @@ func checkStatus(method string, receivedStatus, expectedStatus int) error {
 
 func (d *DaemonClient) buildURL(routeElements ...string) string {
 	return d.BaseURL + "/" + strings.Join(routeElements, "/")
+}
+
+//go:generate counterfeiter -o ../fakes/round_tripper.go --fake-name RoundTripper . roundTripper
+type roundTripper interface {
+	http.RoundTripper
 }

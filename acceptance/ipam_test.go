@@ -3,6 +3,7 @@ package acceptance_test
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os/exec"
 	"time"
 
@@ -26,7 +27,7 @@ var _ = Describe("IP Address Management", func() {
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 
-		daemonClient = client.New(fmt.Sprintf("http://%s", address))
+		daemonClient = client.New(fmt.Sprintf("http://%s", address), http.DefaultClient)
 	})
 
 	AfterEach(func() {
