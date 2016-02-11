@@ -20,7 +20,7 @@ var _ = Describe("Ipam", func() {
 		configLocker  *fakes.Locker
 		allocator     *ipam.Allocator
 		allocated     map[string]struct{}
-		config        ipam.Config
+		config        types.IPConfig
 	)
 
 	BeforeEach(func() {
@@ -31,11 +31,17 @@ var _ = Describe("Ipam", func() {
 		configFactory = &fakes.ConfigFactory{}
 		configLocker = &fakes.Locker{}
 
-		config = ipam.Config{
-			Subnet: net.IPNet{
-				IP:   net.ParseIP("192.168.2.0"),
+		config = types.IPConfig{
+			IP: net.IPNet{
+				IP:   net.ParseIP("192.168.2.0").To4(),
 				Mask: net.CIDRMask(24, 32),
 			},
+			Routes: []types.Route{{
+				Dst: net.IPNet{
+					IP:   net.ParseIP("192.168.0.0").To4(),
+					Mask: net.CIDRMask(16, 32),
+				},
+			}},
 		}
 		configFactory.CreateReturns(config, nil)
 
@@ -90,7 +96,6 @@ var _ = Describe("Ipam", func() {
 							IP:   net.ParseIP("192.168.0.0").To4(),
 							Mask: net.CIDRMask(16, 32),
 						},
-						GW: net.ParseIP("192.168.2.1").To4(),
 					}},
 				},
 			}))
@@ -123,7 +128,7 @@ var _ = Describe("Ipam", func() {
 
 		Context("when the config factory fails to create a store", func() {
 			BeforeEach(func() {
-				configFactory.CreateReturns(ipam.Config{}, errors.New("network not found"))
+				configFactory.CreateReturns(types.IPConfig{}, errors.New("network not found"))
 			})
 
 			It("returns a meaningful error", func() {

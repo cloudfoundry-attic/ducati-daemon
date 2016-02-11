@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
@@ -102,8 +103,11 @@ func main() {
 	}
 
 	configFactory := &ipam.ConfigFactory{
-		Config: ipam.Config{
-			Subnet: *subnet,
+		Config: types.IPConfig{
+			IP: *subnet,
+			Routes: []types.Route{{
+				Dst: *overlay,
+			}},
 		},
 	}
 

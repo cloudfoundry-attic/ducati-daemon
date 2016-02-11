@@ -16,17 +16,6 @@ type AllocatorStore interface {
 	ReleaseByID(id string) error
 }
 
-type Route struct {
-	Dst net.IPNet
-	GW  net.IP
-}
-
-type Config struct {
-	Subnet  net.IPNet
-	Gateway net.IP
-	Routes  []Route
-}
-
 var NoMoreAddressesError = errors.New("no addresses available")
 
 //go:generate counterfeiter -o ../fakes/store_factory.go --fake-name StoreFactory . storeFactory
@@ -36,7 +25,7 @@ type storeFactory interface {
 
 //go:generate counterfeiter -o ../fakes/config_factory.go --fake-name ConfigFactory . configFactory
 type configFactory interface {
-	Create(networkID string) (Config, error)
+	Create(networkID string) (types.IPConfig, error)
 }
 
 //go:generate counterfeiter -o ../fakes/locker.go --fake-name Locker . locker
@@ -51,7 +40,7 @@ type Allocator struct {
 
 	configFactory configFactory
 	configLocker  locker
-	configs       map[string]*Config
+	configs       map[string]*types.IPConfig
 }
 
 func New(storeFactory storeFactory, storeLocker locker, configFactory configFactory, configLocker sync.Locker) *Allocator {
@@ -62,7 +51,7 @@ func New(storeFactory storeFactory, storeLocker locker, configFactory configFact
 
 		configFactory: configFactory,
 		configLocker:  configLocker,
-		configs:       map[string]*Config{},
+		configs:       map[string]*types.IPConfig{},
 	}
 }
 
@@ -77,7 +66,7 @@ func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 		return nil, err
 	}
 
-	ip := config.Subnet.IP
+	ip := config.IP.IP
 
 	if config.Gateway == nil {
 		ip = nextIP(ip)
@@ -87,7 +76,7 @@ func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 	for {
 		ip = nextIP(ip)
 
-		if !config.Subnet.Contains(ip) {
+		if !config.IP.Contains(ip) {
 			return nil, NoMoreAddressesError
 		}
 
@@ -105,22 +94,13 @@ func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 		}
 	}
 
-	// fixed based on current deployment config
-	mask := net.CIDRMask(16, 32)
-
 	result := &types.IPConfig{
 		IP: net.IPNet{
 			IP:   ip,
-			Mask: config.Subnet.Mask,
+			Mask: config.IP.Mask,
 		},
 		Gateway: config.Gateway,
-		Routes: []types.Route{{
-			Dst: net.IPNet{
-				IP:   ip.Mask(mask),
-				Mask: mask,
-			},
-			GW: config.Gateway,
-		}},
+		Routes:  config.Routes,
 	}
 
 	return &types.Result{IP4: result}, nil
@@ -140,7 +120,7 @@ func (a *Allocator) ReleaseIP(networkID, containerID string) error {
 	return nil
 }
 
-func (a *Allocator) getConfig(networkID string) (*Config, error) {
+func (a *Allocator) getConfig(networkID string) (*types.IPConfig, error) {
 	a.configLocker.Lock()
 	defer a.configLocker.Unlock()
 

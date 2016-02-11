@@ -4,22 +4,22 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
+	"github.com/appc/cni/pkg/types"
 )
 
 type ConfigFactory struct {
-	CreateStub        func(networkID string) (ipam.Config, error)
+	CreateStub        func(networkID string) (types.IPConfig, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
 		networkID string
 	}
 	createReturns struct {
-		result1 ipam.Config
+		result1 types.IPConfig
 		result2 error
 	}
 }
 
-func (fake *ConfigFactory) Create(networkID string) (ipam.Config, error) {
+func (fake *ConfigFactory) Create(networkID string) (types.IPConfig, error) {
 	fake.createMutex.Lock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		networkID string
@@ -44,10 +44,10 @@ func (fake *ConfigFactory) CreateArgsForCall(i int) string {
 	return fake.createArgsForCall[i].networkID
 }
 
-func (fake *ConfigFactory) CreateReturns(result1 ipam.Config, result2 error) {
+func (fake *ConfigFactory) CreateReturns(result1 types.IPConfig, result2 error) {
 	fake.CreateStub = nil
 	fake.createReturns = struct {
-		result1 ipam.Config
+		result1 types.IPConfig
 		result2 error
 	}{result1, result2}
 }
