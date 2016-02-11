@@ -105,12 +105,22 @@ func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 		}
 	}
 
+	// fixed based on current deployment config
+	mask := net.CIDRMask(16, 32)
+
 	result := &types.IPConfig{
 		IP: net.IPNet{
 			IP:   ip,
 			Mask: config.Subnet.Mask,
 		},
 		Gateway: config.Gateway,
+		Routes: []types.Route{{
+			Dst: net.IPNet{
+				IP:   ip.Mask(mask),
+				Mask: mask,
+			},
+			GW: config.Gateway,
+		}},
 	}
 
 	return &types.Result{IP4: result}, nil

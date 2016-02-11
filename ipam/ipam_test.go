@@ -85,6 +85,13 @@ var _ = Describe("Ipam", func() {
 						Mask: net.CIDRMask(24, 32),
 					},
 					Gateway: net.ParseIP("192.168.2.1").To4(),
+					Routes: []types.Route{{
+						Dst: net.IPNet{
+							IP:   net.ParseIP("192.168.0.0").To4(),
+							Mask: net.CIDRMask(16, 32),
+						},
+						GW: net.ParseIP("192.168.2.1").To4(),
+					}},
 				},
 			}))
 		})
