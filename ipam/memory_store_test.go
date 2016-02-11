@@ -62,5 +62,31 @@ var _ = Describe("MemoryStore", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
+
+		Context("when multiple addresses are reserved for the saeme container", func() {
+			It("releases them all", func() {
+				By("reserving multiple IPs")
+				ok, err := store.Reserve("some-id", net.ParseIP("1.2.3.4"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+
+				ok, err = store.Reserve("some-id", net.ParseIP("2.3.4.5"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+
+				By("releasing the id")
+				err = store.ReleaseByID("some-id")
+				Expect(err).NotTo(HaveOccurred())
+
+				By("reserving the IPs again")
+				ok, err = store.Reserve("some-id", net.ParseIP("1.2.3.4"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+
+				ok, err = store.Reserve("some-id", net.ParseIP("2.3.4.5"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+			})
+		})
 	})
 })
