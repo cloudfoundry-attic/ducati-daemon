@@ -21,19 +21,26 @@ import (
 )
 
 var address string
+var overlayNetwork string
 var localSubnet string
 
 const addressFlag = "listenAddr"
+const overlayNetworkFlag = "overlayNetwork"
 const localSubnetFlag = "localSubnet"
 
 func parseFlags() {
 	flag.StringVar(&address, addressFlag, "", "")
+	flag.StringVar(&overlayNetwork, overlayNetworkFlag, "", "")
 	flag.StringVar(&localSubnet, localSubnetFlag, "", "")
 
 	flag.Parse()
 
 	if address == "" {
 		log.Fatalf("missing required flag %q", addressFlag)
+	}
+
+	if overlayNetwork == "" {
+		log.Fatalf("missing required flag %q", overlayNetworkFlag)
 	}
 
 	if localSubnet == "" {
@@ -82,7 +89,16 @@ func main() {
 
 	_, subnet, err := net.ParseCIDR(localSubnet)
 	if err != nil {
-		panic(err)
+		log.Fatalf("invalid CIDR provided for %q: %s", localSubnetFlag, localSubnet)
+	}
+
+	_, overlay, err := net.ParseCIDR(overlayNetwork)
+	if err != nil {
+		log.Fatalf("invalid CIDR provided for %q: %s", overlayNetworkFlag, overlayNetwork)
+	}
+
+	if !overlay.Contains(subnet.IP) {
+		log.Fatalf("overlay network does not contain local subnet")
 	}
 
 	configFactory := &ipam.ConfigFactory{
