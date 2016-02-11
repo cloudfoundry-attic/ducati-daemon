@@ -123,6 +123,57 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("ListContainers", func() {
+		var expectedContainer models.Container
+
+		BeforeEach(func() {
+			expectedContainer = models.Container{
+				ID:     "some-id",
+				IP:     "192.168.1.9",
+				MAC:    "HH:HH:HH:HH:HH",
+				HostIP: "10.0.0.0",
+			}
+
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/containers"),
+				ghttp.RespondWithJSONEncoded(http.StatusOK, []models.Container{expectedContainer}),
+			))
+		})
+
+		It("should call the backend to get all the containers", func() {
+			unmarshaler.UnmarshalStub = json.Unmarshal
+
+			container, err := c.ListContainers()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(container).To(ConsistOf(expectedContainer))
+		})
+
+		Context("when an error occurs", func() {
+			Context("when the json cannot be unmarshaled", func() {
+				BeforeEach(func() {
+					unmarshaler.UnmarshalReturns(errors.New("something went wrong"))
+				})
+
+				It("should return an error", func() {
+					_, err := c.ListContainers()
+					Expect(err).To(MatchError("failed to unmarshal containers: something went wrong"))
+				})
+			})
+
+			Context("when the endpoint responds with the wrong status", func() {
+				BeforeEach(func() {
+					server.SetHandler(0, ghttp.RespondWith(http.StatusTeapot, nil))
+				})
+
+				It("should return and error", func() {
+					_, err := c.ListContainers()
+					Expect(err).To(MatchError(`unexpected status code on ListContainers: expected 200 but got 418`))
+				})
+			})
+		})
+	})
+
 	Describe("RemoveContainer", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(ghttp.CombineHandlers(

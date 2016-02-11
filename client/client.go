@@ -53,6 +53,32 @@ func (d *DaemonClient) SaveContainer(container models.Container) error {
 	return nil
 }
 
+func (d *DaemonClient) ListContainers() ([]models.Container, error) {
+	url := d.buildURL("containers")
+	resp, err := d.HttpClient.Get(url)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("failed to perform request: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if statusError := checkStatus("ListContainers", resp.StatusCode, http.StatusOK); statusError != nil {
+		return []models.Container{}, statusError
+	}
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []models.Container{}, nil // not tested
+	}
+
+	var containers []models.Container
+	err = d.Unmarshaler.Unmarshal(respBytes, &containers)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("failed to unmarshal containers: %s", err)
+	}
+
+	return containers, nil
+}
+
 func (d *DaemonClient) RemoveContainer(containerID string) error {
 	url := d.buildURL("containers", containerID)
 	req, err := http.NewRequest("DELETE", url, nil)
