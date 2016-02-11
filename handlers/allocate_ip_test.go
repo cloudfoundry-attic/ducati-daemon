@@ -150,7 +150,7 @@ var _ = Describe("Allocate IP", func() {
 
 		Context("when the allocator errors in some other fashion", func() {
 			BeforeEach(func() {
-				ipAllocator.AllocateIPReturns(&types.Result{}, errors.New(`{"boom":"bang"}`))
+				ipAllocator.AllocateIPReturns(nil, errors.New(`{"boom":"bang"}`))
 			})
 
 			It("should return 500 and log the error", func() {
