@@ -10,7 +10,7 @@ import (
 )
 
 type LinkFactory struct {
-	CreateVethPairStub        func(containerID, hostIfaceName string, mtu int) (sandboxLink netlink.Link, containerLink netlink.Link, err error)
+	CreateVethPairStub        func(containerID, hostIfaceName string, mtu int) error
 	createVethPairMutex       sync.RWMutex
 	createVethPairArgsForCall []struct {
 		containerID   string
@@ -18,9 +18,7 @@ type LinkFactory struct {
 		mtu           int
 	}
 	createVethPairReturns struct {
-		result1 netlink.Link
-		result2 netlink.Link
-		result3 error
+		result1 error
 	}
 	FindLinkStub        func(name string) (netlink.Link, error)
 	findLinkMutex       sync.RWMutex
@@ -53,7 +51,7 @@ type LinkFactory struct {
 	}
 }
 
-func (fake *LinkFactory) CreateVethPair(containerID string, hostIfaceName string, mtu int) (sandboxLink netlink.Link, containerLink netlink.Link, err error) {
+func (fake *LinkFactory) CreateVethPair(containerID string, hostIfaceName string, mtu int) error {
 	fake.createVethPairMutex.Lock()
 	fake.createVethPairArgsForCall = append(fake.createVethPairArgsForCall, struct {
 		containerID   string
@@ -64,7 +62,7 @@ func (fake *LinkFactory) CreateVethPair(containerID string, hostIfaceName string
 	if fake.CreateVethPairStub != nil {
 		return fake.CreateVethPairStub(containerID, hostIfaceName, mtu)
 	} else {
-		return fake.createVethPairReturns.result1, fake.createVethPairReturns.result2, fake.createVethPairReturns.result3
+		return fake.createVethPairReturns.result1
 	}
 }
 
@@ -80,13 +78,11 @@ func (fake *LinkFactory) CreateVethPairArgsForCall(i int) (string, string, int) 
 	return fake.createVethPairArgsForCall[i].containerID, fake.createVethPairArgsForCall[i].hostIfaceName, fake.createVethPairArgsForCall[i].mtu
 }
 
-func (fake *LinkFactory) CreateVethPairReturns(result1 netlink.Link, result2 netlink.Link, result3 error) {
+func (fake *LinkFactory) CreateVethPairReturns(result1 error) {
 	fake.CreateVethPairStub = nil
 	fake.createVethPairReturns = struct {
-		result1 netlink.Link
-		result2 netlink.Link
-		result3 error
-	}{result1, result2, result3}
+		result1 error
+	}{result1}
 }
 
 func (fake *LinkFactory) FindLink(name string) (netlink.Link, error) {

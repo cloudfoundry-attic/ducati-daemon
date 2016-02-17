@@ -24,7 +24,7 @@ type Executor struct {
 
 //go:generate counterfeiter --fake-name LinkFactory . LinkFactory
 type LinkFactory interface {
-	CreateVethPair(containerID, hostIfaceName string, mtu int) (sandboxLink netlink.Link, containerLink netlink.Link, err error)
+	CreateVethPair(containerID, hostIfaceName string, mtu int) error
 	FindLink(name string) (netlink.Link, error)
 	CreateVxlan(name string, vni int) (netlink.Link, error)
 	CreateBridge(name string, addr *net.IPNet) (*netlink.Bridge, error)
@@ -154,9 +154,23 @@ func (e *Executor) SetupContainerNS(
 		return nil, "", fmt.Errorf("set container namespace %q failed: %s", containerNsPath, err)
 	}
 
-	sandboxLink, containerLink, err := e.LinkFactory.CreateVethPair(containerID, interfaceName, links.VxlanVethMTU)
+	if len(containerID) > 11 {
+		containerID = containerID[:11]
+	}
+
+	err = e.LinkFactory.CreateVethPair(containerID, interfaceName, links.VxlanVethMTU)
 	if err != nil {
 		return nil, "", fmt.Errorf("could not create veth pair: %s", err)
+	}
+
+	containerLink, err := e.LinkFactory.FindLink(interfaceName)
+	if err != nil {
+		return nil, "", fmt.Errorf("could not get container link: %s", err)
+	}
+
+	sandboxLink, err := e.LinkFactory.FindLink(containerID)
+	if err != nil {
+		return nil, "", fmt.Errorf("could not get sandbox link: %s", err)
 	}
 
 	sandboxNsHandle, err := e.NetworkNamespacer.GetFromPath(sandboxNsPath)

@@ -45,7 +45,7 @@ func (f *Factory) CreateBridge(name string, addr *net.IPNet) (*netlink.Bridge, e
 	return bridge, nil
 }
 
-func (f *Factory) CreateVethPair(containerID, hostIfaceName string, mtu int) (netlink.Link, netlink.Link, error) {
+func (f *Factory) CreateVethPair(containerID, hostIfaceName string, mtu int) error {
 	if len(containerID) > 11 {
 		containerID = containerID[:11]
 	}
@@ -60,15 +60,10 @@ func (f *Factory) CreateVethPair(containerID, hostIfaceName string, mtu int) (ne
 
 	err := f.Netlinker.LinkAdd(containerLink)
 	if err != nil {
-		return nil, nil, fmt.Errorf("link add: %s", err)
+		return fmt.Errorf("link add: %s", err)
 	}
 
-	hostLink, err := f.Netlinker.LinkByName(containerID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("link by name: %s", err)
-	}
-
-	return hostLink, containerLink, nil
+	return nil
 }
 
 func (f *Factory) CreateVxlan(name string, vni int) (netlink.Link, error) {

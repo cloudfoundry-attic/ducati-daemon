@@ -2,6 +2,7 @@ package executor_test
 
 import (
 	"errors"
+	"fmt"
 	"net"
 
 	"golang.org/x/sys/unix"
@@ -84,23 +85,28 @@ var _ = Describe("SetupContainerNS", func() {
 			}
 		}
 
-		returnedSandboxLink = TestLink{Attributes: netlink.LinkAttrs{Name: "sandbox-link"}}
-		returnedContainerLink = TestLink{Attributes: netlink.LinkAttrs{
-			Index: 1555,
-			Name:  "container-link",
-		}}
-		linkFactory.CreateVethPairReturns(returnedSandboxLink, returnedContainerLink, nil)
-
 		hwAddr, err := net.ParseMAC("ff:ff:ff:ff:ff:ff")
 		Expect(err).NotTo(HaveOccurred())
 
-		linkFactory.FindLinkReturns(TestLink{
-			Attributes: netlink.LinkAttrs{
-				Index:        1555,
-				Name:         "container-link",
-				HardwareAddr: hwAddr,
-			},
-		}, nil)
+		returnedSandboxLink = TestLink{Attributes: netlink.LinkAttrs{Name: "some-contai"}}
+		returnedContainerLink = TestLink{Attributes: netlink.LinkAttrs{
+			Index:        1555,
+			Name:         "some-eth0",
+			HardwareAddr: hwAddr,
+		}}
+
+		linkFactory.CreateVethPairReturns(nil)
+
+		linkFactory.FindLinkStub = func(name string) (netlink.Link, error) {
+			switch name {
+			case "some-contai":
+				return returnedSandboxLink, nil
+			case "some-eth0":
+				return returnedContainerLink, nil
+			default:
+				return nil, fmt.Errorf("unknown link: %q", name)
+			}
+		}
 
 		result = types.Result{
 			IP4: &types.IPConfig{
@@ -140,9 +146,15 @@ var _ = Describe("SetupContainerNS", func() {
 		By("creating a veth pair when the container namespace")
 		Expect(linkFactory.CreateVethPairCallCount()).To(Equal(1))
 		containerID, interfaceName, vxlanVethMTU := linkFactory.CreateVethPairArgsForCall(0)
-		Expect(containerID).To(Equal("some-container-id"))
+		Expect(containerID).To(Equal("some-contai"))
 		Expect(interfaceName).To(Equal("some-eth0"))
 		Expect(vxlanVethMTU).To(Equal(1450))
+
+		By("finding the container link")
+		Expect(linkFactory.FindLinkArgsForCall(0)).To(Equal("some-eth0"))
+
+		By("finding the sandbox link")
+		Expect(linkFactory.FindLinkArgsForCall(1)).To(Equal("some-contai"))
 
 		By("getting the sandbox namespace")
 		Expect(networkNamespacer.GetFromPathArgsForCall(2)).To(Equal("/var/some/sandbox/namespace"))
@@ -164,8 +176,8 @@ var _ = Describe("SetupContainerNS", func() {
 		Expect(netlinker.LinkSetUpArgsForCall(0)).To(Equal(returnedContainerLink))
 
 		By("refreshing the containerlink to get its hardware address")
-		Expect(linkFactory.FindLinkCallCount()).To(Equal(1))
-		Expect(linkFactory.FindLinkArgsForCall(0)).To(Equal("container-link"))
+		Expect(linkFactory.FindLinkCallCount()).To(Equal(3))
+		Expect(linkFactory.FindLinkArgsForCall(2)).To(Equal("some-eth0"))
 
 		By("adding a route")
 		Expect(netlinker.RouteAddCallCount()).To(Equal(1))
@@ -184,7 +196,7 @@ var _ = Describe("SetupContainerNS", func() {
 		Expect(containerNsHandle.CloseCallCount()).To(Equal(1))
 
 		By("verifying return link and containermac")
-		Expect(sandboxLink.Attrs().Name).To(Equal("sandbox-link"))
+		Expect(sandboxLink.Attrs().Name).To(Equal("some-contai"))
 		Expect(containerMAC).To(Equal("ff:ff:ff:ff:ff:ff"))
 	})
 
@@ -303,13 +315,42 @@ var _ = Describe("SetupContainerNS", func() {
 
 	Context("when creating the veth pair fails", func() {
 		BeforeEach(func() {
-			linkFactory.CreateVethPairReturns(nil, nil, errors.New("nobody wants a veth"))
+			linkFactory.CreateVethPairReturns(errors.New("nobody wants a veth"))
 		})
 
 		It("wraps the error with a helpful message", func() {
 			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
 
 			Expect(err).To(MatchError(`could not create veth pair: nobody wants a veth`))
+		})
+	})
+
+	Context("when finding the container link fails", func() {
+		BeforeEach(func() {
+			linkFactory.FindLinkReturns(nil, errors.New("some error"))
+		})
+
+		It("wraps the error with a helpful message", func() {
+			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
+
+			Expect(err).To(MatchError(`could not get container link: some error`))
+		})
+	})
+
+	Context("when finding the sandbox link fails", func() {
+		BeforeEach(func() {
+			linkFactory.FindLinkStub = func(name string) (netlink.Link, error) {
+				if linkFactory.FindLinkCallCount() == 2 {
+					return nil, errors.New("some error")
+				}
+				return nil, nil
+			}
+		})
+
+		It("wraps the error with a helpful message", func() {
+			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
+
+			Expect(err).To(MatchError(`could not get sandbox link: some error`))
 		})
 	})
 
@@ -378,7 +419,20 @@ var _ = Describe("SetupContainerNS", func() {
 
 	Context("when refreshing the container link fails", func() {
 		BeforeEach(func() {
-			linkFactory.FindLinkReturns(nil, errors.New("some error"))
+			linkFactory.FindLinkStub = func(name string) (netlink.Link, error) {
+				if linkFactory.FindLinkCallCount() == 3 {
+					return nil, errors.New("some error")
+				}
+
+				switch name {
+				case "some-contai":
+					return returnedSandboxLink, nil
+				case "some-eth0":
+					return returnedContainerLink, nil
+				default:
+					return nil, fmt.Errorf("unknown link: %q", name)
+				}
+			}
 		})
 
 		It("wraps the error with a helpful message", func() {
