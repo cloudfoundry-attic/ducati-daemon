@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate counterfeiter --fake-name Repository . Repository
+//go:generate counterfeiter --fake-name Repository -o ../../fakes/repository.go . Repository
 type Repository interface {
 	Get(name string) (Namespace, error)
 	Create(name string) (Namespace, error)
