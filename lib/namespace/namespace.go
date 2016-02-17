@@ -3,8 +3,6 @@ package namespace
 import (
 	"os"
 	"path/filepath"
-
-	"github.com/appc/cni/pkg/ns"
 )
 
 type Namespace interface {
@@ -35,12 +33,6 @@ func (n *namespace) Open() (*os.File, error) {
 
 func (n *namespace) Path() string {
 	return n.path
-}
-
-func (n *namespace) Execute(callback func(*os.File) error) error {
-	return ns.WithNetNSPath(n.path, false, func(f *os.File) error {
-		return callback(f)
-	})
 }
 
 func (n *namespace) Destroy() error {

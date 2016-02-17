@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
-
-	"golang.org/x/sys/unix"
 )
 
 //go:generate counterfeiter --fake-name Repository -o ../../fakes/repository.go . Repository
@@ -83,22 +81,4 @@ func (r *repository) create(name string) (*os.File, error) {
 
 func random() uint32 {
 	return rand.Uint32()
-}
-
-func unlinkNetworkNamespace(path string) error {
-	if err := unix.Unmount(path, unix.MNT_DETACH); err != nil {
-		return err
-	}
-	return os.Remove(path)
-}
-
-func bindMountFile(src, dst string) error {
-	// mount point has to be an existing file
-	f, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	f.Close()
-
-	return unix.Mount(src, dst, "none", unix.MS_BIND, "")
 }
