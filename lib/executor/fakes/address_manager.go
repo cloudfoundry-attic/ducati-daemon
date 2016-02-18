@@ -6,30 +6,29 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/executor"
-	"github.com/vishvananda/netlink"
 )
 
 type AddressManager struct {
-	AddAddressStub        func(link netlink.Link, address *net.IPNet) error
+	AddAddressStub        func(linkName string, address *net.IPNet) error
 	addAddressMutex       sync.RWMutex
 	addAddressArgsForCall []struct {
-		link    netlink.Link
-		address *net.IPNet
+		linkName string
+		address  *net.IPNet
 	}
 	addAddressReturns struct {
 		result1 error
 	}
 }
 
-func (fake *AddressManager) AddAddress(link netlink.Link, address *net.IPNet) error {
+func (fake *AddressManager) AddAddress(linkName string, address *net.IPNet) error {
 	fake.addAddressMutex.Lock()
 	fake.addAddressArgsForCall = append(fake.addAddressArgsForCall, struct {
-		link    netlink.Link
-		address *net.IPNet
-	}{link, address})
+		linkName string
+		address  *net.IPNet
+	}{linkName, address})
 	fake.addAddressMutex.Unlock()
 	if fake.AddAddressStub != nil {
-		return fake.AddAddressStub(link, address)
+		return fake.AddAddressStub(linkName, address)
 	} else {
 		return fake.addAddressReturns.result1
 	}
@@ -41,10 +40,10 @@ func (fake *AddressManager) AddAddressCallCount() int {
 	return len(fake.addAddressArgsForCall)
 }
 
-func (fake *AddressManager) AddAddressArgsForCall(i int) (netlink.Link, *net.IPNet) {
+func (fake *AddressManager) AddAddressArgsForCall(i int) (string, *net.IPNet) {
 	fake.addAddressMutex.RLock()
 	defer fake.addAddressMutex.RUnlock()
-	return fake.addAddressArgsForCall[i].link, fake.addAddressArgsForCall[i].address
+	return fake.addAddressArgsForCall[i].linkName, fake.addAddressArgsForCall[i].address
 }
 
 func (fake *AddressManager) AddAddressReturns(result1 error) {

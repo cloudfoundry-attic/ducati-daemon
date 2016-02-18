@@ -2,7 +2,6 @@
 package fakes
 
 import (
-	"net"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/executor"
@@ -39,15 +38,13 @@ type LinkFactory struct {
 		result1 netlink.Link
 		result2 error
 	}
-	CreateBridgeStub        func(name string, addr *net.IPNet) (*netlink.Bridge, error)
+	CreateBridgeStub        func(name string) error
 	createBridgeMutex       sync.RWMutex
 	createBridgeArgsForCall []struct {
 		name string
-		addr *net.IPNet
 	}
 	createBridgeReturns struct {
-		result1 *netlink.Bridge
-		result2 error
+		result1 error
 	}
 }
 
@@ -152,17 +149,16 @@ func (fake *LinkFactory) CreateVxlanReturns(result1 netlink.Link, result2 error)
 	}{result1, result2}
 }
 
-func (fake *LinkFactory) CreateBridge(name string, addr *net.IPNet) (*netlink.Bridge, error) {
+func (fake *LinkFactory) CreateBridge(name string) error {
 	fake.createBridgeMutex.Lock()
 	fake.createBridgeArgsForCall = append(fake.createBridgeArgsForCall, struct {
 		name string
-		addr *net.IPNet
-	}{name, addr})
+	}{name})
 	fake.createBridgeMutex.Unlock()
 	if fake.CreateBridgeStub != nil {
-		return fake.CreateBridgeStub(name, addr)
+		return fake.CreateBridgeStub(name)
 	} else {
-		return fake.createBridgeReturns.result1, fake.createBridgeReturns.result2
+		return fake.createBridgeReturns.result1
 	}
 }
 
@@ -172,18 +168,17 @@ func (fake *LinkFactory) CreateBridgeCallCount() int {
 	return len(fake.createBridgeArgsForCall)
 }
 
-func (fake *LinkFactory) CreateBridgeArgsForCall(i int) (string, *net.IPNet) {
+func (fake *LinkFactory) CreateBridgeArgsForCall(i int) string {
 	fake.createBridgeMutex.RLock()
 	defer fake.createBridgeMutex.RUnlock()
-	return fake.createBridgeArgsForCall[i].name, fake.createBridgeArgsForCall[i].addr
+	return fake.createBridgeArgsForCall[i].name
 }
 
-func (fake *LinkFactory) CreateBridgeReturns(result1 *netlink.Bridge, result2 error) {
+func (fake *LinkFactory) CreateBridgeReturns(result1 error) {
 	fake.CreateBridgeStub = nil
 	fake.createBridgeReturns = struct {
-		result1 *netlink.Bridge
-		result2 error
-	}{result1, result2}
+		result1 error
+	}{result1}
 }
 
 var _ executor.LinkFactory = new(LinkFactory)

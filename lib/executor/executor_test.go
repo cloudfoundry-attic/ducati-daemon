@@ -167,8 +167,8 @@ var _ = Describe("SetupContainerNS", func() {
 
 		By("adding an address to the container link")
 		Expect(addressManager.AddAddressCallCount()).To(Equal(1))
-		cLink, returnedResult := addressManager.AddAddressArgsForCall(0)
-		Expect(cLink).To(Equal(returnedContainerLink))
+		name, returnedResult := addressManager.AddAddressArgsForCall(0)
+		Expect(name).To(Equal("some-eth0"))
 		Expect(returnedResult).To(Equal(&result.IP4.IP))
 
 		By("setting the container link to UP")

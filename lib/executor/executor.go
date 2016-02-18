@@ -27,12 +27,12 @@ type LinkFactory interface {
 	CreateVethPair(containerID, hostIfaceName string, mtu int) error
 	FindLink(name string) (netlink.Link, error)
 	CreateVxlan(name string, vni int) (netlink.Link, error)
-	CreateBridge(name string, addr *net.IPNet) (*netlink.Bridge, error)
+	CreateBridge(name string) error
 }
 
 //go:generate counterfeiter --fake-name AddressManager . AddressManager
 type AddressManager interface {
-	AddAddress(link netlink.Link, address *net.IPNet) error
+	AddAddress(linkName string, address *net.IPNet) error
 }
 
 const selfPath = "/proc/self/ns/net"
@@ -105,12 +105,28 @@ func (e *Executor) SetupSandboxNS(
 		var bridge *netlink.Bridge
 		link, err := e.LinkFactory.FindLink(bridgeName)
 		if err != nil {
-			bridge, err = e.LinkFactory.CreateBridge(bridgeName, &net.IPNet{
+			err = e.LinkFactory.CreateBridge(bridgeName)
+			if err != nil {
+				return err
+			}
+
+			link, err := e.LinkFactory.FindLink(bridgeName)
+			if err != nil {
+				return err
+			}
+			bridge = link.(*netlink.Bridge)
+
+			err = e.AddressManager.AddAddress(bridgeName, &net.IPNet{
 				IP:   ipamResult.IP4.Gateway,
 				Mask: ipamResult.IP4.IP.Mask,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to create bridge: %s", err)
+				return err
+			}
+
+			err = e.Netlinker.LinkSetUp(bridge)
+			if err != nil {
+				return err
 			}
 		} else {
 			bridge = link.(*netlink.Bridge)
@@ -184,7 +200,7 @@ func (e *Executor) SetupContainerNS(
 		return nil, "", fmt.Errorf("failed to move sandbox link into sandbox: %s", err)
 	}
 
-	err = e.AddressManager.AddAddress(containerLink, &ipamResult.IP4.IP)
+	err = e.AddressManager.AddAddress(interfaceName, &ipamResult.IP4.IP)
 	if err != nil {
 		return nil, "", fmt.Errorf("setting container address failed: %s", err)
 	}

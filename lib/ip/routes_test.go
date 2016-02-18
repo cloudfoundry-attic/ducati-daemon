@@ -32,18 +32,41 @@ var _ = Describe("RouteManager", func() {
 		)
 
 		BeforeEach(func() {
-			var err error
 			link = &netlink.Veth{
 				LinkAttrs: netlink.LinkAttrs{
 					Index: 999,
 				},
 			}
-			gateway, network, err = net.ParseCIDR("172.16.1.1/24")
+			netlinker.LinkByNameReturns(link, nil)
+
+			gateway = net.ParseIP("172.16.1.1")
+			network = &net.IPNet{
+				IP:   gateway,
+				Mask: net.CIDRMask(24, 32),
+			}
+		})
+
+		It("finds the link by name", func() {
+			err := routeManager.AddRoute("my-link", network, gateway)
 			Expect(err).NotTo(HaveOccurred())
+
+			Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+			Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("my-link"))
+		})
+
+		Context("when finding the link fails", func() {
+			BeforeEach(func() {
+				netlinker.LinkByNameReturns(nil, errors.New("no link for you"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := routeManager.AddRoute("my-link", network, gateway)
+				Expect(err).To(MatchError("link by name failed: no link for you"))
+			})
 		})
 
 		It("adds a route", func() {
-			err := routeManager.AddRoute(link, network, gateway)
+			err := routeManager.AddRoute("my-link", network, gateway)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(netlinker.RouteAddCallCount()).To(Equal(1))
@@ -59,12 +82,12 @@ var _ = Describe("RouteManager", func() {
 
 		Context("when adding the route fails", func() {
 			BeforeEach(func() {
-				netlinker.RouteAddReturns(errors.New("route add failed"))
+				netlinker.RouteAddReturns(errors.New("welp"))
 			})
 
 			It("returns the error", func() {
-				err := routeManager.AddRoute(link, network, gateway)
-				Expect(err).To(MatchError("route add failed"))
+				err := routeManager.AddRoute("my-link", network, gateway)
+				Expect(err).To(MatchError("route add failed: welp"))
 			})
 		})
 	})

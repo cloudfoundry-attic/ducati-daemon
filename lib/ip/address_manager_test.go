@@ -12,10 +12,8 @@ import (
 )
 
 var _ = Describe("AddressManager", func() {
-	var (
-		netlinker      *fakes.Netlinker
-		addressManager *ip.AddressManager
-	)
+	var netlinker *fakes.Netlinker
+	var addressManager *ip.AddressManager
 
 	BeforeEach(func() {
 		netlinker = &fakes.Netlinker{}
@@ -31,14 +29,36 @@ var _ = Describe("AddressManager", func() {
 		)
 
 		BeforeEach(func() {
-			var err error
+			address = &net.IPNet{
+				IP:   net.ParseIP("192.168.1.1"),
+				Mask: net.CIDRMask(24, 32),
+			}
+
 			link = &netlink.Veth{}
-			_, address, err = net.ParseCIDR("192.168.1.1/24")
+			netlinker.LinkByNameReturns(link, nil)
+		})
+
+		It("finds the link by name", func() {
+			err := addressManager.AddAddress("my-link", address)
 			Expect(err).NotTo(HaveOccurred())
+
+			Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+			Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("my-link"))
+		})
+
+		Context("when finding the link fails", func() {
+			BeforeEach(func() {
+				netlinker.LinkByNameReturns(nil, errors.New("no link for you"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := addressManager.AddAddress("my-link", address)
+				Expect(err).To(MatchError("link by name failed: no link for you"))
+			})
 		})
 
 		It("adds an address to the link", func() {
-			err := addressManager.AddAddress(link, address)
+			err := addressManager.AddAddress("my-link", address)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(netlinker.AddrAddCallCount()).To(Equal(1))
@@ -50,12 +70,12 @@ var _ = Describe("AddressManager", func() {
 
 		Context("when adding the addres fails", func() {
 			BeforeEach(func() {
-				netlinker.AddrAddReturns(errors.New("adding address failed"))
+				netlinker.AddrAddReturns(errors.New("welp"))
 			})
 
 			It("returns the error", func() {
-				err := addressManager.AddAddress(link, address)
-				Expect(err).To(MatchError("adding address failed"))
+				err := addressManager.AddAddress("my-link", address)
+				Expect(err).To(MatchError("address add failed: welp"))
 			})
 		})
 	})

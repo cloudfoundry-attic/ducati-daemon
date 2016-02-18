@@ -2,7 +2,6 @@ package links
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/vishvananda/netlink"
@@ -19,7 +18,7 @@ type Factory struct {
 	Netlinker nl.Netlinker
 }
 
-func (f *Factory) CreateBridge(name string, addr *net.IPNet) (*netlink.Bridge, error) {
+func (f *Factory) CreateBridge(name string) error {
 	bridge := &netlink.Bridge{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: name,
@@ -27,22 +26,7 @@ func (f *Factory) CreateBridge(name string, addr *net.IPNet) (*netlink.Bridge, e
 		},
 	}
 
-	err := f.Netlinker.LinkAdd(bridge)
-	if err != nil {
-		return nil, err
-	}
-
-	err = f.Netlinker.AddrAdd(bridge, &netlink.Addr{IPNet: addr})
-	if err != nil {
-		return nil, err
-	}
-
-	err = f.Netlinker.LinkSetUp(bridge)
-	if err != nil {
-		return nil, err
-	}
-
-	return bridge, nil
+	return f.Netlinker.LinkAdd(bridge)
 }
 
 func (f *Factory) CreateVethPair(containerID, hostIfaceName string, mtu int) error {

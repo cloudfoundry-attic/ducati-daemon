@@ -2,7 +2,6 @@ package links_test
 
 import (
 	"errors"
-	"net"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/links"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl/fakes"
@@ -27,32 +26,19 @@ var _ = Describe("Factory", func() {
 	})
 
 	Describe("CreateBridge", func() {
-		var (
-			expectedBridge *netlink.Bridge
-			address        *net.IPNet
-		)
+		var expectedBridge *netlink.Bridge
 
 		BeforeEach(func() {
-			var err error
 			expectedBridge = &netlink.Bridge{
 				LinkAttrs: netlink.LinkAttrs{
 					Name: "some-bridge-name",
 					MTU:  links.BridgeMTU,
 				},
 			}
-
-			_, address, err = net.ParseCIDR("192.168.1.1/24")
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should return a bridge with the expected config", func() {
-			bridge, err := factory.CreateBridge("some-bridge-name", address)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(bridge).To(Equal(expectedBridge))
 		})
 
 		It("adds the bridge", func() {
-			_, err := factory.CreateBridge("some-bridge-name", address)
+			err := factory.CreateBridge("some-bridge-name")
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(netlinker.LinkAddCallCount()).To(Equal(1))
@@ -63,44 +49,8 @@ var _ = Describe("Factory", func() {
 			It("returns the error", func() {
 				netlinker.LinkAddReturns(errors.New("link add failed"))
 
-				_, err := factory.CreateBridge("some-bridge-name", address)
+				err := factory.CreateBridge("some-bridge-name")
 				Expect(err).To(Equal(errors.New("link add failed")))
-			})
-		})
-
-		It("assigns the specified address", func() {
-			_, err := factory.CreateBridge("some-bridge-name", address)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(netlinker.AddrAddCallCount()).To(Equal(1))
-			br, addr := netlinker.AddrAddArgsForCall(0)
-			Expect(br).To(Equal(expectedBridge))
-			Expect(addr).To(Equal(&netlink.Addr{IPNet: address}))
-		})
-
-		Context("when assigning an address to the bridge fails", func() {
-			It("returns the error", func() {
-				netlinker.AddrAddReturns(errors.New("addr add failed"))
-
-				_, err := factory.CreateBridge("some-bridge-name", address)
-				Expect(err).To(Equal(errors.New("addr add failed")))
-			})
-		})
-
-		It("sets the bridge link up", func() {
-			_, err := factory.CreateBridge("some-bridge-name", address)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(netlinker.LinkSetUpCallCount()).To(Equal(1))
-			Expect(netlinker.LinkSetUpArgsForCall(0)).To(Equal(expectedBridge))
-		})
-
-		Context("when setting the bridge link up fails", func() {
-			It("returns the error", func() {
-				netlinker.LinkSetUpReturns(errors.New("bridge link up failed"))
-
-				_, err := factory.CreateBridge("some-bridge-name", address)
-				Expect(err).To(Equal(errors.New("bridge link up failed")))
 			})
 		})
 	})
