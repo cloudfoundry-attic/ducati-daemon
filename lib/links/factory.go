@@ -92,3 +92,27 @@ func (f *Factory) DeleteLinkByName(name string) error {
 func (f *Factory) ListLinks() ([]netlink.Link, error) {
 	return f.Netlinker.LinkList()
 }
+
+func (f *Factory) SetMaster(slave, master string) error {
+	link, err := f.FindLink(master)
+	if err != nil {
+		return err
+	}
+
+	bridge, ok := link.(*netlink.Bridge)
+	if !ok {
+		return fmt.Errorf("master must be a bridge")
+	}
+
+	link, err = f.FindLink(slave)
+	if err != nil {
+		return err
+	}
+
+	err = f.Netlinker.LinkSetMaster(link, bridge)
+	if err != nil {
+		return fmt.Errorf("failed to set master: %s", err)
+	}
+
+	return nil
+}

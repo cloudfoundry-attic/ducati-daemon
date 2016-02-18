@@ -212,6 +212,62 @@ var _ = Describe("Factory", func() {
 			})
 		})
 
+		Describe("SetMaster", func() {
+			var master, slave netlink.Link
+
+			BeforeEach(func() {
+				master = &netlink.Bridge{}
+				slave = &netlink.Dummy{}
+
+				netlinker.LinkByNameStub = func(name string) (netlink.Link, error) {
+					switch name {
+					case "master":
+						return master, nil
+					case "slave":
+						return slave, nil
+					default:
+						return nil, errors.New("unknown")
+					}
+				}
+			})
+
+			It("sets the slave's master", func() {
+				err := factory.SetMaster("slave", "master")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(netlinker.LinkByNameCallCount()).To(Equal(2))
+				Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("master"))
+				Expect(netlinker.LinkByNameArgsForCall(1)).To(Equal("slave"))
+
+				Expect(netlinker.LinkSetMasterCallCount()).To(Equal(1))
+				s, m := netlinker.LinkSetMasterArgsForCall(0)
+				Expect(s).To(Equal(slave))
+				Expect(m).To(Equal(master))
+			})
+
+			Context("when a bridge is not used as the master", func() {
+				BeforeEach(func() {
+					master = &netlink.Dummy{}
+				})
+
+				It("returns a meaningful error", func() {
+					err := factory.SetMaster("slave", "master")
+					Expect(err).To(MatchError("master must be a bridge"))
+				})
+			})
+
+			Context("when enslaving fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkSetMasterReturns(errors.New("you're not a slave"))
+				})
+
+				It("returns a meaningful error", func() {
+					err := factory.SetMaster("slave", "master")
+					Expect(err).To(MatchError("failed to set master: you're not a slave"))
+				})
+			})
+		})
+
 		Describe("ListLinks", func() {
 			var link1, link2 netlink.Link
 
