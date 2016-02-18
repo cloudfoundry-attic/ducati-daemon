@@ -116,3 +116,16 @@ func (f *Factory) SetMaster(slave, master string) error {
 
 	return nil
 }
+
+func (f *Factory) SetUp(name string) error {
+	link, err := f.FindLink(name)
+	if err != nil {
+		return err
+	}
+
+	if err := f.Netlinker.LinkSetUp(link); err != nil {
+		return fmt.Errorf("failed to set link up: %s", err)
+	}
+
+	return nil
+}

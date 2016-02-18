@@ -245,6 +245,17 @@ var _ = Describe("Factory", func() {
 				Expect(m).To(Equal(master))
 			})
 
+			Context("when finding the link fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkByNameReturns(nil, errors.New("can't find it"))
+				})
+
+				It("returns the error", func() {
+					err := factory.DeleteLinkByName("test-link")
+					Expect(err).To(MatchError("can't find it"))
+				})
+			})
+
 			Context("when a bridge is not used as the master", func() {
 				BeforeEach(func() {
 					master = &netlink.Dummy{}
@@ -264,6 +275,48 @@ var _ = Describe("Factory", func() {
 				It("returns a meaningful error", func() {
 					err := factory.SetMaster("slave", "master")
 					Expect(err).To(MatchError("failed to set master: you're not a slave"))
+				})
+			})
+		})
+
+		Describe("SetUp", func() {
+			var link netlink.Link
+
+			BeforeEach(func() {
+				link = &netlink.Dummy{}
+				netlinker.LinkByNameReturns(link, nil)
+			})
+
+			It("sets the link up", func() {
+				err := factory.SetUp("my-link")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+				Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("my-link"))
+
+				Expect(netlinker.LinkSetUpCallCount()).To(Equal(1))
+				Expect(netlinker.LinkSetUpArgsForCall(0)).To(Equal(link))
+			})
+
+			Context("when finding the link fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkByNameReturns(nil, errors.New("can't find it"))
+				})
+
+				It("returns the error", func() {
+					err := factory.DeleteLinkByName("test-link")
+					Expect(err).To(MatchError("can't find it"))
+				})
+			})
+
+			Context("when setting the link up fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkSetUpReturns(errors.New("I've fallen and I can't get up"))
+				})
+
+				It("returns a meaningful error", func() {
+					err := factory.SetUp("my-link")
+					Expect(err).To(MatchError("failed to set link up: I've fallen and I can't get up"))
 				})
 			})
 		})
