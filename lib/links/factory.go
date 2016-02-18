@@ -29,20 +29,16 @@ func (f *Factory) CreateBridge(name string) error {
 	return f.Netlinker.LinkAdd(bridge)
 }
 
-func (f *Factory) CreateVethPair(containerID, hostIfaceName string, mtu int) error {
-	if len(containerID) > 11 {
-		containerID = containerID[:11]
-	}
-
-	containerLink := &netlink.Veth{
+func (f *Factory) CreateVeth(name, peerName string, mtu int) error {
+	vethLink := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: hostIfaceName,
+			Name: name,
 			MTU:  mtu,
 		},
-		PeerName: containerID,
+		PeerName: peerName,
 	}
 
-	err := f.Netlinker.LinkAdd(containerLink)
+	err := f.Netlinker.LinkAdd(vethLink)
 	if err != nil {
 		return fmt.Errorf("link add: %s", err)
 	}

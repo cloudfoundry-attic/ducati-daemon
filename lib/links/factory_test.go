@@ -95,9 +95,9 @@ var _ = Describe("Factory", func() {
 			})
 		})
 
-		Describe("CreateVethPair", func() {
+		Describe("CreateVeth", func() {
 			It("adds a veth link with the appropriate names and MTU", func() {
-				err := factory.CreateVethPair("container", "host", 999)
+				err := factory.CreateVeth("host", "peer", 999)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(netlinker.LinkAddCallCount()).To(Equal(1))
@@ -106,7 +106,7 @@ var _ = Describe("Factory", func() {
 
 				Expect(veth.Attrs().Name).To(Equal("host"))
 				Expect(veth.Attrs().MTU).To(Equal(999))
-				Expect(veth.PeerName).To(Equal("container"))
+				Expect(veth.PeerName).To(Equal("peer"))
 			})
 
 			Context("when adding the veth link fails", func() {
@@ -115,7 +115,7 @@ var _ = Describe("Factory", func() {
 				})
 
 				It("returns the error", func() {
-					err := factory.CreateVethPair("container", "host", 999)
+					err := factory.CreateVeth("host", "peer", 999)
 					Expect(err).To(MatchError("link add: some error"))
 				})
 			})

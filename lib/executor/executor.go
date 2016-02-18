@@ -24,7 +24,7 @@ type Executor struct {
 
 //go:generate counterfeiter --fake-name LinkFactory . LinkFactory
 type LinkFactory interface {
-	CreateVethPair(containerID, hostIfaceName string, mtu int) error
+	CreateVeth(containerID, hostIfaceName string, mtu int) error
 	FindLink(name string) (netlink.Link, error)
 	CreateVxlan(name string, vni int) (netlink.Link, error)
 	CreateBridge(name string) error
@@ -174,7 +174,7 @@ func (e *Executor) SetupContainerNS(
 		containerID = containerID[:11]
 	}
 
-	err = e.LinkFactory.CreateVethPair(containerID, interfaceName, links.VxlanVethMTU)
+	err = e.LinkFactory.CreateVeth(containerID, interfaceName, links.VxlanVethMTU)
 	if err != nil {
 		return nil, "", fmt.Errorf("could not create veth pair: %s", err)
 	}

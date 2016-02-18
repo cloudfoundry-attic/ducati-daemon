@@ -9,14 +9,14 @@ import (
 )
 
 type LinkFactory struct {
-	CreateVethPairStub        func(containerID, hostIfaceName string, mtu int) error
-	createVethPairMutex       sync.RWMutex
-	createVethPairArgsForCall []struct {
+	CreateVethStub        func(containerID, hostIfaceName string, mtu int) error
+	createVethMutex       sync.RWMutex
+	createVethArgsForCall []struct {
 		containerID   string
 		hostIfaceName string
 		mtu           int
 	}
-	createVethPairReturns struct {
+	createVethReturns struct {
 		result1 error
 	}
 	FindLinkStub        func(name string) (netlink.Link, error)
@@ -48,36 +48,36 @@ type LinkFactory struct {
 	}
 }
 
-func (fake *LinkFactory) CreateVethPair(containerID string, hostIfaceName string, mtu int) error {
-	fake.createVethPairMutex.Lock()
-	fake.createVethPairArgsForCall = append(fake.createVethPairArgsForCall, struct {
+func (fake *LinkFactory) CreateVeth(containerID string, hostIfaceName string, mtu int) error {
+	fake.createVethMutex.Lock()
+	fake.createVethArgsForCall = append(fake.createVethArgsForCall, struct {
 		containerID   string
 		hostIfaceName string
 		mtu           int
 	}{containerID, hostIfaceName, mtu})
-	fake.createVethPairMutex.Unlock()
-	if fake.CreateVethPairStub != nil {
-		return fake.CreateVethPairStub(containerID, hostIfaceName, mtu)
+	fake.createVethMutex.Unlock()
+	if fake.CreateVethStub != nil {
+		return fake.CreateVethStub(containerID, hostIfaceName, mtu)
 	} else {
-		return fake.createVethPairReturns.result1
+		return fake.createVethReturns.result1
 	}
 }
 
-func (fake *LinkFactory) CreateVethPairCallCount() int {
-	fake.createVethPairMutex.RLock()
-	defer fake.createVethPairMutex.RUnlock()
-	return len(fake.createVethPairArgsForCall)
+func (fake *LinkFactory) CreateVethCallCount() int {
+	fake.createVethMutex.RLock()
+	defer fake.createVethMutex.RUnlock()
+	return len(fake.createVethArgsForCall)
 }
 
-func (fake *LinkFactory) CreateVethPairArgsForCall(i int) (string, string, int) {
-	fake.createVethPairMutex.RLock()
-	defer fake.createVethPairMutex.RUnlock()
-	return fake.createVethPairArgsForCall[i].containerID, fake.createVethPairArgsForCall[i].hostIfaceName, fake.createVethPairArgsForCall[i].mtu
+func (fake *LinkFactory) CreateVethArgsForCall(i int) (string, string, int) {
+	fake.createVethMutex.RLock()
+	defer fake.createVethMutex.RUnlock()
+	return fake.createVethArgsForCall[i].containerID, fake.createVethArgsForCall[i].hostIfaceName, fake.createVethArgsForCall[i].mtu
 }
 
-func (fake *LinkFactory) CreateVethPairReturns(result1 error) {
-	fake.CreateVethPairStub = nil
-	fake.createVethPairReturns = struct {
+func (fake *LinkFactory) CreateVethReturns(result1 error) {
+	fake.CreateVethStub = nil
+	fake.createVethReturns = struct {
 		result1 error
 	}{result1}
 }

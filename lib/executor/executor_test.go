@@ -95,7 +95,7 @@ var _ = Describe("SetupContainerNS", func() {
 			HardwareAddr: hwAddr,
 		}}
 
-		linkFactory.CreateVethPairReturns(nil)
+		linkFactory.CreateVethReturns(nil)
 
 		linkFactory.FindLinkStub = func(name string) (netlink.Link, error) {
 			switch name {
@@ -144,8 +144,8 @@ var _ = Describe("SetupContainerNS", func() {
 		Expect(networkNamespacer.SetArgsForCall(0)).To(Equal(containerNsHandle))
 
 		By("creating a veth pair when the container namespace")
-		Expect(linkFactory.CreateVethPairCallCount()).To(Equal(1))
-		containerID, interfaceName, vxlanVethMTU := linkFactory.CreateVethPairArgsForCall(0)
+		Expect(linkFactory.CreateVethCallCount()).To(Equal(1))
+		containerID, interfaceName, vxlanVethMTU := linkFactory.CreateVethArgsForCall(0)
 		Expect(containerID).To(Equal("some-contai"))
 		Expect(interfaceName).To(Equal("some-eth0"))
 		Expect(vxlanVethMTU).To(Equal(1450))
@@ -315,7 +315,7 @@ var _ = Describe("SetupContainerNS", func() {
 
 	Context("when creating the veth pair fails", func() {
 		BeforeEach(func() {
-			linkFactory.CreateVethPairReturns(errors.New("nobody wants a veth"))
+			linkFactory.CreateVethReturns(errors.New("nobody wants a veth"))
 		})
 
 		It("wraps the error with a helpful message", func() {
