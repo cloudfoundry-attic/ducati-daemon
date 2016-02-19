@@ -65,28 +65,34 @@ func main() {
 
 	logger := lager.NewLogger("ducati-d")
 
+	rataHandlers := rata.Handlers{}
+
 	listHandler := &handlers.ListHandler{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 		Logger:    logger,
 	}
+	rataHandlers["list_containers"] = listHandler
 
 	postHandler := &handlers.PostHandler{
 		Store:       dataStore,
 		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
 		Logger:      logger,
 	}
+	rataHandlers["add_container"] = postHandler
 
 	getHandler := &handlers.GetHandler{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 		Logger:    logger,
 	}
+	rataHandlers["get_container"] = getHandler
 
 	deleteHandler := &handlers.DeleteHandler{
 		Store:  dataStore,
 		Logger: logger,
 	}
+	rataHandlers["delete_container"] = deleteHandler
 
 	_, subnet, err := net.ParseCIDR(localSubnet)
 	if err != nil {
@@ -123,25 +129,21 @@ func main() {
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
 		Logger:      logger,
 	}
+	rataHandlers["allocate_ip"] = allocateIPHandler
 
 	releaseIPHandler := &handlers.ReleaseIPHandler{
 		IPAllocator: ipAllocator,
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
 		Logger:      logger,
 	}
+	rataHandlers["release_ip"] = releaseIPHandler
 
-	handlers := rata.Handlers{
-		"list_containers":  listHandler,
-		"add_container":    postHandler,
-		"get_container":    getHandler,
-		"delete_container": deleteHandler,
-		"allocate_ip":      allocateIPHandler,
-		"release_ip":       releaseIPHandler,
+	rataRouter, err := rata.NewRouter(routes, rataHandlers)
+	if err != nil {
+		log.Fatalf("unable to create rata Router: %s", err) // not tested
 	}
 
-	rataHandler, err := rata.NewRouter(routes, handlers)
-
-	httpServer := http_server.New(address, rataHandler)
+	httpServer := http_server.New(address, rataRouter)
 
 	members := grouper.Members{
 		{"http_server", httpServer},
