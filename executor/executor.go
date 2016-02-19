@@ -1,0 +1,81 @@
+package executor
+
+import "github.com/cloudfoundry-incubator/ducati-daemon/commands"
+
+//go:generate counterfeiter --fake-name AddressManager . AddressManager
+type AddressManager interface {
+	commands.AddressAdder
+}
+
+//go:generate counterfeiter --fake-name RouteManager . RouteManager
+type RouteManager interface {
+	commands.RouteAdder
+}
+
+//go:generate counterfeiter --fake-name LinkFactory . LinkFactory
+type LinkFactory interface {
+	commands.BridgeFactory
+	commands.MasterSetter
+	commands.SetUpper
+	commands.VethFactory
+	commands.VxlanFactory
+}
+
+//go:generate counterfeiter --fake-name Command . Command
+type Command interface {
+	commands.Command
+}
+
+type Executor interface {
+	Execute(commands.Command) error
+}
+
+func New(
+	addressManager AddressManager,
+	routeManager RouteManager,
+	linkFactory LinkFactory,
+) Executor {
+	return &executor{
+		AddressManager: addressManager,
+		RouteManager:   routeManager,
+		LinkFactory:    linkFactory,
+	}
+}
+
+type executor struct {
+	AddressManager AddressManager
+	RouteManager   RouteManager
+	LinkFactory    LinkFactory
+}
+
+func (e *executor) Execute(command commands.Command) error {
+	return command.Execute(e)
+}
+
+func (e *executor) AddressAdder() commands.AddressAdder {
+	return e.AddressManager
+}
+
+func (e *executor) RouteAdder() commands.RouteAdder {
+	return e.RouteManager
+}
+
+func (e *executor) BridgeFactory() commands.BridgeFactory {
+	return e.LinkFactory
+}
+
+func (e *executor) MasterSetter() commands.MasterSetter {
+	return e.LinkFactory
+}
+
+func (e *executor) SetUpper() commands.SetUpper {
+	return e.LinkFactory
+}
+
+func (e *executor) VethFactory() commands.VethFactory {
+	return e.LinkFactory
+}
+
+func (e *executor) VxlanFactory() commands.VxlanFactory {
+	return e.LinkFactory
+}
