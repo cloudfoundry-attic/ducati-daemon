@@ -15,7 +15,9 @@ type RouteManager interface {
 //go:generate counterfeiter --fake-name LinkFactory . LinkFactory
 type LinkFactory interface {
 	commands.BridgeFactory
+	commands.HardwareAddresser
 	commands.MasterSetter
+	commands.SetNamespacer
 	commands.SetUpper
 	commands.VethFactory
 	commands.VxlanFactory
@@ -26,6 +28,7 @@ type Command interface {
 	commands.Command
 }
 
+//go:generate counterfeiter --fake-name Executor . Executor
 type Executor interface {
 	Execute(commands.Command) error
 }
@@ -64,7 +67,15 @@ func (e *executor) BridgeFactory() commands.BridgeFactory {
 	return e.LinkFactory
 }
 
+func (e *executor) HardwareAddresser() commands.HardwareAddresser {
+	return e.LinkFactory
+}
+
 func (e *executor) MasterSetter() commands.MasterSetter {
+	return e.LinkFactory
+}
+
+func (e *executor) SetNamespacer() commands.SetNamespacer {
 	return e.LinkFactory
 }
 

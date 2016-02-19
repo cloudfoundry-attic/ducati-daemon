@@ -5,179 +5,48 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/executor"
-	"github.com/vishvananda/netlink"
 )
 
 type LinkFactory struct {
-	CreateVethStub        func(containerID, hostIfaceName string, mtu int) error
-	createVethMutex       sync.RWMutex
-	createVethArgsForCall []struct {
-		containerID   string
-		hostIfaceName string
-		mtu           int
-	}
-	createVethReturns struct {
-		result1 error
-	}
-	FindLinkStub        func(name string) (netlink.Link, error)
-	findLinkMutex       sync.RWMutex
-	findLinkArgsForCall []struct {
+	ExistsStub        func(name string) bool
+	existsMutex       sync.RWMutex
+	existsArgsForCall []struct {
 		name string
 	}
-	findLinkReturns struct {
-		result1 netlink.Link
-		result2 error
-	}
-	CreateVxlanStub        func(name string, vni int) (netlink.Link, error)
-	createVxlanMutex       sync.RWMutex
-	createVxlanArgsForCall []struct {
-		name string
-		vni  int
-	}
-	createVxlanReturns struct {
-		result1 netlink.Link
-		result2 error
-	}
-	CreateBridgeStub        func(name string) error
-	createBridgeMutex       sync.RWMutex
-	createBridgeArgsForCall []struct {
-		name string
-	}
-	createBridgeReturns struct {
-		result1 error
+	existsReturns struct {
+		result1 bool
 	}
 }
 
-func (fake *LinkFactory) CreateVeth(containerID string, hostIfaceName string, mtu int) error {
-	fake.createVethMutex.Lock()
-	fake.createVethArgsForCall = append(fake.createVethArgsForCall, struct {
-		containerID   string
-		hostIfaceName string
-		mtu           int
-	}{containerID, hostIfaceName, mtu})
-	fake.createVethMutex.Unlock()
-	if fake.CreateVethStub != nil {
-		return fake.CreateVethStub(containerID, hostIfaceName, mtu)
-	} else {
-		return fake.createVethReturns.result1
-	}
-}
-
-func (fake *LinkFactory) CreateVethCallCount() int {
-	fake.createVethMutex.RLock()
-	defer fake.createVethMutex.RUnlock()
-	return len(fake.createVethArgsForCall)
-}
-
-func (fake *LinkFactory) CreateVethArgsForCall(i int) (string, string, int) {
-	fake.createVethMutex.RLock()
-	defer fake.createVethMutex.RUnlock()
-	return fake.createVethArgsForCall[i].containerID, fake.createVethArgsForCall[i].hostIfaceName, fake.createVethArgsForCall[i].mtu
-}
-
-func (fake *LinkFactory) CreateVethReturns(result1 error) {
-	fake.CreateVethStub = nil
-	fake.createVethReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *LinkFactory) FindLink(name string) (netlink.Link, error) {
-	fake.findLinkMutex.Lock()
-	fake.findLinkArgsForCall = append(fake.findLinkArgsForCall, struct {
+func (fake *LinkFactory) Exists(name string) bool {
+	fake.existsMutex.Lock()
+	fake.existsArgsForCall = append(fake.existsArgsForCall, struct {
 		name string
 	}{name})
-	fake.findLinkMutex.Unlock()
-	if fake.FindLinkStub != nil {
-		return fake.FindLinkStub(name)
+	fake.existsMutex.Unlock()
+	if fake.ExistsStub != nil {
+		return fake.ExistsStub(name)
 	} else {
-		return fake.findLinkReturns.result1, fake.findLinkReturns.result2
+		return fake.existsReturns.result1
 	}
 }
 
-func (fake *LinkFactory) FindLinkCallCount() int {
-	fake.findLinkMutex.RLock()
-	defer fake.findLinkMutex.RUnlock()
-	return len(fake.findLinkArgsForCall)
+func (fake *LinkFactory) ExistsCallCount() int {
+	fake.existsMutex.RLock()
+	defer fake.existsMutex.RUnlock()
+	return len(fake.existsArgsForCall)
 }
 
-func (fake *LinkFactory) FindLinkArgsForCall(i int) string {
-	fake.findLinkMutex.RLock()
-	defer fake.findLinkMutex.RUnlock()
-	return fake.findLinkArgsForCall[i].name
+func (fake *LinkFactory) ExistsArgsForCall(i int) string {
+	fake.existsMutex.RLock()
+	defer fake.existsMutex.RUnlock()
+	return fake.existsArgsForCall[i].name
 }
 
-func (fake *LinkFactory) FindLinkReturns(result1 netlink.Link, result2 error) {
-	fake.FindLinkStub = nil
-	fake.findLinkReturns = struct {
-		result1 netlink.Link
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *LinkFactory) CreateVxlan(name string, vni int) (netlink.Link, error) {
-	fake.createVxlanMutex.Lock()
-	fake.createVxlanArgsForCall = append(fake.createVxlanArgsForCall, struct {
-		name string
-		vni  int
-	}{name, vni})
-	fake.createVxlanMutex.Unlock()
-	if fake.CreateVxlanStub != nil {
-		return fake.CreateVxlanStub(name, vni)
-	} else {
-		return fake.createVxlanReturns.result1, fake.createVxlanReturns.result2
-	}
-}
-
-func (fake *LinkFactory) CreateVxlanCallCount() int {
-	fake.createVxlanMutex.RLock()
-	defer fake.createVxlanMutex.RUnlock()
-	return len(fake.createVxlanArgsForCall)
-}
-
-func (fake *LinkFactory) CreateVxlanArgsForCall(i int) (string, int) {
-	fake.createVxlanMutex.RLock()
-	defer fake.createVxlanMutex.RUnlock()
-	return fake.createVxlanArgsForCall[i].name, fake.createVxlanArgsForCall[i].vni
-}
-
-func (fake *LinkFactory) CreateVxlanReturns(result1 netlink.Link, result2 error) {
-	fake.CreateVxlanStub = nil
-	fake.createVxlanReturns = struct {
-		result1 netlink.Link
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *LinkFactory) CreateBridge(name string) error {
-	fake.createBridgeMutex.Lock()
-	fake.createBridgeArgsForCall = append(fake.createBridgeArgsForCall, struct {
-		name string
-	}{name})
-	fake.createBridgeMutex.Unlock()
-	if fake.CreateBridgeStub != nil {
-		return fake.CreateBridgeStub(name)
-	} else {
-		return fake.createBridgeReturns.result1
-	}
-}
-
-func (fake *LinkFactory) CreateBridgeCallCount() int {
-	fake.createBridgeMutex.RLock()
-	defer fake.createBridgeMutex.RUnlock()
-	return len(fake.createBridgeArgsForCall)
-}
-
-func (fake *LinkFactory) CreateBridgeArgsForCall(i int) string {
-	fake.createBridgeMutex.RLock()
-	defer fake.createBridgeMutex.RUnlock()
-	return fake.createBridgeArgsForCall[i].name
-}
-
-func (fake *LinkFactory) CreateBridgeReturns(result1 error) {
-	fake.CreateBridgeStub = nil
-	fake.createBridgeReturns = struct {
-		result1 error
+func (fake *LinkFactory) ExistsReturns(result1 bool) {
+	fake.ExistsStub = nil
+	fake.existsReturns = struct {
+		result1 bool
 	}{result1}
 }
 

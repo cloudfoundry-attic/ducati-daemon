@@ -2,18 +2,14 @@ package executor_test
 
 import (
 	"errors"
-	"fmt"
 	"net"
 
-	"golang.org/x/sys/unix"
-
+	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/conditions"
+	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/executor/fakes"
-	nl_fakes "github.com/cloudfoundry-incubator/ducati-daemon/lib/nl/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/ns"
-	ns_fakes "github.com/cloudfoundry-incubator/ducati-daemon/lib/ns/fakes"
-
-	"github.com/vishvananda/netlink"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 
 	"github.com/appc/cni/pkg/types"
 
@@ -21,462 +17,415 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type TestLink struct {
-	Attributes netlink.LinkAttrs
-}
-
-func (t TestLink) Attrs() *netlink.LinkAttrs {
-	return &t.Attributes
-}
-
-func (t TestLink) Type() string {
-	return "NOT IMPLEMENTED"
-}
-
-var _ = Describe("SetupContainerNS", func() {
+var _ = Describe("Executor", func() {
 	var (
-		ex                executor.Executor
-		networkNamespacer *ns_fakes.Namespacer
-		linkFactory       *fakes.LinkFactory
-		netlinker         *nl_fakes.Netlinker
-		addressManager    *fakes.AddressManager
+		commandExecutor *exec_fakes.Executor
+		linkFactory     *fakes.LinkFactory
 
-		sandboxNsHandle   *ns_fakes.Handle
-		containerNsHandle *ns_fakes.Handle
-		hostHandle        *ns_fakes.Handle
-
-		sandboxFd uintptr
-
-		returnedSandboxLink   netlink.Link
-		returnedContainerLink netlink.Link
-		result                types.Result
+		ipamResult types.Result
+		ex         executor.Executor
 	)
 
 	BeforeEach(func() {
-		networkNamespacer = &ns_fakes.Namespacer{}
 		linkFactory = &fakes.LinkFactory{}
-		netlinker = &nl_fakes.Netlinker{}
-		addressManager = &fakes.AddressManager{}
+		commandExecutor = &exec_fakes.Executor{}
 
 		ex = executor.Executor{
-			NetworkNamespacer: networkNamespacer,
-			LinkFactory:       linkFactory,
-			Netlinker:         netlinker,
-			AddressManager:    addressManager,
+			Executor:    commandExecutor,
+			LinkFactory: linkFactory,
 		}
 
-		sandboxFd = 9999
-		sandboxNsHandle = &ns_fakes.Handle{}
-		sandboxNsHandle.FdReturns(sandboxFd)
-
-		containerNsHandle = &ns_fakes.Handle{}
-		hostHandle = &ns_fakes.Handle{}
-
-		networkNamespacer.GetFromPathStub = func(ns string) (ns.Handle, error) {
-			switch ns {
-			case "/var/some/sandbox/namespace":
-				return sandboxNsHandle, nil
-			case "/var/some/container/namespace":
-				return containerNsHandle, nil
-			case "/proc/self/ns/net":
-				return hostHandle, nil
-			default:
-				return &ns_fakes.Handle{}, nil
-			}
-		}
-
-		hwAddr, err := net.ParseMAC("ff:ff:ff:ff:ff:ff")
-		Expect(err).NotTo(HaveOccurred())
-
-		returnedSandboxLink = TestLink{Attributes: netlink.LinkAttrs{Name: "some-contai"}}
-		returnedContainerLink = TestLink{Attributes: netlink.LinkAttrs{
-			Index:        1555,
-			Name:         "some-eth0",
-			HardwareAddr: hwAddr,
-		}}
-
-		linkFactory.CreateVethReturns(nil)
-
-		linkFactory.FindLinkStub = func(name string) (netlink.Link, error) {
-			switch name {
-			case "some-contai":
-				return returnedSandboxLink, nil
-			case "some-eth0":
-				return returnedContainerLink, nil
-			default:
-				return nil, fmt.Errorf("unknown link: %q", name)
-			}
-		}
-
-		result = types.Result{
+		ipamResult = types.Result{
 			IP4: &types.IPConfig{
 				IP: net.IPNet{
 					IP:   net.ParseIP("192.168.100.1"),
-					Mask: net.ParseIP("192.168.100.1").DefaultMask(),
+					Mask: net.CIDRMask(24, 32),
 				},
 				Gateway: net.ParseIP("192.168.100.1"),
-				Routes: []types.Route{
-					{
-						Dst: net.IPNet{
-							IP:   net.ParseIP("192.168.1.5"),
-							Mask: net.ParseIP("192.168.1.5").DefaultMask(),
-						},
-						GW: net.ParseIP("192.168.1.1"),
+				Routes: []types.Route{{
+					Dst: net.IPNet{
+						IP:   net.ParseIP("192.168.1.5"),
+						Mask: net.CIDRMask(24, 32),
 					},
-				},
+					GW: net.ParseIP("192.168.1.1"),
+				}},
 			},
 		}
 	})
 
-	It("should construct the network inside the container namespace", func() {
-		sandboxLink, containerMAC, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-		Expect(err).NotTo(HaveOccurred())
+	Describe("EnsureVxlanDeviceExists", func() {
+		It("executes the setup actions", func() {
+			_, err := ex.EnsureVxlanDeviceExists(99, namespace.NewNamespace("/some/namespace"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(commandExecutor.ExecuteCallCount()).To(Equal(1))
 
-		By("asking for the host namespace handle")
-		Expect(networkNamespacer.GetFromPathCallCount()).To(Equal(3))
-		Expect(networkNamespacer.GetFromPathArgsForCall(0)).To(Equal("/proc/self/ns/net"))
-
-		By("asking for the container namespace handle")
-		Expect(networkNamespacer.GetFromPathArgsForCall(1)).To(Equal("/var/some/container/namespace"))
-
-		By("switch to the container namespace via the handle")
-		Expect(networkNamespacer.SetCallCount()).To(Equal(2))
-		Expect(networkNamespacer.SetArgsForCall(0)).To(Equal(containerNsHandle))
-
-		By("creating a veth pair when the container namespace")
-		Expect(linkFactory.CreateVethCallCount()).To(Equal(1))
-		containerID, interfaceName, vxlanVethMTU := linkFactory.CreateVethArgsForCall(0)
-		Expect(containerID).To(Equal("some-contai"))
-		Expect(interfaceName).To(Equal("some-eth0"))
-		Expect(vxlanVethMTU).To(Equal(1450))
-
-		By("finding the container link")
-		Expect(linkFactory.FindLinkArgsForCall(0)).To(Equal("some-eth0"))
-
-		By("finding the sandbox link")
-		Expect(linkFactory.FindLinkArgsForCall(1)).To(Equal("some-contai"))
-
-		By("getting the sandbox namespace")
-		Expect(networkNamespacer.GetFromPathArgsForCall(2)).To(Equal("/var/some/sandbox/namespace"))
-
-		By("moving the sandboxlink into the sandbox namespace")
-		Expect(netlinker.LinkSetNsFdCallCount()).To(Equal(1))
-		sandboxLink, fd := netlinker.LinkSetNsFdArgsForCall(0)
-		Expect(sandboxLink).To(Equal(returnedSandboxLink))
-		Expect(fd).To(BeEquivalentTo(sandboxFd))
-
-		By("adding an address to the container link")
-		Expect(addressManager.AddAddressCallCount()).To(Equal(1))
-		name, returnedResult := addressManager.AddAddressArgsForCall(0)
-		Expect(name).To(Equal("some-eth0"))
-		Expect(returnedResult).To(Equal(&result.IP4.IP))
-
-		By("setting the container link to UP")
-		Expect(netlinker.LinkSetUpCallCount()).To(Equal(1))
-		Expect(netlinker.LinkSetUpArgsForCall(0)).To(Equal(returnedContainerLink))
-
-		By("refreshing the containerlink to get its hardware address")
-		Expect(linkFactory.FindLinkCallCount()).To(Equal(3))
-		Expect(linkFactory.FindLinkArgsForCall(2)).To(Equal("some-eth0"))
-
-		By("adding a route")
-		Expect(netlinker.RouteAddCallCount()).To(Equal(1))
-		route := netlinker.RouteAddArgsForCall(0)
-		Expect(route.LinkIndex).To(Equal(1555))
-		Expect(route.Scope).To(Equal(netlink.SCOPE_UNIVERSE))
-		Expect(route.Dst).To(Equal(&result.IP4.Routes[0].Dst))
-		Expect(route.Gw).To(Equal(result.IP4.Routes[0].GW))
-
-		By("setting namespace back to host namespace")
-		Expect(networkNamespacer.SetArgsForCall(1)).To(Equal(hostHandle))
-
-		By("closing the handles")
-		Expect(hostHandle.CloseCallCount()).To(Equal(1))
-		Expect(sandboxNsHandle.CloseCallCount()).To(Equal(1))
-		Expect(containerNsHandle.CloseCallCount()).To(Equal(1))
-
-		By("verifying return link and containermac")
-		Expect(sandboxLink.Attrs().Name).To(Equal("some-contai"))
-		Expect(containerMAC).To(Equal("ff:ff:ff:ff:ff:ff"))
-	})
-
-	Context("when no routes are specified", func() {
-		BeforeEach(func() {
-			result.IP4.Routes = []types.Route{}
-		})
-
-		It("does not attempt to add routes", func() {
-			Expect(netlinker.RouteAddCallCount()).To(Equal(0))
-		})
-	})
-
-	Context("when multiple routes are specified", func() {
-		BeforeEach(func() {
-			result.IP4.Routes = append(result.IP4.Routes, types.Route{
-				Dst: net.IPNet{
-					IP:   net.ParseIP("10.10.10.10"),
-					Mask: net.CIDRMask(8, 32),
+			command := commandExecutor.ExecuteArgsForCall(0)
+			Expect(command).To(Equal(
+				commands.InNamespace{
+					Namespace: namespace.NewNamespace("/some/namespace"),
+					Command: commands.Unless{
+						Condition: conditions.LinkExists{
+							LinkFinder: linkFactory,
+							Name:       "vxlan99",
+						},
+						Command: commands.InNamespace{
+							Namespace: namespace.NewNamespace("/proc/self/ns/net"),
+							Command: commands.All(
+								commands.CreateVxlan{
+									Name: "vxlan99",
+									VNI:  99,
+								},
+								commands.SetLinkNamespace{
+									Namespace: "/some/namespace",
+									Name:      "vxlan99",
+								},
+							),
+						},
+					},
 				},
-				GW: net.ParseIP("10.10.10.1"),
+			))
+		})
+
+		It("returns the vxlan link name", func() {
+			name, err := ex.EnsureVxlanDeviceExists(99, namespace.NewNamespace("/some/namespace"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(name).To(Equal("vxlan99"))
+		})
+
+		Context("when the setup commands fail", func() {
+			BeforeEach(func() {
+				commandExecutor.ExecuteReturns(errors.New("boom"))
+			})
+
+			It("returns a meaningful error", func() {
+				_, err := ex.EnsureVxlanDeviceExists(99, namespace.NewNamespace("/some/namespace"))
+				Expect(err).To(MatchError("failed to setup vxlan device: boom"))
 			})
 		})
+	})
 
-		It("adds all routes", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
+	Describe("SetupSandboxNS", func() {
+		It("executes the setup actions", func() {
+			err := ex.SetupSandboxNS(
+				"vxlan-name", "bridge-name",
+				namespace.NewNamespace("/sandbox/namespace"),
+				"sandbox-link",
+				ipamResult,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(commandExecutor.ExecuteCallCount()).To(Equal(1))
+
+			command := commandExecutor.ExecuteArgsForCall(0)
+			Expect(command).To(Equal(
+				commands.InNamespace{
+					Namespace: namespace.NewNamespace("/sandbox/namespace"),
+					Command: commands.All(
+						commands.SetLinkUp{
+							LinkName: "vxlan-name",
+						},
+						commands.SetLinkUp{
+							LinkName: "sandbox-link",
+						},
+						commands.Unless{
+							Condition: conditions.LinkExists{
+								LinkFinder: linkFactory,
+								Name:       "bridge-name",
+							},
+							Command: commands.All(
+								commands.CreateBridge{
+									Name: "bridge-name",
+								},
+								commands.AddAddress{
+									InterfaceName: "bridge-name",
+									Address: net.IPNet{
+										IP:   ipamResult.IP4.Gateway,
+										Mask: ipamResult.IP4.IP.Mask,
+									},
+								},
+								commands.SetLinkUp{
+									LinkName: "bridge-name",
+								},
+							),
+						},
+						commands.SetLinkMaster{
+							Master: "bridge-name",
+							Slave:  "vxlan-name",
+						},
+						commands.SetLinkMaster{
+							Master: "bridge-name",
+							Slave:  "sandbox-link",
+						},
+					),
+				},
+			))
+		})
+	})
+
+	Describe("SetupContainerNS", func() {
+		It("executes the setup actions", func() {
+			macAddress := "01:02:03:04:05:06"
+			containerMAC, err := net.ParseMAC(macAddress)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(netlinker.RouteAddCallCount()).To(Equal(2))
+			commandExecutor.ExecuteStub = func(command commands.Command) error {
+				if commandExecutor.ExecuteCallCount() == 2 {
+					Expect(command).To(Equal(
+						commands.InNamespace{
+							Namespace: namespace.NewNamespace("/var/some/container/namespace"),
+							Command: &commands.GetHardwareAddress{
+								LinkName: "some-eth0",
+								Result:   nil,
+							},
+						},
+					))
 
-			route := netlinker.RouteAddArgsForCall(0)
-			Expect(route.LinkIndex).To(Equal(1555))
-			Expect(route.Scope).To(Equal(netlink.SCOPE_UNIVERSE))
-			Expect(route.Dst).To(Equal(&result.IP4.Routes[0].Dst))
-			Expect(route.Gw).To(Equal(result.IP4.Routes[0].GW))
-
-			route = netlinker.RouteAddArgsForCall(1)
-			Expect(route.LinkIndex).To(Equal(1555))
-			Expect(route.Scope).To(Equal(netlink.SCOPE_UNIVERSE))
-			Expect(route.Dst).To(Equal(&result.IP4.Routes[1].Dst))
-			Expect(route.Gw).To(Equal(result.IP4.Routes[1].GW))
-		})
-	})
-
-	Context("When a gateway is missing from the the route", func() {
-		BeforeEach(func() {
-			result.IP4.Routes[0].GW = nil
-		})
-
-		It("uses the default gateway for the route", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(netlinker.RouteAddCallCount()).To(Equal(1))
-
-			route := netlinker.RouteAddArgsForCall(0)
-			Expect(route.LinkIndex).To(Equal(1555))
-			Expect(route.Scope).To(Equal(netlink.SCOPE_UNIVERSE))
-			Expect(route.Dst).To(Equal(&result.IP4.Routes[0].Dst))
-			Expect(route.Gw).To(Equal(result.IP4.Gateway))
-		})
-	})
-
-	Context("when getting the host namespace fails", func() {
-		BeforeEach(func() {
-			networkNamespacer.GetFromPathReturns(nil, errors.New("can't find my own namespace"))
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`failed to get host namespace handle: can't find my own namespace`))
-		})
-	})
-
-	Context("when opening the container namespace fails", func() {
-		BeforeEach(func() {
-			networkNamespacer.GetFromPathStub = func(path string) (ns.Handle, error) {
-				if path == "/var/some/container/namespace" {
-					return nil, errors.New("failed to open")
-				}
-
-				return hostHandle, nil
-			}
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`could not open container namespace "/var/some/container/namespace": failed to open`))
-		})
-	})
-
-	Context("when setting the namespace fails", func() {
-		BeforeEach(func() {
-			networkNamespacer.SetStub = func(handle ns.Handle) error {
-				if handle == containerNsHandle {
-					return errors.New("original set error")
+					inNamespace := command.(commands.InNamespace)
+					inNamespace.Command.(*commands.GetHardwareAddress).Result = containerMAC
 				}
 				return nil
 			}
-		})
 
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`set container namespace "/var/some/container/namespace" failed: original set error`))
-		})
-
-		It("closes the container namespace handle", func() {
-			ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(containerNsHandle.CloseCallCount()).To(Equal(1))
-		})
-	})
-
-	Context("when creating the veth pair fails", func() {
-		BeforeEach(func() {
-			linkFactory.CreateVethReturns(errors.New("nobody wants a veth"))
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`could not create veth pair: nobody wants a veth`))
-		})
-	})
-
-	Context("when finding the container link fails", func() {
-		BeforeEach(func() {
-			linkFactory.FindLinkReturns(nil, errors.New("some error"))
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`could not get container link: some error`))
-		})
-	})
-
-	Context("when finding the sandbox link fails", func() {
-		BeforeEach(func() {
-			linkFactory.FindLinkStub = func(name string) (netlink.Link, error) {
-				if linkFactory.FindLinkCallCount() == 2 {
-					return nil, errors.New("some error")
-				}
-				return nil, nil
-			}
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`could not get sandbox link: some error`))
-		})
-	})
-
-	Context("when getting the sandbox namespace handle fails", func() {
-		BeforeEach(func() {
-			networkNamespacer.GetFromPathStub = func(ns string) (ns.Handle, error) {
-				switch ns {
-				case "/var/some/container/namespace":
-					return containerNsHandle, nil
-				case "/proc/self/ns/net":
-					return hostHandle, nil
-				default:
-					return &ns_fakes.Handle{}, errors.New("wow, a failure")
-				}
-			}
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`failed to get sandbox namespace handle: wow, a failure`))
-		})
-	})
-
-	Context("when moving the sandbox link into the sandbox fails", func() {
-		BeforeEach(func() {
-			netlinker.LinkSetNsFdReturns(errors.New("boom"))
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`failed to move sandbox link into sandbox: boom`))
-		})
-
-		It("closes the sandbox namespace handle", func() {
-			ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(sandboxNsHandle.CloseCallCount()).To(Equal(1))
-		})
-	})
-
-	Context("when setting the address on the container link fails", func() {
-		BeforeEach(func() {
-			addressManager.AddAddressReturns(errors.New("no address for you"))
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`setting container address failed: no address for you`))
-		})
-	})
-
-	Context("when setting the container link UP fails", func() {
-		BeforeEach(func() {
-			netlinker.LinkSetUpReturns(errors.New("explosivo"))
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`failed to up container link: explosivo`))
-		})
-	})
-
-	Context("when refreshing the container link fails", func() {
-		BeforeEach(func() {
-			linkFactory.FindLinkStub = func(name string) (netlink.Link, error) {
-				if linkFactory.FindLinkCallCount() == 3 {
-					return nil, errors.New("some error")
-				}
-
-				switch name {
-				case "some-contai":
-					return returnedSandboxLink, nil
-				case "some-eth0":
-					return returnedContainerLink, nil
-				default:
-					return nil, fmt.Errorf("unknown link: %q", name)
-				}
-			}
-		})
-
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
-
-			Expect(err).To(MatchError(`failed to refresh container link: some error`))
-		})
-	})
-
-	Context("when adding a route fails with EEXIST", func() {
-		BeforeEach(func() {
-			result.IP4.Routes = append(result.IP4.Routes, types.Route{
-				Dst: net.IPNet{
-					IP:   net.ParseIP("10.10.10.10"),
-					Mask: net.CIDRMask(8, 32),
-				},
-				GW: net.ParseIP("10.10.10.1"),
-			})
-
-			netlinker.RouteAddStub = func(*netlink.Route) error {
-				if netlinker.RouteAddCallCount() == 1 {
-					return unix.EEXIST
-				}
-				return nil
-			}
-		})
-
-		It("proceeds to the next route without failing", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
+			sandboxLinkName, containerLinkMAC, err := ex.SetupContainerNS(
+				"/var/some/sandbox/namespace",
+				"/var/some/container/namespace",
+				"some-container-id",
+				"some-eth0",
+				ipamResult,
+			)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(netlinker.RouteAddCallCount()).To(Equal(2))
+			Expect(sandboxLinkName).To(Equal("some-contai"))
+			Expect(containerLinkMAC).To(Equal(macAddress))
+			Expect(commandExecutor.ExecuteCallCount()).To(Equal(2))
+
+			Expect(commandExecutor.ExecuteArgsForCall(0)).To(Equal(
+				commands.InNamespace{
+					Namespace: namespace.NewNamespace("/var/some/container/namespace"),
+					Command: commands.All(
+						commands.CreateVeth{
+							Name:     "some-eth0",
+							PeerName: "some-contai",
+							MTU:      1450,
+						},
+						commands.SetLinkNamespace{
+							Name:      "some-contai",
+							Namespace: "/var/some/sandbox/namespace",
+						},
+						commands.AddAddress{
+							InterfaceName: "some-eth0",
+							Address:       ipamResult.IP4.IP,
+						},
+						commands.SetLinkUp{
+							LinkName: "some-eth0",
+						},
+						commands.AddRoute{
+							Interface: "some-eth0",
+							Destination: net.IPNet{
+								IP:   net.ParseIP("192.168.1.5"),
+								Mask: net.CIDRMask(24, 32),
+							},
+							Gateway: net.ParseIP("192.168.1.1"),
+						},
+					),
+				},
+			))
 		})
-	})
 
-	Context("when adding routes fails with something other than EEXIST", func() {
-		BeforeEach(func() {
-			netlinker.RouteAddReturns(errors.New("invalid destination"))
+		Context("when no routes are specified", func() {
+			BeforeEach(func() {
+				ipamResult.IP4.Routes = []types.Route{}
+			})
+
+			It("does not attempt to add routes", func() {
+				ex.SetupContainerNS(
+					"/var/some/sandbox/namespace",
+					"/var/some/container/namespace",
+					"some-container-id",
+					"some-eth0",
+					ipamResult,
+				)
+
+				Expect(commandExecutor.ExecuteCallCount()).To(Equal(2))
+				Expect(commandExecutor.ExecuteArgsForCall(0)).To(Equal(
+					commands.InNamespace{
+						Namespace: namespace.NewNamespace("/var/some/container/namespace"),
+						Command: commands.All(
+							commands.CreateVeth{
+								Name:     "some-eth0",
+								PeerName: "some-contai",
+								MTU:      1450,
+							},
+							commands.SetLinkNamespace{
+								Name:      "some-contai",
+								Namespace: "/var/some/sandbox/namespace",
+							},
+							commands.AddAddress{
+								InterfaceName: "some-eth0",
+								Address:       ipamResult.IP4.IP,
+							},
+							commands.SetLinkUp{
+								LinkName: "some-eth0",
+							},
+						),
+					},
+				))
+			})
 		})
 
-		It("wraps the error with a helpful message", func() {
-			_, _, err := ex.SetupContainerNS("/var/some/sandbox/namespace", "/var/some/container/namespace", "some-container-id", "some-eth0", result)
+		Context("when multiple routes are specified", func() {
+			BeforeEach(func() {
+				ipamResult.IP4.Routes = append(ipamResult.IP4.Routes, types.Route{
+					Dst: net.IPNet{
+						IP:   net.ParseIP("10.10.10.10"),
+						Mask: net.CIDRMask(8, 32),
+					},
+					GW: net.ParseIP("10.10.10.1"),
+				})
+			})
 
-			Expect(err).To(MatchError(`adding route to 192.168.1.5/24 via 192.168.1.1 failed: invalid destination`))
+			It("adds all routes", func() {
+				ex.SetupContainerNS(
+					"/var/some/sandbox/namespace",
+					"/var/some/container/namespace",
+					"some-container-id",
+					"some-eth0",
+					ipamResult,
+				)
+
+				Expect(commandExecutor.ExecuteCallCount()).To(Equal(2))
+				Expect(commandExecutor.ExecuteArgsForCall(0)).To(Equal(
+					commands.InNamespace{
+						Namespace: namespace.NewNamespace("/var/some/container/namespace"),
+						Command: commands.All(
+							commands.CreateVeth{
+								Name:     "some-eth0",
+								PeerName: "some-contai",
+								MTU:      1450,
+							},
+							commands.SetLinkNamespace{
+								Name:      "some-contai",
+								Namespace: "/var/some/sandbox/namespace",
+							},
+							commands.AddAddress{
+								InterfaceName: "some-eth0",
+								Address:       ipamResult.IP4.IP,
+							},
+							commands.SetLinkUp{
+								LinkName: "some-eth0",
+							},
+							commands.AddRoute{
+								Interface: "some-eth0",
+								Destination: net.IPNet{
+									IP:   net.ParseIP("192.168.1.5"),
+									Mask: net.CIDRMask(24, 32),
+								},
+								Gateway: net.ParseIP("192.168.1.1"),
+							},
+							commands.AddRoute{
+								Interface: "some-eth0",
+								Destination: net.IPNet{
+									IP:   net.ParseIP("10.10.10.10"),
+									Mask: net.CIDRMask(8, 32),
+								},
+								Gateway: net.ParseIP("10.10.10.1"),
+							},
+						),
+					},
+				))
+			})
+		})
+
+		Context("When a gateway is missing from the the route", func() {
+			BeforeEach(func() {
+				ipamResult.IP4.Routes[0].GW = nil
+				ipamResult.IP4.Gateway = net.ParseIP("192.168.100.1")
+			})
+
+			It("uses the default gateway for the route", func() {
+				ex.SetupContainerNS(
+					"/var/some/sandbox/namespace",
+					"/var/some/container/namespace",
+					"some-container-id",
+					"some-eth0",
+					ipamResult,
+				)
+
+				Expect(commandExecutor.ExecuteCallCount()).To(Equal(2))
+				Expect(commandExecutor.ExecuteArgsForCall(0)).To(Equal(
+					commands.InNamespace{
+						Namespace: namespace.NewNamespace("/var/some/container/namespace"),
+						Command: commands.All(
+							commands.CreateVeth{
+								Name:     "some-eth0",
+								PeerName: "some-contai",
+								MTU:      1450,
+							},
+							commands.SetLinkNamespace{
+								Name:      "some-contai",
+								Namespace: "/var/some/sandbox/namespace",
+							},
+							commands.AddAddress{
+								InterfaceName: "some-eth0",
+								Address:       ipamResult.IP4.IP,
+							},
+							commands.SetLinkUp{
+								LinkName: "some-eth0",
+							},
+							commands.AddRoute{
+								Interface: "some-eth0",
+								Destination: net.IPNet{
+									IP:   net.ParseIP("192.168.1.5"),
+									Mask: net.CIDRMask(24, 32),
+								},
+								Gateway: net.ParseIP("192.168.100.1"),
+							},
+						),
+					},
+				))
+			})
+		})
+
+		Context("when executing the setup commands fails", func() {
+			BeforeEach(func() {
+				commandExecutor.ExecuteReturns(errors.New("boom"))
+			})
+
+			It("returns a meaningful error", func() {
+				_, _, err := ex.SetupContainerNS(
+					"/var/some/sandbox/namespace",
+					"/var/some/container/namespace",
+					"some-container-id",
+					"some-eth0",
+					ipamResult,
+				)
+
+				Expect(commandExecutor.ExecuteCallCount()).To(Equal(1))
+				Expect(err).To(MatchError("container namespace setup failed: boom"))
+			})
+		})
+
+		Context("when getting the hardware address fails", func() {
+			BeforeEach(func() {
+				commandExecutor.ExecuteStub = func(command commands.Command) error {
+					if commandExecutor.ExecuteCallCount() == 2 {
+						return errors.New("boom")
+					}
+					return nil
+				}
+			})
+
+			It("returns a meaningful error", func() {
+				_, _, err := ex.SetupContainerNS(
+					"/var/some/sandbox/namespace",
+					"/var/some/container/namespace",
+					"some-container-id",
+					"some-eth0",
+					ipamResult,
+				)
+
+				Expect(commandExecutor.ExecuteCallCount()).To(Equal(2))
+				Expect(err).To(MatchError("failed to get container hardware address: boom"))
+			})
 		})
 	})
 })

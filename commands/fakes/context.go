@@ -20,6 +20,12 @@ type Context struct {
 	bridgeFactoryReturns     struct {
 		result1 commands.BridgeFactory
 	}
+	HardwareAddresserStub        func() commands.HardwareAddresser
+	hardwareAddresserMutex       sync.RWMutex
+	hardwareAddresserArgsForCall []struct{}
+	hardwareAddresserReturns     struct {
+		result1 commands.HardwareAddresser
+	}
 	MasterSetterStub        func() commands.MasterSetter
 	masterSetterMutex       sync.RWMutex
 	masterSetterArgsForCall []struct{}
@@ -31,6 +37,12 @@ type Context struct {
 	routeAdderArgsForCall []struct{}
 	routeAdderReturns     struct {
 		result1 commands.RouteAdder
+	}
+	SetNamespacerStub        func() commands.SetNamespacer
+	setNamespacerMutex       sync.RWMutex
+	setNamespacerArgsForCall []struct{}
+	setNamespacerReturns     struct {
+		result1 commands.SetNamespacer
 	}
 	SetUpperStub        func() commands.SetUpper
 	setUpperMutex       sync.RWMutex
@@ -100,6 +112,30 @@ func (fake *Context) BridgeFactoryReturns(result1 commands.BridgeFactory) {
 	}{result1}
 }
 
+func (fake *Context) HardwareAddresser() commands.HardwareAddresser {
+	fake.hardwareAddresserMutex.Lock()
+	fake.hardwareAddresserArgsForCall = append(fake.hardwareAddresserArgsForCall, struct{}{})
+	fake.hardwareAddresserMutex.Unlock()
+	if fake.HardwareAddresserStub != nil {
+		return fake.HardwareAddresserStub()
+	} else {
+		return fake.hardwareAddresserReturns.result1
+	}
+}
+
+func (fake *Context) HardwareAddresserCallCount() int {
+	fake.hardwareAddresserMutex.RLock()
+	defer fake.hardwareAddresserMutex.RUnlock()
+	return len(fake.hardwareAddresserArgsForCall)
+}
+
+func (fake *Context) HardwareAddresserReturns(result1 commands.HardwareAddresser) {
+	fake.HardwareAddresserStub = nil
+	fake.hardwareAddresserReturns = struct {
+		result1 commands.HardwareAddresser
+	}{result1}
+}
+
 func (fake *Context) MasterSetter() commands.MasterSetter {
 	fake.masterSetterMutex.Lock()
 	fake.masterSetterArgsForCall = append(fake.masterSetterArgsForCall, struct{}{})
@@ -145,6 +181,30 @@ func (fake *Context) RouteAdderReturns(result1 commands.RouteAdder) {
 	fake.RouteAdderStub = nil
 	fake.routeAdderReturns = struct {
 		result1 commands.RouteAdder
+	}{result1}
+}
+
+func (fake *Context) SetNamespacer() commands.SetNamespacer {
+	fake.setNamespacerMutex.Lock()
+	fake.setNamespacerArgsForCall = append(fake.setNamespacerArgsForCall, struct{}{})
+	fake.setNamespacerMutex.Unlock()
+	if fake.SetNamespacerStub != nil {
+		return fake.SetNamespacerStub()
+	} else {
+		return fake.setNamespacerReturns.result1
+	}
+}
+
+func (fake *Context) SetNamespacerCallCount() int {
+	fake.setNamespacerMutex.RLock()
+	defer fake.setNamespacerMutex.RUnlock()
+	return len(fake.setNamespacerArgsForCall)
+}
+
+func (fake *Context) SetNamespacerReturns(result1 commands.SetNamespacer) {
+	fake.SetNamespacerStub = nil
+	fake.setNamespacerReturns = struct {
+		result1 commands.SetNamespacer
 	}{result1}
 }
 

@@ -26,7 +26,7 @@ var _ = Describe("SetLinkUp", func() {
 		}
 	})
 
-	It("sets the link up in the target namespace", func() {
+	It("sets the link up", func() {
 		err := setLinkUp.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 

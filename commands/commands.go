@@ -4,8 +4,10 @@ package commands
 type Context interface {
 	AddressAdder() AddressAdder
 	BridgeFactory() BridgeFactory
+	HardwareAddresser() HardwareAddresser
 	MasterSetter() MasterSetter
 	RouteAdder() RouteAdder
+	SetNamespacer() SetNamespacer
 	SetUpper() SetUpper
 	VethFactory() VethFactory
 	VxlanFactory() VxlanFactory

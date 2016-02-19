@@ -60,9 +60,21 @@ var _ = Describe("Executor", func() {
 			})
 		})
 
+		Describe("HardwareAddresser", func() {
+			It("returns the link factory", func() {
+				Expect(context.HardwareAddresser()).To(Equal(linkFactory))
+			})
+		})
+
 		Describe("MasterSetter", func() {
 			It("returns the link factory", func() {
 				Expect(context.MasterSetter()).To(Equal(linkFactory))
+			})
+		})
+
+		Describe("SetNamespacer", func() {
+			It("returns the link factory", func() {
+				Expect(context.SetNamespacer()).To(Equal(linkFactory))
 			})
 		})
 

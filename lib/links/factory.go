@@ -2,6 +2,8 @@ package links
 
 import (
 	"fmt"
+	"net"
+	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/vishvananda/netlink"
@@ -46,7 +48,7 @@ func (f *Factory) CreateVeth(name, peerName string, mtu int) error {
 	return nil
 }
 
-func (f *Factory) CreateVxlan(name string, vni int) (netlink.Link, error) {
+func (f *Factory) CreateVxlan(name string, vni int) error {
 	vxlan := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: name,
@@ -59,16 +61,19 @@ func (f *Factory) CreateVxlan(name string, vni int) (netlink.Link, error) {
 		L2miss:   true,
 	}
 
-	err := f.Netlinker.LinkAdd(vxlan)
-	if err != nil {
-		return nil, err
-	}
-
-	return vxlan, nil
+	return f.Netlinker.LinkAdd(vxlan)
 }
 
 func (f *Factory) FindLink(name string) (netlink.Link, error) {
 	return f.Netlinker.LinkByName(name)
+}
+
+func (f *Factory) Exists(name string) bool {
+	if _, err := f.FindLink(name); err != nil {
+		return false
+	}
+
+	return true
 }
 
 func (f *Factory) DeleteLink(link netlink.Link) error {
@@ -87,6 +92,15 @@ func (f *Factory) DeleteLinkByName(name string) error {
 	}
 
 	return nil
+}
+
+func (f *Factory) HardwareAddress(linkName string) (net.HardwareAddr, error) {
+	link, err := f.FindLink(linkName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find link: %s", err)
+	}
+
+	return link.Attrs().HardwareAddr, nil
 }
 
 func (f *Factory) ListLinks() ([]netlink.Link, error) {
@@ -112,6 +126,26 @@ func (f *Factory) SetMaster(slave, master string) error {
 	err = f.Netlinker.LinkSetMaster(link, bridge)
 	if err != nil {
 		return fmt.Errorf("failed to set master: %s", err)
+	}
+
+	return nil
+}
+
+func (f *Factory) SetNamespace(linkName, namespace string) error {
+	link, err := f.FindLink(linkName)
+	if err != nil {
+		return fmt.Errorf("failed to find link: %s", err)
+	}
+
+	file, err := os.Open(namespace)
+	if err != nil {
+		return fmt.Errorf("failed to open namespace: %s", err)
+	}
+	defer file.Close() // not tested
+
+	err = f.Netlinker.LinkSetNsFd(link, int(file.Fd()))
+	if err != nil {
+		return fmt.Errorf("failed to set link namespace: %s", err)
 	}
 
 	return nil

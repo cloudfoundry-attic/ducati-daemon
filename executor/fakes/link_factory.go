@@ -2,6 +2,7 @@
 package fakes
 
 import (
+	"net"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
@@ -16,6 +17,15 @@ type LinkFactory struct {
 	createBridgeReturns struct {
 		result1 error
 	}
+	HardwareAddressStub        func(linkName string) (net.HardwareAddr, error)
+	hardwareAddressMutex       sync.RWMutex
+	hardwareAddressArgsForCall []struct {
+		linkName string
+	}
+	hardwareAddressReturns struct {
+		result1 net.HardwareAddr
+		result2 error
+	}
 	SetMasterStub        func(slave, master string) error
 	setMasterMutex       sync.RWMutex
 	setMasterArgsForCall []struct {
@@ -23,6 +33,15 @@ type LinkFactory struct {
 		master string
 	}
 	setMasterReturns struct {
+		result1 error
+	}
+	SetNamespaceStub        func(intefaceName, namespace string) error
+	setNamespaceMutex       sync.RWMutex
+	setNamespaceArgsForCall []struct {
+		intefaceName string
+		namespace    string
+	}
+	setNamespaceReturns struct {
 		result1 error
 	}
 	SetUpStub        func(name string) error
@@ -86,6 +105,39 @@ func (fake *LinkFactory) CreateBridgeReturns(result1 error) {
 	}{result1}
 }
 
+func (fake *LinkFactory) HardwareAddress(linkName string) (net.HardwareAddr, error) {
+	fake.hardwareAddressMutex.Lock()
+	fake.hardwareAddressArgsForCall = append(fake.hardwareAddressArgsForCall, struct {
+		linkName string
+	}{linkName})
+	fake.hardwareAddressMutex.Unlock()
+	if fake.HardwareAddressStub != nil {
+		return fake.HardwareAddressStub(linkName)
+	} else {
+		return fake.hardwareAddressReturns.result1, fake.hardwareAddressReturns.result2
+	}
+}
+
+func (fake *LinkFactory) HardwareAddressCallCount() int {
+	fake.hardwareAddressMutex.RLock()
+	defer fake.hardwareAddressMutex.RUnlock()
+	return len(fake.hardwareAddressArgsForCall)
+}
+
+func (fake *LinkFactory) HardwareAddressArgsForCall(i int) string {
+	fake.hardwareAddressMutex.RLock()
+	defer fake.hardwareAddressMutex.RUnlock()
+	return fake.hardwareAddressArgsForCall[i].linkName
+}
+
+func (fake *LinkFactory) HardwareAddressReturns(result1 net.HardwareAddr, result2 error) {
+	fake.HardwareAddressStub = nil
+	fake.hardwareAddressReturns = struct {
+		result1 net.HardwareAddr
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *LinkFactory) SetMaster(slave string, master string) error {
 	fake.setMasterMutex.Lock()
 	fake.setMasterArgsForCall = append(fake.setMasterArgsForCall, struct {
@@ -115,6 +167,39 @@ func (fake *LinkFactory) SetMasterArgsForCall(i int) (string, string) {
 func (fake *LinkFactory) SetMasterReturns(result1 error) {
 	fake.SetMasterStub = nil
 	fake.setMasterReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *LinkFactory) SetNamespace(intefaceName string, namespace string) error {
+	fake.setNamespaceMutex.Lock()
+	fake.setNamespaceArgsForCall = append(fake.setNamespaceArgsForCall, struct {
+		intefaceName string
+		namespace    string
+	}{intefaceName, namespace})
+	fake.setNamespaceMutex.Unlock()
+	if fake.SetNamespaceStub != nil {
+		return fake.SetNamespaceStub(intefaceName, namespace)
+	} else {
+		return fake.setNamespaceReturns.result1
+	}
+}
+
+func (fake *LinkFactory) SetNamespaceCallCount() int {
+	fake.setNamespaceMutex.RLock()
+	defer fake.setNamespaceMutex.RUnlock()
+	return len(fake.setNamespaceArgsForCall)
+}
+
+func (fake *LinkFactory) SetNamespaceArgsForCall(i int) (string, string) {
+	fake.setNamespaceMutex.RLock()
+	defer fake.setNamespaceMutex.RUnlock()
+	return fake.setNamespaceArgsForCall[i].intefaceName, fake.setNamespaceArgsForCall[i].namespace
+}
+
+func (fake *LinkFactory) SetNamespaceReturns(result1 error) {
+	fake.SetNamespaceStub = nil
+	fake.setNamespaceReturns = struct {
 		result1 error
 	}{result1}
 }

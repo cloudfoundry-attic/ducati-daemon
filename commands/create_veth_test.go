@@ -44,7 +44,7 @@ var _ = Describe("CreateVeth", func() {
 			vethFactory.CreateVethReturns(errors.New("welp"))
 
 			err := createVeth.Execute(context)
-			Expect(err).To(MatchError("welp"))
+			Expect(err).To(MatchError("failed to create veth pair if-name:peer-if-name: welp"))
 		})
 	})
 })

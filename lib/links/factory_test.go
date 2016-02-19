@@ -2,6 +2,9 @@ package links_test
 
 import (
 	"errors"
+	"io/ioutil"
+	"net"
+	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/links"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl/fakes"
@@ -72,14 +75,8 @@ var _ = Describe("Factory", func() {
 			}
 		})
 
-		It("should return a vxlan with the expected config", func() {
-			link, err := factory.CreateVxlan("some-device-name", 42)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(link).To(Equal(expectedVxlan))
-		})
-
 		It("should add the link", func() {
-			_, err := factory.CreateVxlan("some-device-name", 42)
+			err := factory.CreateVxlan("some-device-name", 42)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(netlinker.LinkAddCallCount()).To(Equal(1))
@@ -90,7 +87,7 @@ var _ = Describe("Factory", func() {
 			It("should return the error", func() {
 				netlinker.LinkAddReturns(errors.New("some error"))
 
-				_, err := factory.CreateVxlan("some-device-name", 42)
+				err := factory.CreateVxlan("some-device-name", 42)
 				Expect(err).To(Equal(errors.New("some error")))
 			})
 		})
@@ -142,6 +139,32 @@ var _ = Describe("Factory", func() {
 				It("should return nil", func() {
 					_, err := factory.FindLink("some-device-name")
 					Expect(err).To(Equal(errors.New("not found")))
+				})
+			})
+		})
+
+		Describe("Exists", func() {
+			Context("when a link is found", func() {
+				BeforeEach(func() {
+					netlinker.LinkByNameReturns(&netlink.Vxlan{VxlanId: 41}, nil)
+				})
+
+				It("returns true", func() {
+					Expect(factory.Exists("some-device-name")).To(BeTrue())
+					Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+					Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("some-device-name"))
+				})
+			})
+
+			Context("when link by name returns an error", func() {
+				BeforeEach(func() {
+					netlinker.LinkByNameReturns(nil, errors.New("not found"))
+				})
+
+				It("returns false", func() {
+					Expect(factory.Exists("some-device-name")).To(BeFalse())
+					Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+					Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("some-device-name"))
 				})
 			})
 		})
@@ -275,6 +298,114 @@ var _ = Describe("Factory", func() {
 				It("returns a meaningful error", func() {
 					err := factory.SetMaster("slave", "master")
 					Expect(err).To(MatchError("failed to set master: you're not a slave"))
+				})
+			})
+		})
+
+		Describe("SetNamespace", func() {
+			var link netlink.Link
+			var namespacePath string
+
+			BeforeEach(func() {
+				link = &netlink.Dummy{}
+				netlinker.LinkByNameReturns(link, nil)
+
+				tempFile, err := ioutil.TempFile("", "set-namespace")
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = tempFile.Write([]byte("hello"))
+				Expect(err).NotTo(HaveOccurred())
+
+				namespacePath = tempFile.Name()
+				tempFile.Close()
+			})
+
+			It("associates the link with a file descriptor", func() {
+				netlinker.LinkSetNsFdStub = func(l netlink.Link, fd int) error {
+					Expect(l).To(Equal(link))
+
+					f := os.NewFile(uintptr(fd), "name")
+					payload, err := ioutil.ReadAll(f)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(payload).To(Equal([]byte("hello")))
+
+					return nil
+				}
+
+				err := factory.SetNamespace("link-name", namespacePath)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+				Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("link-name"))
+
+				Expect(netlinker.LinkSetNsFdCallCount()).To(Equal(1))
+			})
+
+			Context("when finding the link fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkByNameReturns(nil, errors.New("no link for you"))
+				})
+
+				It("returns a meaningful error", func() {
+					err := factory.SetNamespace("link-name", namespacePath)
+					Expect(err).To(MatchError("failed to find link: no link for you"))
+				})
+			})
+
+			Context("when opening the namespace fails", func() {
+				BeforeEach(func() {
+					namespacePath = "some junk path name that is bogus"
+				})
+
+				It("returns a meaningful error", func() {
+					err := factory.SetNamespace("link-name", namespacePath)
+					Expect(err).To(MatchError(HavePrefix("failed to open namespace: open")))
+				})
+			})
+
+			Context("when assigning the namespace fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkSetNsFdReturns(errors.New("what namespace?"))
+				})
+
+				It("returns a meaningful error", func() {
+					err := factory.SetNamespace("link-name", namespacePath)
+					Expect(err).To(MatchError("failed to set link namespace: what namespace?"))
+				})
+			})
+		})
+
+		Describe("HardwareAddress", func() {
+			var (
+				expectedHwAddr net.HardwareAddr
+				link           *netlink.Dummy
+			)
+
+			BeforeEach(func() {
+				expectedHwAddr, _ = net.ParseMAC("01:02:03:04:05:06")
+				link = &netlink.Dummy{
+					LinkAttrs: netlink.LinkAttrs{
+						HardwareAddr: expectedHwAddr,
+					},
+				}
+				netlinker.LinkByNameReturns(link, nil)
+			})
+
+			It("returns the hardware address of the named link", func() {
+				hwAddr, err := factory.HardwareAddress("link-name")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(hwAddr).To(Equal(expectedHwAddr))
+			})
+
+			Context("when finding the link fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkByNameReturns(nil, errors.New("no link for you"))
+				})
+
+				It("returns a meaningful error", func() {
+					_, err := factory.HardwareAddress("link-name")
+					Expect(err).To(MatchError("failed to find link: no link for you"))
 				})
 			})
 		})
