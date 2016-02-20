@@ -52,6 +52,20 @@ func parseFlags() {
 func main() {
 	parseFlags()
 
+	_, subnet, err := net.ParseCIDR(localSubnet)
+	if err != nil {
+		log.Fatalf("invalid CIDR provided for %q: %s", localSubnetFlag, localSubnet)
+	}
+
+	_, overlay, err := net.ParseCIDR(overlayNetwork)
+	if err != nil {
+		log.Fatalf("invalid CIDR provided for %q: %s", overlayNetworkFlag, overlayNetwork)
+	}
+
+	if !overlay.Contains(subnet.IP) {
+		log.Fatalf("overlay network does not contain local subnet")
+	}
+
 	routes := rata.Routes{
 		{Name: "list_containers", Method: "GET", Path: "/containers"},
 		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
@@ -93,20 +107,6 @@ func main() {
 		Logger: logger,
 	}
 	rataHandlers["delete_container"] = deleteHandler
-
-	_, subnet, err := net.ParseCIDR(localSubnet)
-	if err != nil {
-		log.Fatalf("invalid CIDR provided for %q: %s", localSubnetFlag, localSubnet)
-	}
-
-	_, overlay, err := net.ParseCIDR(overlayNetwork)
-	if err != nil {
-		log.Fatalf("invalid CIDR provided for %q: %s", overlayNetworkFlag, overlayNetwork)
-	}
-
-	if !overlay.Contains(subnet.IP) {
-		log.Fatalf("overlay network does not contain local subnet")
-	}
 
 	configFactory := &ipam.ConfigFactory{
 		Config: types.IPConfig{
