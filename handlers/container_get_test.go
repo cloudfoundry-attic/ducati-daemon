@@ -29,7 +29,7 @@ var _ = Describe("Get", func() {
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
 		logger = &fakes.Logger{}
-		getHandler := &handlers.GetHandler{
+		getHandler := &handlers.ContainerGet{
 			Store:     dataStore,
 			Marshaler: marshaler,
 			Logger:    logger,

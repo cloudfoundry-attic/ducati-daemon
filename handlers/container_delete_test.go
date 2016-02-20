@@ -27,7 +27,7 @@ var _ = Describe("Delete", func() {
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
 		logger = &fakes.Logger{}
-		deleteHandler := &handlers.DeleteHandler{
+		deleteHandler := &handlers.ContainerDelete{
 			Store:  dataStore,
 			Logger: logger,
 		}

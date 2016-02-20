@@ -10,13 +10,13 @@ type marshaler interface {
 	Marshal(input interface{}) ([]byte, error)
 }
 
-type ListHandler struct {
+type ContainersList struct {
 	Store     store.Store
 	Marshaler marshaler
 	Logger    Logger
 }
 
-func (h *ListHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (h *ContainersList) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	containers, err := h.Store.All()
 	if err != nil {
 		h.Logger.Error("store-list", err)

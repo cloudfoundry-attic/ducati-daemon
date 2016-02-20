@@ -70,25 +70,25 @@ func main() {
 	logger := lager.NewLogger("ducati-d")
 	rataHandlers := rata.Handlers{}
 
-	rataHandlers["list_containers"] = &handlers.ListHandler{
+	rataHandlers["containers_list"] = &handlers.ContainersList{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 		Logger:    logger,
 	}
 
-	rataHandlers["add_container"] = &handlers.PostHandler{
+	rataHandlers["container_create"] = &handlers.ContainerCreate{
 		Store:       dataStore,
 		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
 		Logger:      logger,
 	}
 
-	rataHandlers["get_container"] = &handlers.GetHandler{
+	rataHandlers["container_get"] = &handlers.ContainerGet{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 		Logger:    logger,
 	}
 
-	rataHandlers["delete_container"] = &handlers.DeleteHandler{
+	rataHandlers["container_delete"] = &handlers.ContainerDelete{
 		Store:  dataStore,
 		Logger: logger,
 	}
@@ -109,25 +109,25 @@ func main() {
 		&sync.Mutex{},
 	)
 
-	rataHandlers["allocate_ip"] = &handlers.AllocateIPHandler{
+	rataHandlers["ipam_allocate"] = &handlers.IPAMAllocate{
 		IPAllocator: ipAllocator,
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
 		Logger:      logger,
 	}
 
-	rataHandlers["release_ip"] = &handlers.ReleaseIPHandler{
+	rataHandlers["ipam_release"] = &handlers.IPAMRelease{
 		IPAllocator: ipAllocator,
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
 		Logger:      logger,
 	}
 
 	routes := rata.Routes{
-		{Name: "list_containers", Method: "GET", Path: "/containers"},
-		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
-		{Name: "add_container", Method: "POST", Path: "/containers"},
-		{Name: "delete_container", Method: "DELETE", Path: "/containers/:container_id"},
-		{Name: "allocate_ip", Method: "POST", Path: "/ipam/:network_id/:container_id"},
-		{Name: "release_ip", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
+		{Name: "containers_list", Method: "GET", Path: "/containers"},
+		{Name: "container_get", Method: "GET", Path: "/containers/:container_id"},
+		{Name: "container_create", Method: "POST", Path: "/containers"},
+		{Name: "container_delete", Method: "DELETE", Path: "/containers/:container_id"},
+		{Name: "ipam_allocate", Method: "POST", Path: "/ipam/:network_id/:container_id"},
+		{Name: "ipam_release", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
 	}
 
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)

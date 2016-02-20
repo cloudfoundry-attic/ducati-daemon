@@ -15,13 +15,13 @@ type ipAllocator interface {
 	ReleaseIP(networkID, containerID string) error
 }
 
-type AllocateIPHandler struct {
+type IPAMAllocate struct {
 	Marshaler   marshaler
 	Logger      Logger
 	IPAllocator ipAllocator
 }
 
-func (h *AllocateIPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (h *IPAMAllocate) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	h.Logger.Debug("handling allocate request")
 	networkID := rata.Param(req, "network_id")
 	containerID := rata.Param(req, "container_id")

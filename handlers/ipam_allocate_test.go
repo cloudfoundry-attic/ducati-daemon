@@ -50,7 +50,7 @@ var _ = Describe("Allocate IP", func() {
 
 		ipAllocator = &fakes.IPAllocator{}
 
-		allocateIPHandler := &handlers.AllocateIPHandler{
+		allocateIPHandler := &handlers.IPAMAllocate{
 			Marshaler:   marshaler,
 			IPAllocator: ipAllocator,
 			Logger:      logger,

@@ -17,7 +17,7 @@ import (
 
 var _ = Describe("Post", func() {
 	var dataStore *fakes.Store
-	var handler *handlers.PostHandler
+	var handler *handlers.ContainerCreate
 	var request *http.Request
 	var container models.Container
 	var unmarshaler *fakes.Unmarshaler
@@ -30,7 +30,7 @@ var _ = Describe("Post", func() {
 		unmarshaler = &fakes.Unmarshaler{}
 		unmarshaler.UnmarshalStub = json.Unmarshal
 
-		handler = &handlers.PostHandler{
+		handler = &handlers.ContainerCreate{
 			Store:       dataStore,
 			Unmarshaler: unmarshaler,
 			Logger:      logger,

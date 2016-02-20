@@ -16,13 +16,13 @@ type unmarshaler interface {
 	Unmarshal(input []byte, output interface{}) error
 }
 
-type PostHandler struct {
+type ContainerCreate struct {
 	Store       storeCreator
 	Unmarshaler unmarshaler
 	Logger      Logger
 }
 
-func (h *PostHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (h *ContainerCreate) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	requestBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)

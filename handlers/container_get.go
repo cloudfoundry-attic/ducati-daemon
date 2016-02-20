@@ -8,13 +8,13 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-type GetHandler struct {
+type ContainerGet struct {
 	Store     store.Store
 	Marshaler marshaler
 	Logger    Logger
 }
 
-func (h *GetHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (h *ContainerGet) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	id := rata.Param(req, "container_id")
 
 	container, err := h.Store.Get(id)

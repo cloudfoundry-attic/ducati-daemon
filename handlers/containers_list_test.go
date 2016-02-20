@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("List", func() {
 	var dataStore *fakes.Store
-	var handler *handlers.ListHandler
+	var handler *handlers.ContainersList
 	var marshaler *fakes.Marshaler
 	var containers []models.Container
 	var logger *fakes.Logger
@@ -26,7 +26,7 @@ var _ = Describe("List", func() {
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
 		logger = &fakes.Logger{}
-		handler = &handlers.ListHandler{
+		handler = &handlers.ContainersList{
 			Store:     dataStore,
 			Marshaler: marshaler,
 			Logger:    logger,

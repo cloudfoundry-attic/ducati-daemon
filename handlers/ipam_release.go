@@ -6,13 +6,13 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-type ReleaseIPHandler struct {
+type IPAMRelease struct {
 	Logger      Logger
 	Marshaler   marshaler
 	IPAllocator ipAllocator
 }
 
-func (h *ReleaseIPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (h *IPAMRelease) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	networkID := rata.Param(req, "network_id")
 	containerID := rata.Param(req, "container_id")
 

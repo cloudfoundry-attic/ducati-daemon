@@ -28,7 +28,7 @@ var _ = Describe("Release IP", func() {
 
 		ipAllocator = &fakes.IPAllocator{}
 
-		releaseIPHandler := &handlers.ReleaseIPHandler{
+		releaseIPHandler := &handlers.IPAMRelease{
 			Marshaler:   marshaler,
 			IPAllocator: ipAllocator,
 			Logger:      logger,

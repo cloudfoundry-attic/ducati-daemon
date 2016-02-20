@@ -7,12 +7,12 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-type DeleteHandler struct {
+type ContainerDelete struct {
 	Store  store.Store
 	Logger Logger
 }
 
-func (h *DeleteHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (h *ContainerDelete) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	id := rata.Param(req, "container_id")
 
 	err := h.Store.Delete(id)
