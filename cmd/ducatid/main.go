@@ -66,47 +66,32 @@ func main() {
 		log.Fatalf("overlay network does not contain local subnet")
 	}
 
-	routes := rata.Routes{
-		{Name: "list_containers", Method: "GET", Path: "/containers"},
-		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
-		{Name: "add_container", Method: "POST", Path: "/containers"},
-		{Name: "delete_container", Method: "DELETE", Path: "/containers/:container_id"},
-		{Name: "allocate_ip", Method: "POST", Path: "/ipam/:network_id/:container_id"},
-		{Name: "release_ip", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
-	}
-
 	dataStore := store.New()
-
 	logger := lager.NewLogger("ducati-d")
-
 	rataHandlers := rata.Handlers{}
 
-	listHandler := &handlers.ListHandler{
+	rataHandlers["list_containers"] = &handlers.ListHandler{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 		Logger:    logger,
 	}
-	rataHandlers["list_containers"] = listHandler
 
-	postHandler := &handlers.PostHandler{
+	rataHandlers["add_container"] = &handlers.PostHandler{
 		Store:       dataStore,
 		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
 		Logger:      logger,
 	}
-	rataHandlers["add_container"] = postHandler
 
-	getHandler := &handlers.GetHandler{
+	rataHandlers["get_container"] = &handlers.GetHandler{
 		Store:     dataStore,
 		Marshaler: marshal.MarshalFunc(json.Marshal),
 		Logger:    logger,
 	}
-	rataHandlers["get_container"] = getHandler
 
-	deleteHandler := &handlers.DeleteHandler{
+	rataHandlers["delete_container"] = &handlers.DeleteHandler{
 		Store:  dataStore,
 		Logger: logger,
 	}
-	rataHandlers["delete_container"] = deleteHandler
 
 	configFactory := &ipam.ConfigFactory{
 		Config: types.IPConfig{
@@ -124,19 +109,26 @@ func main() {
 		&sync.Mutex{},
 	)
 
-	allocateIPHandler := &handlers.AllocateIPHandler{
+	rataHandlers["allocate_ip"] = &handlers.AllocateIPHandler{
 		IPAllocator: ipAllocator,
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
 		Logger:      logger,
 	}
-	rataHandlers["allocate_ip"] = allocateIPHandler
 
-	releaseIPHandler := &handlers.ReleaseIPHandler{
+	rataHandlers["release_ip"] = &handlers.ReleaseIPHandler{
 		IPAllocator: ipAllocator,
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
 		Logger:      logger,
 	}
-	rataHandlers["release_ip"] = releaseIPHandler
+
+	routes := rata.Routes{
+		{Name: "list_containers", Method: "GET", Path: "/containers"},
+		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
+		{Name: "add_container", Method: "POST", Path: "/containers"},
+		{Name: "delete_container", Method: "DELETE", Path: "/containers/:container_id"},
+		{Name: "allocate_ip", Method: "POST", Path: "/ipam/:network_id/:container_id"},
+		{Name: "release_ip", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
+	}
 
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)
 	if err != nil {
