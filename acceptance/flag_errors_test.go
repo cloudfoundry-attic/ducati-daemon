@@ -1,10 +1,10 @@
 package acceptance_test
 
 import (
-	"fmt"
 	"os/exec"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -17,14 +17,9 @@ func startDaemon(args ...string) (*gexec.Session, error) {
 
 var _ = Describe("Ducati Daemon Flag Validation", func() {
 	var (
-		address string
 		session *gexec.Session
 		err     error
 	)
-
-	BeforeEach(func() {
-		address = fmt.Sprintf("127.0.0.1:%d", 4001+GinkgoParallelNode())
-	})
 
 	AfterEach(func() {
 		if session != nil {
@@ -33,63 +28,30 @@ var _ = Describe("Ducati Daemon Flag Validation", func() {
 		}
 	})
 
-	Context("when the listenAddr flag is missing", func() {
-		It("fails to start and provides a meaninful error", func() {
-			session, err = startDaemon("-localSubnet=192.168.3.0/16", "-overlayNetwork=192.168.0.0/16")
+	DescribeTable("flag errors",
+		func(expectedError string, flags ...string) {
+			session, err = startDaemon(flags...)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(session).Should(gexec.Exit(1))
-			Expect(session.Err).To(gbytes.Say(`missing required flag "listenAddr"`))
-		})
-	})
+			Expect(session.Err).To(gbytes.Say(expectedError))
+		},
+		Entry("missing listenAddr", `missing required flag "listenAddr"`,
+			"-localSubnet=192.168.3.0/16", "-overlayNetwork=192.168.0.0/16"),
 
-	Context("when the overlayNetwork flag is missing", func() {
-		It("fails to start and provides a meaninful error", func() {
-			session, err = startDaemon("-listenAddr", address, "-localSubnet=192.168.3.0/16")
-			Expect(err).NotTo(HaveOccurred())
+		Entry("missing overlayNetwork flag", `missing required flag "listenAddr"`,
+			"-localSubnet=192.168.3.0/16", "-overlayNetwork=192.168.0.0/16"),
 
-			Eventually(session).Should(gexec.Exit(1))
-			Expect(session.Err).To(gbytes.Say(`missing required flag "overlayNetwork"`))
-		})
-	})
+		Entry("missing localSubnet flag", `missing required flag "localSubnet"`,
+			"-listenAddr=some-listen-address", "-overlayNetwork=192.168.3.0/16"),
 
-	Context("when the localSubnet flag is missing", func() {
-		It("fails to start and provides a meaninful error", func() {
-			session, err = startDaemon("-listenAddr", address, "-overlayNetwork=192.168.3.0/16")
-			Expect(err).NotTo(HaveOccurred())
+		Entry("overlayNetwork does not container localSubnet", `overlay network does not contain local subnet`,
+			"-listenAddr=some-listen-address", "-overlayNetwork=192.168.3.0/24", "-localSubnet=192.168.4.0/24"),
 
-			Eventually(session).Should(gexec.Exit(1))
-			Expect(session.Err).To(gbytes.Say(`missing required flag "localSubnet"`))
-		})
-	})
+		Entry("localSubnet is not a valid CIDR", `invalid CIDR provided for "localSubnet": gobbledygook`,
+			"-listenAddr=some-listen-address", "-overlayNetwork=192.168.3.0/24", "-localSubnet=gobbledygook"),
 
-	Context("when the overlayNetwork does not contain localSubnet", func() {
-		It("fails to start and provides a meaninful error", func() {
-			session, err = startDaemon("-listenAddr", address, "-overlayNetwork=192.168.3.0/24", "-localSubnet=192.168.4.0/24")
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(session).Should(gexec.Exit(1))
-			Expect(session.Err).To(gbytes.Say(`overlay network does not contain local subnet`))
-		})
-	})
-
-	Context("when localSubnet is not a valid CIDR", func() {
-		It("fails to start and provides a meaninful error", func() {
-			session, err = startDaemon("-listenAddr", address, "-overlayNetwork=192.168.3.0/24", "-localSubnet=gobbledygook")
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(session).Should(gexec.Exit(1))
-			Expect(session.Err).To(gbytes.Say(`invalid CIDR provided for "localSubnet": gobbledygook`))
-		})
-	})
-
-	Context("when overlayNetwork is not a valid CIDR", func() {
-		It("fails to start and provides a meaninful error", func() {
-			session, err = startDaemon("-listenAddr", address, "-overlayNetwork=gobbledygook", "-localSubnet=192.168.1.0/24")
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(session).Should(gexec.Exit(1))
-			Expect(session.Err).To(gbytes.Say(`invalid CIDR provided for "overlayNetwork": gobbledygook`))
-		})
-	})
+		Entry("overlayNetwork is not a valid CIDR", `invalid CIDR provided for "overlayNetwork": gobbledygook`,
+			"-listenAddr=some-listen-address", "-overlayNetwork=gobbledygook", "-localSubnet=192.168.1.0/24"),
+	)
 })
