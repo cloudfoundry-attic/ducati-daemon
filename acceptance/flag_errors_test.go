@@ -2,6 +2,7 @@ package acceptance_test
 
 import (
 	"os/exec"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -15,11 +16,39 @@ func startDaemon(args ...string) (*gexec.Session, error) {
 	return gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 }
 
+func replaceFlag(src []string, key string, newValue string) []string {
+	replaced := []string{}
+	didReplace := false
+	for _, element := range src {
+		if strings.HasPrefix(element, "-"+key+"=") {
+			replaced = append(replaced, "-"+key+"="+newValue)
+			didReplace = true
+		} else {
+			replaced = append(replaced, element)
+		}
+	}
+
+	if !didReplace {
+		Fail("test setup error: didn't find expected flag")
+	}
+
+	return replaced
+}
+
 var _ = Describe("Ducati Daemon Flag Validation", func() {
 	var (
 		session *gexec.Session
 		err     error
+		flags   []string
 	)
+
+	BeforeEach(func() {
+		flags = []string{
+			"-listenAddr=some-listen-address",
+			"-overlayNetwork=192.168.0.0/16",
+			"-localSubnet=192.168.0.1/24",
+		}
+	})
 
 	AfterEach(func() {
 		if session != nil {
@@ -29,29 +58,31 @@ var _ = Describe("Ducati Daemon Flag Validation", func() {
 	})
 
 	DescribeTable("flag errors",
-		func(expectedError string, flags ...string) {
-			session, err = startDaemon(flags...)
+		func(expectedError, flagKey, flagValue string) {
+			brokenFlags := replaceFlag(flags, flagKey, flagValue)
+			session, err = startDaemon(brokenFlags...)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(session).Should(gexec.Exit(1))
 			Expect(session.Err).To(gbytes.Say(expectedError))
 		},
-		Entry("missing listenAddr", `missing required flag "listenAddr"`,
-			"-localSubnet=192.168.3.0/16", "-overlayNetwork=192.168.0.0/16"),
 
-		Entry("missing overlayNetwork flag", `missing required flag "listenAddr"`,
-			"-localSubnet=192.168.3.0/16", "-overlayNetwork=192.168.0.0/16"),
+		Entry("missing listenAddr",
+			`missing required flag "listenAddr"`, "listenAddr", ""),
 
-		Entry("missing localSubnet flag", `missing required flag "localSubnet"`,
-			"-listenAddr=some-listen-address", "-overlayNetwork=192.168.3.0/16"),
+		Entry("missing overlayNetwork flag",
+			`missing required flag "overlayNetwork"`, "overlayNetwork", ""),
 
-		Entry("overlayNetwork does not container localSubnet", `overlay network does not contain local subnet`,
-			"-listenAddr=some-listen-address", "-overlayNetwork=192.168.3.0/24", "-localSubnet=192.168.4.0/24"),
+		Entry("missing localSubnet flag",
+			`missing required flag "localSubnet"`, "localSubnet", ""),
 
-		Entry("localSubnet is not a valid CIDR", `invalid CIDR provided for "localSubnet": gobbledygook`,
-			"-listenAddr=some-listen-address", "-overlayNetwork=192.168.3.0/24", "-localSubnet=gobbledygook"),
+		Entry("overlayNetwork does not contain localSubnet",
+			`overlay network does not contain local subnet`, "overlayNetwork", "192.168.3.0/28"),
 
-		Entry("overlayNetwork is not a valid CIDR", `invalid CIDR provided for "overlayNetwork": gobbledygook`,
-			"-listenAddr=some-listen-address", "-overlayNetwork=gobbledygook", "-localSubnet=192.168.1.0/24"),
+		Entry("localSubnet is not a valid CIDR",
+			`invalid CIDR provided for "localSubnet": gobbledygook`, "localSubnet", "gobbledygook"),
+
+		Entry("overlayNetwork is not a valid CIDR",
+			`invalid CIDR provided for "overlayNetwork": gobbledygook`, "overlayNetwork", "gobbledygook"),
 	)
 })
