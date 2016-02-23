@@ -28,7 +28,7 @@ var _ = Describe("Main", func() {
 			"-listenAddr", address,
 			"-overlayNetwork", "192.168.0.0/16",
 			"-localSubnet", "192.168.99.0/24",
-			"-databaseURL", databaseURL,
+			"-databaseURL", testDatabase.URL(),
 		)
 		var err error
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
