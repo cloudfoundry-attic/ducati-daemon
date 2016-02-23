@@ -68,7 +68,30 @@ func main() {
 
 	dataStore := store.New()
 	logger := lager.NewLogger("ducati-d")
+
+	configFactory := &ipam.ConfigFactory{
+		Config: types.IPConfig{
+			IP: *subnet,
+			Routes: []types.Route{{
+				Dst: *overlay,
+			}},
+		},
+	}
+
+	ipAllocator := ipam.New(
+		&ipam.StoreFactory{},
+		&sync.Mutex{},
+		configFactory,
+		&sync.Mutex{},
+	)
+
 	rataHandlers := rata.Handlers{}
+
+	// addressManager := &ip.AddressManager{Netlinker: nl.Netlink}
+	// routeManager := &ip.RouteManager{Netlinker: nl.Netlink}
+	// linkFactory := &links.Factory{Netlinker: nl.Netlink}
+
+	// executor := executor.New(addressManager, routeManager, linkFactory)
 
 	rataHandlers["containers_list"] = &handlers.ContainersList{
 		Store:     dataStore,
@@ -93,22 +116,6 @@ func main() {
 		Logger: logger,
 	}
 
-	configFactory := &ipam.ConfigFactory{
-		Config: types.IPConfig{
-			IP: *subnet,
-			Routes: []types.Route{{
-				Dst: *overlay,
-			}},
-		},
-	}
-
-	ipAllocator := ipam.New(
-		&ipam.StoreFactory{},
-		&sync.Mutex{},
-		configFactory,
-		&sync.Mutex{},
-	)
-
 	rataHandlers["ipam_allocate"] = &handlers.IPAMAllocate{
 		IPAllocator: ipAllocator,
 		Marshaler:   marshal.MarshalFunc(json.Marshal),
@@ -121,6 +128,19 @@ func main() {
 		Logger:      logger,
 	}
 
+	rataHandlers["networks_list_containers"] = &handlers.NetworksListContainers{
+		Marshaler: marshal.MarshalFunc(json.Marshal),
+		Logger:    logger,
+		Datastore: dataStore,
+	}
+
+	// rataHandlers["networks_setup_container"] = &handlers.NetworksSetupContainer{
+	// 	Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
+	// 	Logger:      logger,
+	// 	Datastore:   dataStore,
+	// 	Executor:    executor,
+	// }
+
 	routes := rata.Routes{
 		{Name: "containers_list", Method: "GET", Path: "/containers"},
 		{Name: "container_get", Method: "GET", Path: "/containers/:container_id"},
@@ -128,6 +148,8 @@ func main() {
 		{Name: "container_delete", Method: "DELETE", Path: "/containers/:container_id"},
 		{Name: "ipam_allocate", Method: "POST", Path: "/ipam/:network_id/:container_id"},
 		{Name: "ipam_release", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
+		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
+		// {Name: "networks_setup_container", Method: "POST", Path: "/networks/:network_id/:container_id"},
 	}
 
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)

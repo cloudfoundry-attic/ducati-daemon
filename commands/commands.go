@@ -24,15 +24,13 @@ type Condition interface {
 }
 
 func All(commands ...Command) Command {
-	return all{commands: commands}
+	return Group(commands)
 }
 
-type all struct {
-	commands []Command
-}
+type Group []Command
 
-func (a all) Execute(context Context) error {
-	for _, c := range a.commands {
+func (g Group) Execute(context Context) error {
+	for _, c := range g {
 		if err := c.Execute(context); err != nil {
 			return err
 		}

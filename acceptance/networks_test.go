@@ -52,8 +52,8 @@ var _ = XDescribe("Networks", func() {
 		return err
 	}
 
-	It("should respond to GET /networks/:network_id/containers with a list of container ids", func() {
-		listURL := fmt.Sprintf("http://%s/%s", address, networkID)
+	It("should respond to GET /networks/:network_id with a list of container ids", func() {
+		listURL := fmt.Sprintf("http://%s/networks/%s", address, networkID)
 
 		Eventually(serverIsAvailable).Should(Succeed())
 
@@ -61,56 +61,52 @@ var _ = XDescribe("Networks", func() {
 		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()
 
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
 		jsonBytes, err := ioutil.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(jsonBytes).To(MatchJSON("[]"))
 	})
 
-	Context("when there are containers in a network", func() {
-		var listURL string
-		var addedContainers []models.Container
+	It("should respond to POST /networks/:network_id/:container_id", func() {
+		Eventually(serverIsAvailable).Should(Succeed())
 
-		BeforeEach(func() {
-			listURL = fmt.Sprintf("http://%s/%s", address, networkID)
+		By("creating a set of containers")
+		addedContainers := []models.Container{
+			{ID: "container-0-id"},
+			{ID: "container-1-id"},
+		}
 
-			Eventually(serverIsAvailable).Should(Succeed())
+		for _, container := range addedContainers {
+			containerJSON, err := json.Marshal(container)
+			Expect(err).NotTo(HaveOccurred())
 
-			addedContainers = []models.Container{
-				{ID: "container-0-id"},
-				{ID: "container-1-id"},
-			}
+			createURL := fmt.Sprintf("http://%s/networks/%s/%s", address, networkID, containerID)
 
-			for _, container := range addedContainers {
-				containerJSON, err := json.Marshal(container)
-				Expect(err).NotTo(HaveOccurred())
+			req, err := http.NewRequest("POST", createURL, bytes.NewReader(containerJSON))
+			Expect(err).NotTo(HaveOccurred())
 
-				createURL := fmt.Sprintf("http://%s/%s/%s", address, networkID, containerID)
-
-				req, err := http.NewRequest("POST", createURL, bytes.NewReader(containerJSON))
-				Expect(err).NotTo(HaveOccurred())
-
-				resp, err := http.DefaultClient.Do(req)
-				Expect(err).NotTo(HaveOccurred())
-				defer resp.Body.Close()
-
-				Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-			}
-		})
-
-		It("can get a list of containers", func() {
-			resp, err := http.Get(listURL)
+			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
-			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+		}
 
-			jsonBytes, err := ioutil.ReadAll(resp.Body)
-			Expect(err).NotTo(HaveOccurred())
+		By("getting the newly created containers")
+		listURL := fmt.Sprintf("http://%s/%s", address, networkID)
+		resp, err := http.Get(listURL)
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
 
-			var containers []models.Container
-			err = json.Unmarshal(jsonBytes, &containers)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(containers).To(ConsistOf(addedContainers))
-		})
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+		jsonBytes, err := ioutil.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		var containers []models.Container
+		err = json.Unmarshal(jsonBytes, &containers)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(containers).To(ConsistOf(addedContainers))
 	})
 })
