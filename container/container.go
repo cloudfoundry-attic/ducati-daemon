@@ -34,6 +34,11 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	sandboxNS := namespace.NewNamespace(config.SandboxNsPath)
 	containerNS := namespace.NewNamespace(config.ContainerNsPath)
 
+	sandboxLinkName := config.ContainerID
+	if len(sandboxLinkName) > 15 {
+		sandboxLinkName = sandboxLinkName[:15]
+	}
+
 	var routeCommands []commands.Command
 	for _, route := range config.IPAMResult.IP4.Routes {
 		routeCommand := commands.AddRoute{
@@ -80,30 +85,35 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 			},
 			commands.InNamespace{
 				Namespace: containerNS,
-				Command: commands.Group(append([]commands.Command{
-					commands.CreateVeth{
-						Name:     config.InterfaceName,
-						PeerName: config.ContainerID,
-						MTU:      1450,
-					},
-					commands.SetLinkNamespace{
-						Name:      config.ContainerID,
-						Namespace: sandboxNS.Path(),
-					},
-					commands.AddAddress{
-						InterfaceName: config.InterfaceName,
-						Address:       config.IPAMResult.IP4.IP,
-					},
-					commands.SetLinkUp{
-						LinkName: config.InterfaceName,
-					},
-				}, routeCommands...)),
+				Command: commands.Group(
+					append(
+						[]commands.Command{
+							commands.CreateVeth{
+								Name:     config.InterfaceName,
+								PeerName: sandboxLinkName,
+								MTU:      1450,
+							},
+							commands.SetLinkNamespace{
+								Name:      sandboxLinkName,
+								Namespace: sandboxNS.Path(),
+							},
+							commands.AddAddress{
+								InterfaceName: config.InterfaceName,
+								Address:       config.IPAMResult.IP4.IP,
+							},
+							commands.SetLinkUp{
+								LinkName: config.InterfaceName,
+							},
+						},
+						routeCommands...,
+					),
+				),
 			},
 			commands.InNamespace{
 				Namespace: sandboxNS,
 				Command: commands.All(
 					commands.SetLinkUp{
-						LinkName: config.ContainerID,
+						LinkName: sandboxLinkName,
 					},
 					commands.Unless{
 						Condition: conditions.LinkExists{
@@ -132,7 +142,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 					},
 					commands.SetLinkMaster{
 						Master: config.BridgeName,
-						Slave:  config.ContainerID,
+						Slave:  sandboxLinkName,
 					},
 				),
 			},

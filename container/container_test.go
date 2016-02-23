@@ -124,11 +124,12 @@ var _ = Describe("Setup", func() {
 				},
 				commands.InNamespace{
 					Namespace: namespace.NewNamespace("/some/container/namespace"),
-					Command: commands.Group{commands.CreateVeth{
-						Name:     "container-link",
-						PeerName: "sandbox-link",
-						MTU:      1450,
-					},
+					Command: commands.Group{
+						commands.CreateVeth{
+							Name:     "container-link",
+							PeerName: "sandbox-link",
+							MTU:      1450,
+						},
 						commands.SetLinkNamespace{
 							Name:      "sandbox-link",
 							Namespace: "/some/sandbox/namespace",
@@ -200,6 +201,135 @@ var _ = Describe("Setup", func() {
 				},
 			),
 		))
+	})
+
+	Context("when the container ID is longer than 15 characters", func() {
+		BeforeEach(func() {
+			config = container.CreatorConfig{
+				SandboxNsPath:   "/some/sandbox/namespace",
+				ContainerNsPath: "/some/container/namespace",
+				ContainerID:     "1234567890123456",
+				InterfaceName:   "container-link",
+				BridgeName:      "vxlan-br0",
+				VNI:             99,
+				IPAMResult:      ipamResult,
+			}
+		})
+
+		It("truncates the sandbox link name", func() {
+			_, err := creator.Setup(config)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(executor.ExecuteCallCount()).To(Equal(2))
+			Expect(executor.ExecuteArgsForCall(0)).To(BeEquivalentTo(
+				commands.All(
+					commands.InNamespace{
+						Namespace: namespace.NewNamespace("/some/sandbox/namespace"),
+						Command: commands.Unless{
+							Condition: conditions.LinkExists{
+								LinkFinder: linkFinder,
+								Name:       "vxlan99",
+							},
+							Command: commands.All(
+								commands.InNamespace{
+									Namespace: namespace.NewNamespace("/proc/self/ns/net"),
+									Command: commands.All(
+										commands.CreateVxlan{
+											Name: "vxlan99",
+											VNI:  99,
+										},
+										commands.SetLinkNamespace{
+											Namespace: "/some/sandbox/namespace",
+											Name:      "vxlan99",
+										},
+									),
+								},
+								commands.SetLinkUp{
+									LinkName: "vxlan99",
+								},
+							),
+						},
+					},
+					commands.InNamespace{
+						Namespace: namespace.NewNamespace("/some/container/namespace"),
+						Command: commands.Group{
+							commands.CreateVeth{
+								Name:     "container-link",
+								PeerName: "123456789012345",
+								MTU:      1450,
+							},
+							commands.SetLinkNamespace{
+								Name:      "123456789012345",
+								Namespace: "/some/sandbox/namespace",
+							},
+							commands.AddAddress{
+								InterfaceName: "container-link",
+								Address: net.IPNet{
+									IP:   net.ParseIP("192.168.100.2"),
+									Mask: net.CIDRMask(24, 32),
+								},
+							},
+							commands.SetLinkUp{
+								LinkName: "container-link",
+							},
+							commands.AddRoute{
+								Interface: "container-link",
+								Destination: net.IPNet{
+									IP:   net.ParseIP("192.168.1.5"),
+									Mask: net.CIDRMask(24, 32),
+								},
+								Gateway: net.ParseIP("192.168.1.1"),
+							},
+							commands.AddRoute{
+								Interface: "container-link",
+								Destination: net.IPNet{
+									IP:   net.ParseIP("192.168.2.5"),
+									Mask: net.CIDRMask(24, 32),
+								},
+								Gateway: net.ParseIP("192.168.1.99"),
+							},
+						},
+					},
+					commands.InNamespace{
+						Namespace: namespace.NewNamespace("/some/sandbox/namespace"),
+						Command: commands.All(
+							commands.SetLinkUp{
+								LinkName: "123456789012345",
+							},
+							commands.Unless{
+								Condition: conditions.LinkExists{
+									LinkFinder: linkFinder,
+									Name:       "vxlan-br0",
+								},
+								Command: commands.All(
+									commands.CreateBridge{
+										Name: "vxlan-br0",
+									},
+									commands.AddAddress{
+										InterfaceName: "vxlan-br0",
+										Address: net.IPNet{
+											IP:   net.ParseIP("192.168.100.1"),
+											Mask: net.CIDRMask(24, 32),
+										},
+									},
+									commands.SetLinkUp{
+										LinkName: "vxlan-br0",
+									},
+								),
+							},
+							commands.SetLinkMaster{
+								Master: "vxlan-br0",
+								Slave:  "vxlan99",
+							},
+							commands.SetLinkMaster{
+								Master: "vxlan-br0",
+								Slave:  "123456789012345",
+							},
+						),
+					},
+				),
+			))
+		})
 	})
 
 	Context("when an error occurs", func() {
