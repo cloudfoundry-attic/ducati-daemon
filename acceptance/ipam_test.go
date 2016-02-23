@@ -23,7 +23,13 @@ var _ = Describe("IP Address Management", func() {
 
 	BeforeEach(func() {
 		address = fmt.Sprintf("127.0.0.1:%d", 4001+GinkgoParallelNode())
-		ducatiCmd := exec.Command(ducatidPath, "-listenAddr", address, "-overlayNetwork", "192.168.0.0/16", "-localSubnet", "192.168.3.0/30")
+		ducatiCmd := exec.Command(
+			ducatidPath,
+			"-listenAddr", address,
+			"-overlayNetwork", "192.168.0.0/16",
+			"-localSubnet", "192.168.3.0/30",
+			"-databaseURL", databaseURL,
+		)
 		var err error
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())

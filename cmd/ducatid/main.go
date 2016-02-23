@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/db"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
@@ -24,15 +25,18 @@ import (
 var address string
 var overlayNetwork string
 var localSubnet string
+var databaseURL string
 
 const addressFlag = "listenAddr"
 const overlayNetworkFlag = "overlayNetwork"
 const localSubnetFlag = "localSubnet"
+const databaseURLFlag = "databaseURL"
 
 func parseFlags() {
 	flag.StringVar(&address, addressFlag, "", "")
 	flag.StringVar(&overlayNetwork, overlayNetworkFlag, "", "")
 	flag.StringVar(&localSubnet, localSubnetFlag, "", "")
+	flag.StringVar(&databaseURL, databaseURLFlag, "", "")
 
 	flag.Parse()
 
@@ -47,6 +51,18 @@ func parseFlags() {
 	if localSubnet == "" {
 		log.Fatalf("missing required flag %q", localSubnetFlag)
 	}
+
+	if databaseURL == "" {
+		log.Fatalf("missing required flag %q", databaseURLFlag)
+	}
+}
+
+func pingDatabase(databaseURL string) error {
+	dbConnectionPool, err := db.OpenPool(databaseURL)
+	if err != nil {
+		return err
+	}
+	return dbConnectionPool.Ping()
 }
 
 func main() {
@@ -64,6 +80,10 @@ func main() {
 
 	if !overlay.Contains(subnet.IP) {
 		log.Fatalf("overlay network does not contain local subnet")
+	}
+
+	if err := pingDatabase(databaseURL); err != nil {
+		log.Fatalf("unable to ping database: %s", err)
 	}
 
 	dataStore := store.New()
