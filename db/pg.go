@@ -1,14 +1,14 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
-func GetConnectionPool(databaseConfig string) (*sql.DB, error) {
-	dbConn, err := sql.Open("postgres", databaseConfig)
+func GetConnectionPool(databaseConfig string) (*sqlx.DB, error) {
+	dbConn, err := sqlx.Open("postgres", databaseConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open database connection: %s", err)
 	}

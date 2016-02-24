@@ -1,7 +1,6 @@
 package store_test
 
 import (
-	"database/sql"
 	"fmt"
 	"math/rand"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
+	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -16,7 +16,7 @@ import (
 var _ = Describe("Store", func() {
 	var dataStore store.Store
 	var testDatabase *testsupport.TestDatabase
-	var dbConnectionPool *sql.DB
+	var dbConnectionPool *sqlx.DB
 
 	BeforeEach(func() {
 		dbName := fmt.Sprintf("test_database_%x", rand.Intn(1000))
@@ -36,6 +36,15 @@ var _ = Describe("Store", func() {
 		if testDatabase != nil {
 			testDatabase.Destroy()
 		}
+	})
+
+	Describe("Connecting to the database and migrating", func() {
+		Context("when the tables already exist", func() {
+			It("succeeds", func() {
+				_, err := store.New(dbConnectionPool)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
 	})
 
 	Describe("Create", func() {

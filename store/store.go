@@ -1,12 +1,22 @@
 package store
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
+
+const schema = `
+CREATE TABLE IF NOT EXISTS container (
+   id text,
+   ip text,
+   mac text,
+   host_ip text
+);
+`
 
 //go:generate counterfeiter -o ../fakes/store.go --fake-name Store . Store
 type Store interface {
@@ -21,10 +31,10 @@ var RecordExistsError = errors.New("record already exists")
 
 type store struct {
 	containers map[string]models.Container
-	conn       *sql.DB
+	conn       *sqlx.DB
 }
 
-func New(dbConnectionPool *sql.DB) (Store, error) {
+func New(dbConnectionPool *sqlx.DB) (Store, error) {
 	err := setupTables(dbConnectionPool)
 	if err != nil {
 		return nil, fmt.Errorf("unable to setup tables: %s", err)
@@ -73,6 +83,7 @@ func (s *store) Delete(id string) error {
 	return nil
 }
 
-func setupTables(dbConnectionPool *sql.DB) error {
-	return nil
+func setupTables(dbConnectionPool *sqlx.DB) error {
+	_, err := dbConnectionPool.Exec(schema)
+	return err
 }
