@@ -79,7 +79,11 @@ func main() {
 		log.Fatalf("db connect: %s", err)
 	}
 
-	dataStore := store.New(dbConnectionPool)
+	dataStore, err := store.New(dbConnectionPool)
+	if err != nil {
+		log.Fatalf("failed to construct datastore: %s", err)
+	}
+
 	logger := lager.NewLogger("ducati-d")
 
 	configFactory := &ipam.ConfigFactory{

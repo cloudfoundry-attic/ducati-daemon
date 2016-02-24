@@ -25,7 +25,8 @@ var _ = Describe("Store", func() {
 		var err error
 		dbConnectionPool, err = db.GetConnectionPool(testDatabase.URL())
 		Expect(err).NotTo(HaveOccurred())
-		dataStore = store.New(dbConnectionPool)
+		dataStore, err = store.New(dbConnectionPool)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {

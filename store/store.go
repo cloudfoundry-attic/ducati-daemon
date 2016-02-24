@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 )
@@ -20,12 +21,18 @@ var RecordExistsError = errors.New("record already exists")
 
 type store struct {
 	containers map[string]models.Container
+	conn       *sql.DB
 }
 
-func New(dbConnectionPool *sql.DB) Store {
+func New(dbConnectionPool *sql.DB) (Store, error) {
+	err := setupTables(dbConnectionPool)
+	if err != nil {
+		return nil, fmt.Errorf("unable to setup tables: %s", err)
+	}
 	return &store{
 		containers: map[string]models.Container{},
-	}
+		conn:       dbConnectionPool,
+	}, nil
 }
 
 func (s *store) Create(container models.Container) error {
@@ -63,5 +70,9 @@ func (s *store) Delete(id string) error {
 	}
 
 	delete(s.containers, id)
+	return nil
+}
+
+func setupTables(dbConnectionPool *sql.DB) error {
 	return nil
 }
