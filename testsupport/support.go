@@ -1,4 +1,4 @@
-package acceptance
+package testsupport
 
 import (
 	"fmt"
@@ -9,10 +9,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 )
-
-type PostgresProcess struct {
-	session *gexec.Session
-}
 
 type DBConnectionInfo struct {
 	Hostname string

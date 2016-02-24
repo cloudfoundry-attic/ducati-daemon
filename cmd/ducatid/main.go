@@ -57,14 +57,6 @@ func parseFlags() {
 	}
 }
 
-func pingDatabase(databaseURL string) error {
-	dbConnectionPool, err := db.OpenPool(databaseURL)
-	if err != nil {
-		return err
-	}
-	return dbConnectionPool.Ping()
-}
-
 func main() {
 	parseFlags()
 
@@ -82,8 +74,9 @@ func main() {
 		log.Fatalf("overlay network does not contain local subnet")
 	}
 
-	if err := pingDatabase(databaseURL); err != nil {
-		log.Fatalf("unable to ping database: %s", err)
+	_, err = db.GetConnectionPool(databaseURL)
+	if err != nil {
+		log.Fatalf("db connect: %s", err)
 	}
 
 	dataStore := store.New()

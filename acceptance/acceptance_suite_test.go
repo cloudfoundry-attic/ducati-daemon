@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/acceptance"
+	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -15,7 +15,7 @@ import (
 )
 
 var ducatidPath string
-var dbConnInfo *acceptance.DBConnectionInfo
+var dbConnInfo *testsupport.DBConnectionInfo
 
 func TestDucatid(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -24,7 +24,7 @@ func TestDucatid(t *testing.T) {
 
 type beforeSuiteData struct {
 	DucatidPath string
-	DBConnInfo  acceptance.DBConnectionInfo
+	DBConnInfo  testsupport.DBConnectionInfo
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -32,7 +32,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	ducatidPath, err := gexec.Build("github.com/cloudfoundry-incubator/ducati-daemon/cmd/ducatid")
 	Expect(err).NotTo(HaveOccurred())
 
-	dbConnInfo := acceptance.GetDBConnectionInfo()
+	dbConnInfo := testsupport.GetDBConnectionInfo()
 
 	bytesToMarshal, err := json.Marshal(beforeSuiteData{
 		DucatidPath: ducatidPath,
@@ -59,7 +59,7 @@ var _ = SynchronizedAfterSuite(func() {
 
 })
 
-var testDatabase *acceptance.TestDatabase
+var testDatabase *testsupport.TestDatabase
 
 var _ = BeforeEach(func() {
 	dbName := fmt.Sprintf("test_db_%x", rand.Int31())
