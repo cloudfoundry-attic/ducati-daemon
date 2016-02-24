@@ -1,17 +1,40 @@
 package store_test
 
 import (
+	"database/sql"
+	"fmt"
+	"math/rand"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/db"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
+	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Store", func() {
 	var dataStore store.Store
+	var testDatabase *testsupport.TestDatabase
+	var dbConnectionPool *sql.DB
 
 	BeforeEach(func() {
-		dataStore = store.New()
+		dbName := fmt.Sprintf("test_database_%x", rand.Intn(1000))
+		dbConnectionInfo := testsupport.GetDBConnectionInfo()
+		testDatabase = dbConnectionInfo.CreateDatabase(dbName)
+		var err error
+		dbConnectionPool, err = db.GetConnectionPool(testDatabase.URL())
+		Expect(err).NotTo(HaveOccurred())
+		dataStore = store.New(dbConnectionPool)
+	})
+
+	AfterEach(func() {
+		if dbConnectionPool != nil {
+			Expect(dbConnectionPool.Close()).To(Succeed())
+		}
+		if testDatabase != nil {
+			testDatabase.Destroy()
+		}
 	})
 
 	Describe("Create", func() {

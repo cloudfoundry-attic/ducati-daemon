@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -21,7 +22,7 @@ type store struct {
 	containers map[string]models.Container
 }
 
-func New() Store {
+func New(dbConnectionPool *sql.DB) Store {
 	return &store{
 		containers: map[string]models.Container{},
 	}

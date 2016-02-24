@@ -27,6 +27,10 @@ func (d *TestDatabase) URL() string {
 		d.connInfo.Username, d.connInfo.Password, d.connInfo.Hostname, d.connInfo.Port, d.name, "disable")
 }
 
+func (d *TestDatabase) Destroy() {
+	d.connInfo.RemoveDatabase(d)
+}
+
 func (c *DBConnectionInfo) CreateDatabase(dbName string) *TestDatabase {
 	testDB := &TestDatabase{name: dbName, connInfo: c}
 	_, err := c.execSQL(fmt.Sprintf("CREATE DATABASE %s", dbName))

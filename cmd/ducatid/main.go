@@ -74,12 +74,12 @@ func main() {
 		log.Fatalf("overlay network does not contain local subnet")
 	}
 
-	_, err = db.GetConnectionPool(databaseURL)
+	dbConnectionPool, err := db.GetConnectionPool(databaseURL)
 	if err != nil {
 		log.Fatalf("db connect: %s", err)
 	}
 
-	dataStore := store.New()
+	dataStore := store.New(dbConnectionPool)
 	logger := lager.NewLogger("ducati-d")
 
 	configFactory := &ipam.ConfigFactory{
