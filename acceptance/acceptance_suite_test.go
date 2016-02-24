@@ -29,7 +29,7 @@ type beforeSuiteData struct {
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	// only run on node 1
-	ducatidPath, err := gexec.Build("github.com/cloudfoundry-incubator/ducati-daemon/cmd/ducatid")
+	ducatidPath, err := gexec.Build("github.com/cloudfoundry-incubator/ducati-daemon/cmd/ducatid", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	dbConnInfo := testsupport.GetDBConnectionInfo()
