@@ -1,14 +1,18 @@
 package store_test
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"math/rand"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/db"
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -16,22 +20,25 @@ import (
 var _ = Describe("Store", func() {
 	var dataStore store.Store
 	var testDatabase *testsupport.TestDatabase
-	var dbConnectionPool *sqlx.DB
+	var realDb *sqlx.DB
+	var mockDb *fakes.Db
 
 	BeforeEach(func() {
+		mockDb = &fakes.Db{}
+
 		dbName := fmt.Sprintf("test_database_%x", rand.Intn(1000))
 		dbConnectionInfo := testsupport.GetDBConnectionInfo()
 		testDatabase = dbConnectionInfo.CreateDatabase(dbName)
 		var err error
-		dbConnectionPool, err = db.GetConnectionPool(testDatabase.URL())
+		realDb, err = db.GetConnectionPool(testDatabase.URL())
 		Expect(err).NotTo(HaveOccurred())
-		dataStore, err = store.New(dbConnectionPool)
+		dataStore, err = store.New(realDb)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		if dbConnectionPool != nil {
-			Expect(dbConnectionPool.Close()).To(Succeed())
+		if realDb != nil {
+			Expect(realDb.Close()).To(Succeed())
 		}
 		if testDatabase != nil {
 			testDatabase.Destroy()
@@ -41,8 +48,19 @@ var _ = Describe("Store", func() {
 	Describe("Connecting to the database and migrating", func() {
 		Context("when the tables already exist", func() {
 			It("succeeds", func() {
-				_, err := store.New(dbConnectionPool)
+				_, err := store.New(realDb)
 				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the db operation fails", func() {
+			BeforeEach(func() {
+				mockDb.ExecReturns(nil, errors.New("some error"))
+			})
+
+			It("should return a sensible error", func() {
+				_, err := store.New(mockDb)
+				Expect(err).To(MatchError("setting up tables: some error"))
 			})
 		})
 	})
@@ -66,6 +84,41 @@ var _ = Describe("Store", func() {
 
 				err = dataStore.Create(containerDuplicate)
 				Expect(err).To(Equal(store.RecordExistsError))
+			})
+		})
+
+		Context("when the db operation fails", func() {
+			Context("when the failure is an unexpected pq error", func() {
+
+				BeforeEach(func() {
+					mockDb.NamedExecReturns(nil,
+						&pq.Error{
+							Code: "2201G",
+						})
+				})
+
+				It("should return the error code", func() {
+					store, err := store.New(mockDb)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = store.Create(models.Container{})
+					Expect(err).To(MatchError("insert: invalid_argument_for_width_bucket_function"))
+				})
+			})
+
+			Context("when the failure is not a pq Error", func() {
+
+				BeforeEach(func() {
+					mockDb.NamedExecReturns(nil, errors.New("some-insert-error"))
+				})
+
+				It("should return a sensible error", func() {
+					store, err := store.New(mockDb)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = store.Create(models.Container{})
+					Expect(err).To(MatchError("insert: some-insert-error"))
+				})
 			})
 		})
 	})
@@ -96,6 +149,20 @@ var _ = Describe("Store", func() {
 				Expect(err).To(Equal(store.NotFoundError))
 			})
 		})
+
+		Context("when the db operation fails", func() {
+			BeforeEach(func() {
+				mockDb.GetReturns(errors.New("some get error"))
+			})
+
+			It("should return a sensible error", func() {
+				store, err := store.New(mockDb)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = store.Get("doesnt-matter")
+				Expect(err).To(MatchError("getting record: some get error"))
+			})
+		})
 	})
 
 	Describe("All", func() {
@@ -117,6 +184,20 @@ var _ = Describe("Store", func() {
 			containers, err := dataStore.All()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(ConsistOf(expectedContainers))
+		})
+
+		Context("when the db operation fails", func() {
+			BeforeEach(func() {
+				mockDb.SelectReturns(errors.New("some select error"))
+			})
+
+			It("should return a sensible error", func() {
+				store, err := store.New(mockDb)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = store.All()
+				Expect(err).To(MatchError("listing all: some select error"))
+			})
 		})
 	})
 
@@ -147,6 +228,69 @@ var _ = Describe("Store", func() {
 		Context("when there is no container with the given id", func() {
 			It("should return a NotFoundError", func() {
 				Expect(dataStore.Delete("doesn't-exist")).To(Equal(store.NotFoundError))
+			})
+		})
+
+		Context("when the db operation fails", func() {
+			BeforeEach(func() {
+				mockDb.ExecStub = func(string, ...interface{}) (sql.Result, error) {
+					if mockDb.ExecCallCount() == 2 {
+						return nil, errors.New("some delete error")
+					}
+					return nil, nil
+				}
+			})
+
+			It("should return a sensible error", func() {
+				store, err := store.New(mockDb)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = store.Delete("doesnt-matter")
+				Expect(err).To(MatchError("deleting: some delete error"))
+			})
+		})
+
+		Context("when looking for the RowsAffected() returns an error", func() {
+			BeforeEach(func() {
+				mockExecResult := &fakes.SqlResult{}
+				mockExecResult.RowsAffectedReturns(0, errors.New("some rows affected error"))
+
+				mockDb.ExecStub = func(string, ...interface{}) (sql.Result, error) {
+					if mockDb.ExecCallCount() == 2 {
+						return mockExecResult, nil
+					}
+					return nil, nil
+				}
+			})
+
+			It("should return a sensible error", func() {
+				store, err := store.New(mockDb)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = store.Delete("doesnt-matter")
+				Expect(err).To(MatchError("deleting: rows affected: some rows affected error"))
+			})
+		})
+
+		Context("when the number of rows affected is not 1", func() {
+			BeforeEach(func() {
+				mockExecResult := &fakes.SqlResult{}
+				mockExecResult.RowsAffectedReturns(-1, nil)
+
+				mockDb.ExecStub = func(string, ...interface{}) (sql.Result, error) {
+					if mockDb.ExecCallCount() == 2 {
+						return mockExecResult, nil
+					}
+					return nil, nil
+				}
+			})
+
+			It("should return a sensible error", func() {
+				store, err := store.New(mockDb)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = store.Delete("doesnt-matter")
+				Expect(err).To(MatchError("deleting: rows affected: -1"))
 			})
 		})
 	})
