@@ -17,7 +17,7 @@ func (h *ContainerDelete) ServeHTTP(resp http.ResponseWriter, req *http.Request)
 
 	err := h.Store.Delete(id)
 	if err != nil {
-		if err == store.NotFoundError {
+		if err == store.RecordNotFoundError {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}

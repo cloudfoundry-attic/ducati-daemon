@@ -34,7 +34,7 @@ type db interface {
 	Select(dest interface{}, query string, args ...interface{}) error
 }
 
-var NotFoundError = errors.New("record not found")
+var RecordNotFoundError = errors.New("record not found")
 var RecordExistsError = errors.New("record already exists")
 
 type store struct {
@@ -73,7 +73,7 @@ func (s *store) Get(id string) (models.Container, error) {
 	err := s.conn.Get(&container, "SELECT * FROM container WHERE id=$1", id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return models.Container{}, NotFoundError
+			return models.Container{}, RecordNotFoundError
 		}
 		return container, fmt.Errorf("getting record: %s", err)
 	}
@@ -101,7 +101,7 @@ func (s *store) Delete(id string) error {
 		return fmt.Errorf("deleting: rows affected: %s", err)
 	}
 	if rowsAffected == 0 {
-		return NotFoundError
+		return RecordNotFoundError
 	} else if rowsAffected != 1 {
 		return fmt.Errorf("deleting: rows affected: %d", rowsAffected)
 	}

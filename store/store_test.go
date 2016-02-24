@@ -144,9 +144,9 @@ var _ = Describe("Store", func() {
 		})
 
 		Context("when the container has not been put in the store", func() {
-			It("should return a NotFoundError", func() {
+			It("should return a RecordNotFoundError", func() {
 				_, err := dataStore.Get("some-unknown-id")
-				Expect(err).To(Equal(store.NotFoundError))
+				Expect(err).To(Equal(store.RecordNotFoundError))
 			})
 		})
 
@@ -226,8 +226,8 @@ var _ = Describe("Store", func() {
 		})
 
 		Context("when there is no container with the given id", func() {
-			It("should return a NotFoundError", func() {
-				Expect(dataStore.Delete("doesn't-exist")).To(Equal(store.NotFoundError))
+			It("should return a RecordNotFoundError", func() {
+				Expect(dataStore.Delete("doesn't-exist")).To(Equal(store.RecordNotFoundError))
 			})
 		})
 

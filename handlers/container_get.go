@@ -19,7 +19,7 @@ func (h *ContainerGet) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	container, err := h.Store.Get(id)
 	if err != nil {
-		if err == store.NotFoundError {
+		if err == store.RecordNotFoundError {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}

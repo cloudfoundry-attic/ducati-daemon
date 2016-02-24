@@ -66,7 +66,7 @@ var _ = Describe("Get", func() {
 
 	Context("when there are no containers", func() {
 		BeforeEach(func() {
-			dataStore.GetReturns(models.Container{}, store.NotFoundError)
+			dataStore.GetReturns(models.Container{}, store.RecordNotFoundError)
 		})
 
 		It("should return a 404", func() {

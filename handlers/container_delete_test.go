@@ -45,7 +45,7 @@ var _ = Describe("Delete", func() {
 
 	Context("when the container did not exist", func() {
 		BeforeEach(func() {
-			dataStore.DeleteReturns(store.NotFoundError)
+			dataStore.DeleteReturns(store.RecordNotFoundError)
 		})
 
 		It("should return a 404", func() {
