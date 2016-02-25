@@ -53,6 +53,7 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 		BridgeName:      fmt.Sprintf("vxlanbr%d", containerPayload.VNI),
 		ContainerNsPath: containerPayload.ContainerNamespace,
 		ContainerID:     rata.Param(req, "container_id"),
+		HostIP:          containerPayload.HostIP,
 		InterfaceName:   containerPayload.InterfaceName,
 		VNI:             containerPayload.VNI,
 		IPAMResult:      containerPayload.IPAM,

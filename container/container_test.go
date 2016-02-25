@@ -91,6 +91,7 @@ var _ = Describe("Setup", func() {
 			InterfaceName:   "container-link",
 			BridgeName:      "vxlan-br0",
 			VNI:             99,
+			HostIP:          "10.11.12.13",
 			IPAMResult:      ipamResult,
 		}
 	})
@@ -103,6 +104,7 @@ var _ = Describe("Setup", func() {
 			ID:        "sandbox-link",
 			MAC:       "01:02:03:04:05:06",
 			IP:        "192.168.100.2",
+			HostIP:    "10.11.12.13",
 		}))
 
 		Expect(executor.ExecuteCallCount()).To(Equal(3))
@@ -243,6 +245,7 @@ var _ = Describe("Setup", func() {
 				InterfaceName:   "container-link",
 				BridgeName:      "vxlan-br0",
 				VNI:             99,
+				HostIP:          "10.11.12.13",
 				IPAMResult:      ipamResult,
 			}
 		})

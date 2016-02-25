@@ -95,6 +95,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
 			VNI:                99,
+			HostIP:             "10.12.100.4",
 			IPAM:               ipamResult,
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -112,6 +113,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 			ContainerID:     "container-id",
 			InterfaceName:   "interface-name",
 			VNI:             99,
+			HostIP:          "10.12.100.4",
 			IPAMResult:      ipamResult,
 		}))
 
