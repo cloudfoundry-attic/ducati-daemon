@@ -11,8 +11,9 @@ import (
 )
 
 func TestStore(t *testing.T) {
-
-	rand.Seed(config.GinkgoConfig.RandomSeed)
+	rand.Seed(
+		config.GinkgoConfig.RandomSeed +
+			int64(config.GinkgoConfig.ParallelNode))
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Store Suite")

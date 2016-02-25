@@ -1,7 +1,9 @@
 package ns_test
 
 import (
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,19 +52,21 @@ var _ = Describe("Linux network namespace", func() {
 	})
 
 	Describe("Set", func() {
+		var otherNsName string
 		BeforeEach(func() {
-			cmd := exec.Command("ip", "netns", "add", "some-other-ns")
+			otherNsName = fmt.Sprintf("other-ns-%x", rand.Int())
+			cmd := exec.Command("ip", "netns", "add", otherNsName)
 			Expect(cmd.Run()).To(Succeed())
 		})
 
 		AfterEach(func() {
-			cmd := exec.Command("ip", "netns", "del", "some-other-ns")
+			cmd := exec.Command("ip", "netns", "del", otherNsName)
 			Expect(cmd.Run()).To(Succeed())
 		})
 
 		It("sets the namespace to the handle passed in", func() {
 			selfNS := "/proc/self/ns/net"
-			newNS := "/var/run/netns/some-other-ns"
+			newNS := "/var/run/netns/" + otherNsName
 
 			parentInode, err := exec.Command("stat", "-L", "-c", "%i", selfNS).CombinedOutput()
 			newNSInode, err := exec.Command("stat", "-L", "-c", "%i", newNS).CombinedOutput()
