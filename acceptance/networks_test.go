@@ -90,15 +90,16 @@ var _ = Describe("Networks", func() {
 
 	Describe("POST /networks/:network_id/:container_id", func() {
 		var (
-			createURL string
-			payload   []byte
+			createURL  string
+			payload    []byte
+			ipamResult types.Result
 		)
 
 		BeforeEach(func() {
 			Eventually(serverIsAvailable).Should(Succeed())
 
 			By("generating config and creating the request")
-			ipamResult := types.Result{
+			ipamResult = types.Result{
 				IP4: &types.IPConfig{
 					IP: net.IPNet{
 						IP:   net.ParseIP("192.168.100.2"),
@@ -112,13 +113,14 @@ var _ = Describe("Networks", func() {
 			payload, err = json.Marshal(models.NetworksSetupContainerPayload{
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Path(),
-				InterfaceName:      "interface-name",
+				InterfaceName:      "vx-eth0",
 				VNI:                99,
 				IPAM:               ipamResult,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
 			createURL = fmt.Sprintf("http://%s/networks/%s/%s", address, networkID, containerID)
+
 		})
 
 		It("should respond to POST /networks/:network_id/:container_id", func() {
@@ -131,6 +133,10 @@ var _ = Describe("Networks", func() {
 			defer resp.Body.Close()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+
+			sandboxNS, err := sandboxRepo.Get("vni-99")
+			Expect(err).NotTo(HaveOccurred())
+			defer sandboxNS.Destroy()
 
 			By("getting the newly created container")
 			listURL := fmt.Sprintf("http://%s/networks/%s", address, networkID)
@@ -161,6 +167,7 @@ var _ = Describe("Networks", func() {
 
 			sandboxNS, err := sandboxRepo.Get("vni-99")
 			Expect(err).NotTo(HaveOccurred())
+			defer sandboxNS.Destroy()
 
 			sandboxNS.Execute(func(_ *os.File) error {
 				link, err := netlink.LinkByName("vxlan99")
@@ -178,6 +185,92 @@ var _ = Describe("Networks", func() {
 
 				return nil
 			})
+		})
+
+		It("creates a vxlan bridge in the sandbox", func() {
+			var bridge *netlink.Bridge
+			var addrs []netlink.Addr
+
+			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+
+			sandboxNS, err := sandboxRepo.Get("vni-99")
+			Expect(err).NotTo(HaveOccurred())
+			defer sandboxNS.Destroy()
+
+			err = sandboxNS.Execute(func(_ *os.File) error {
+				link, err := netlink.LinkByName("vxlanbr99")
+				if err != nil {
+					return fmt.Errorf("finding link by name: %s", err)
+				}
+
+				var ok bool
+				bridge, ok = link.(*netlink.Bridge)
+				if !ok {
+					return fmt.Errorf("unable to cast link to bridge")
+				}
+
+				addrs, err = netlink.AddrList(link, netlink.FAMILY_V4)
+				if err != nil {
+					return fmt.Errorf("unable to list addrs: %s", err)
+				}
+
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(bridge.LinkAttrs.MTU).To(Equal(1450))
+			Expect(bridge.LinkAttrs.Flags & net.FlagUp).To(Equal(net.FlagUp))
+
+			Expect(addrs).To(HaveLen(1))
+			Expect(addrs[0].IPNet.IP.String()).To(Equal(ipamResult.IP4.Gateway.String()))
+		})
+
+		It("creates a veth pair in the container and sandbox namespaces", func() {
+			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+
+			sandboxNS, err := sandboxRepo.Get("vni-99")
+			Expect(err).NotTo(HaveOccurred())
+			defer sandboxNS.Destroy()
+
+			err = containerNamespace.Execute(func(_ *os.File) error {
+				link, err := netlink.LinkByName("vx-eth0")
+				Expect(err).NotTo(HaveOccurred())
+
+				bridge, ok := link.(*netlink.Veth)
+				Expect(ok).To(BeTrue())
+				Expect(bridge.LinkAttrs.MTU).To(Equal(1450))
+				Expect(bridge.LinkAttrs.Flags & net.FlagUp).To(Equal(net.FlagUp))
+
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			err = sandboxNS.Execute(func(_ *os.File) error {
+				link, err := netlink.LinkByName("some-container-")
+				Expect(err).NotTo(HaveOccurred())
+
+				bridge, ok := link.(*netlink.Veth)
+				Expect(ok).To(BeTrue())
+				Expect(bridge.LinkAttrs.MTU).To(Equal(1450))
+				Expect(bridge.LinkAttrs.Flags & net.FlagUp).To(Equal(net.FlagUp))
+
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
