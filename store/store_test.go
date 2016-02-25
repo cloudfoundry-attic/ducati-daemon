@@ -170,9 +170,9 @@ var _ = Describe("Store", func() {
 
 		BeforeEach(func() {
 			expectedContainers = []models.Container{
-				{ID: "some-id-1"},
-				{ID: "some-id-2"},
-				{ID: "some-id-3"},
+				{ID: "some-id-1", NetworkID: "some-network-id-1"},
+				{ID: "some-id-2", NetworkID: "some-network-id-2"},
+				{ID: "some-id-3", NetworkID: "some-network-id-2"},
 			}
 
 			for _, c := range expectedContainers {

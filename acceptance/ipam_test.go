@@ -2,6 +2,7 @@ package acceptance_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os/exec"
 	"time"
@@ -22,14 +23,19 @@ var _ = Describe("IP Address Management", func() {
 
 	BeforeEach(func() {
 		address = fmt.Sprintf("127.0.0.1:%d", 4001+GinkgoParallelNode())
+
+		sandboxRepoDir, err := ioutil.TempDir("", "sandbox")
+		Expect(err).NotTo(HaveOccurred())
+
 		ducatiCmd := exec.Command(
 			ducatidPath,
 			"-listenAddr", address,
 			"-overlayNetwork", "192.168.0.0/16",
 			"-localSubnet", "192.168.3.0/30",
+			"-sandboxRepoDir", sandboxRepoDir,
 			"-databaseURL", testDatabase.URL(),
 		)
-		var err error
+
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 

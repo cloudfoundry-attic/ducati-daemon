@@ -5,30 +5,31 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
 type Repository struct {
-	GetStub        func(path string) (commands.Namespace, error)
+	GetStub        func(path string) (namespace.Namespace, error)
 	getMutex       sync.RWMutex
 	getArgsForCall []struct {
 		path string
 	}
 	getReturns struct {
-		result1 commands.Namespace
+		result1 namespace.Namespace
 		result2 error
 	}
-	CreateStub        func(name string) (commands.Namespace, error)
+	CreateStub        func(name string) (namespace.Namespace, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
 		name string
 	}
 	createReturns struct {
-		result1 commands.Namespace
+		result1 namespace.Namespace
 		result2 error
 	}
 }
 
-func (fake *Repository) Get(path string) (commands.Namespace, error) {
+func (fake *Repository) Get(path string) (namespace.Namespace, error) {
 	fake.getMutex.Lock()
 	fake.getArgsForCall = append(fake.getArgsForCall, struct {
 		path string
@@ -53,15 +54,15 @@ func (fake *Repository) GetArgsForCall(i int) string {
 	return fake.getArgsForCall[i].path
 }
 
-func (fake *Repository) GetReturns(result1 commands.Namespace, result2 error) {
+func (fake *Repository) GetReturns(result1 namespace.Namespace, result2 error) {
 	fake.GetStub = nil
 	fake.getReturns = struct {
-		result1 commands.Namespace
+		result1 namespace.Namespace
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Repository) Create(name string) (commands.Namespace, error) {
+func (fake *Repository) Create(name string) (namespace.Namespace, error) {
 	fake.createMutex.Lock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		name string
@@ -86,10 +87,10 @@ func (fake *Repository) CreateArgsForCall(i int) string {
 	return fake.createArgsForCall[i].name
 }
 
-func (fake *Repository) CreateReturns(result1 commands.Namespace, result2 error) {
+func (fake *Repository) CreateReturns(result1 namespace.Namespace, result2 error) {
 	fake.CreateStub = nil
 	fake.createReturns = struct {
-		result1 commands.Namespace
+		result1 namespace.Namespace
 		result2 error
 	}{result1, result2}
 }

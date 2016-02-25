@@ -48,6 +48,7 @@ var _ = Describe("Ducati Daemon Flag Validation", func() {
 			"-overlayNetwork=192.168.0.0/16",
 			"-localSubnet=192.168.0.1/24",
 			"-databaseURL=some-database-url",
+			"-sandboxRepoDir=/some/path",
 		}
 	})
 
@@ -79,6 +80,12 @@ var _ = Describe("Ducati Daemon Flag Validation", func() {
 
 		Entry("missing databaseURL",
 			`missing required flag "databaseURL"`, "databaseURL", ""),
+
+		Entry("missing sandboxRepoDir",
+			`missing required flag "sandboxRepoDir"`, "sandboxRepoDir", ""),
+
+		Entry("overlayNetwork does not contain localSubnet",
+			`overlay network does not contain local subnet`, "overlayNetwork", "192.168.3.0/28"),
 
 		Entry("localSubnet is not a valid CIDR",
 			`invalid CIDR provided for "localSubnet": gobbledygook`, "localSubnet", "gobbledygook"),

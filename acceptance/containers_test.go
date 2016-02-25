@@ -23,14 +23,19 @@ var _ = Describe("Main", func() {
 
 	BeforeEach(func() {
 		address = fmt.Sprintf("127.0.0.1:%d", 4001+GinkgoParallelNode())
+
+		sandboxRepoDir, err := ioutil.TempDir("", "sandbox")
+		Expect(err).NotTo(HaveOccurred())
+
 		ducatiCmd := exec.Command(
 			ducatidPath,
 			"-listenAddr", address,
 			"-overlayNetwork", "192.168.0.0/16",
 			"-localSubnet", "192.168.99.0/24",
 			"-databaseURL", testDatabase.URL(),
+			"-sandboxRepoDir", sandboxRepoDir,
 		)
-		var err error
+
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 	})

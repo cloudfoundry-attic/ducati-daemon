@@ -5,6 +5,7 @@ import "os"
 //go:generate counterfeiter --fake-name Namespace . Namespace
 type Namespace interface {
 	Execute(func(*os.File) error) error
+	Path() string
 }
 
 type InNamespace struct {

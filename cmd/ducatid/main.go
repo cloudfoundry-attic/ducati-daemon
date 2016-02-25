@@ -9,9 +9,15 @@ import (
 	"sync"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/db"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/ip"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/links"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
@@ -26,17 +32,20 @@ var address string
 var overlayNetwork string
 var localSubnet string
 var databaseURL string
+var sandboxRepoDir string
 
 const addressFlag = "listenAddr"
 const overlayNetworkFlag = "overlayNetwork"
 const localSubnetFlag = "localSubnet"
 const databaseURLFlag = "databaseURL"
+const sandboxRepoDirFlag = "sandboxRepoDir"
 
 func parseFlags() {
 	flag.StringVar(&address, addressFlag, "", "")
 	flag.StringVar(&overlayNetwork, overlayNetworkFlag, "", "")
 	flag.StringVar(&localSubnet, localSubnetFlag, "", "")
 	flag.StringVar(&databaseURL, databaseURLFlag, "", "")
+	flag.StringVar(&sandboxRepoDir, sandboxRepoDirFlag, "", "")
 
 	flag.Parse()
 
@@ -54,6 +63,10 @@ func parseFlags() {
 
 	if databaseURL == "" {
 		log.Fatalf("missing required flag %q", databaseURLFlag)
+	}
+
+	if sandboxRepoDir == "" {
+		log.Fatalf("missing required flag %q", sandboxRepoDirFlag)
 	}
 }
 
@@ -85,6 +98,7 @@ func main() {
 	}
 
 	logger := lager.NewLogger("ducati-d")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
 	configFactory := &ipam.ConfigFactory{
 		Config: types.IPConfig{
@@ -104,11 +118,20 @@ func main() {
 
 	rataHandlers := rata.Handlers{}
 
-	// addressManager := &ip.AddressManager{Netlinker: nl.Netlink}
-	// routeManager := &ip.RouteManager{Netlinker: nl.Netlink}
-	// linkFactory := &links.Factory{Netlinker: nl.Netlink}
+	addressManager := &ip.AddressManager{Netlinker: nl.Netlink}
+	routeManager := &ip.RouteManager{Netlinker: nl.Netlink}
+	linkFactory := &links.Factory{Netlinker: nl.Netlink}
+	sandboxRepo, err := namespace.NewRepository(sandboxRepoDir)
+	if err != nil {
+		log.Fatalf("unable to make repo: %s", err) // not tested
+	}
 
-	// executor := executor.New(addressManager, routeManager, linkFactory)
+	executor := executor.New(addressManager, routeManager, linkFactory)
+	creator := &container.Creator{
+		LinkFinder:  linkFactory,
+		Executor:    executor,
+		SandboxRepo: sandboxRepo,
+	}
 
 	rataHandlers["containers_list"] = &handlers.ContainersList{
 		Store:     dataStore,
@@ -151,12 +174,12 @@ func main() {
 		Datastore: dataStore,
 	}
 
-	// rataHandlers["networks_setup_container"] = &handlers.NetworksSetupContainer{
-	// 	Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
-	// 	Logger:      logger,
-	// 	Datastore:   dataStore,
-	// 	Executor:    executor,
-	// }
+	rataHandlers["networks_setup_container"] = &handlers.NetworksSetupContainer{
+		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
+		Logger:      logger,
+		Datastore:   dataStore,
+		Creator:     creator,
+	}
 
 	routes := rata.Routes{
 		{Name: "containers_list", Method: "GET", Path: "/containers"},
@@ -166,7 +189,7 @@ func main() {
 		{Name: "ipam_allocate", Method: "POST", Path: "/ipam/:network_id/:container_id"},
 		{Name: "ipam_release", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
-		// {Name: "networks_setup_container", Method: "POST", Path: "/networks/:network_id/:container_id"},
+		{Name: "networks_setup_container", Method: "POST", Path: "/networks/:network_id/:container_id"},
 	}
 
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)

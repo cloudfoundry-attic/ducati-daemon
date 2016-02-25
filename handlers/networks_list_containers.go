@@ -29,7 +29,7 @@ func (h *NetworksListContainers) ServeHTTP(resp http.ResponseWriter, req *http.R
 
 	containers := []models.Container{}
 	for _, c := range allContainers {
-		if c.ID == id {
+		if c.NetworkID == id {
 			containers = append(containers, c)
 		}
 	}

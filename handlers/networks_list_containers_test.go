@@ -36,10 +36,10 @@ var _ = Describe("GET /networks/:network_id", func() {
 		}
 
 		datastore.AllReturns([]models.Container{
-			{ID: "network-id-1", IP: "192.168.0.1"},
-			{ID: "network-id-1", IP: "192.168.0.2"},
-			{ID: "network-id-2", IP: "192.168.0.3"},
-			{ID: "network-id-2", IP: "192.168.0.4"},
+			{ID: "container-id-1", IP: "192.168.0.1", NetworkID: "network-id-1"},
+			{ID: "container-id-2", IP: "192.168.0.2", NetworkID: "network-id-1"},
+			{ID: "container-id-199", IP: "192.168.0.3", NetworkID: "network-id-2"},
+			{ID: "container-id-200", IP: "192.168.0.4", NetworkID: "network-id-2"},
 		}, nil)
 	})
 
@@ -54,8 +54,8 @@ var _ = Describe("GET /networks/:network_id", func() {
 
 		Expect(resp.Code).To(Equal(http.StatusOK))
 		Expect(receivedContainers).To(Equal([]models.Container{
-			{ID: "network-id-1", IP: "192.168.0.1"},
-			{ID: "network-id-1", IP: "192.168.0.2"},
+			{ID: "container-id-1", IP: "192.168.0.1", NetworkID: "network-id-1"},
+			{ID: "container-id-2", IP: "192.168.0.2", NetworkID: "network-id-1"},
 		}))
 	})
 

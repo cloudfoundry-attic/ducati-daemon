@@ -13,15 +13,14 @@ import (
 )
 
 type Creator struct {
-	LinkFinder conditions.LinkFinder
-	Executor   executor.Executor
+	LinkFinder  conditions.LinkFinder
+	Executor    executor.Executor
+	SandboxRepo namespace.Repository
 }
 
-var hostNamespace = namespace.NewNamespace("/proc/self/ns/net")
-
 type CreatorConfig struct {
+	NetworkID       string
 	BridgeName      string
-	SandboxNsPath   string
 	ContainerNsPath string
 	ContainerID     string
 	InterfaceName   string
@@ -30,9 +29,32 @@ type CreatorConfig struct {
 }
 
 func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
+	hostNamespace := namespace.NewNamespace(fmt.Sprintf("/proc/self/ns/net"))
 	vxlanName := fmt.Sprintf("vxlan%d", config.VNI)
-	sandboxNS := namespace.NewNamespace(config.SandboxNsPath)
 	containerNS := namespace.NewNamespace(config.ContainerNsPath)
+
+	sandboxCommand := &commands.CreateNamespace{
+		Name:       fmt.Sprintf("vni-%d", config.VNI),
+		Repository: c.SandboxRepo,
+	}
+
+	err := c.Executor.Execute(commands.Unless{
+		Condition: conditions.NamespaceExists{
+			Name:       fmt.Sprintf("vni-%d", config.VNI),
+			Repository: c.SandboxRepo,
+		},
+		Command: sandboxCommand,
+	})
+	if err != nil {
+		return models.Container{}, err
+	}
+
+	if sandboxCommand.Result == nil {
+		sandboxCommand.Result, err = c.SandboxRepo.Get(fmt.Sprintf("vni-%d", config.VNI))
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	sandboxLinkName := config.ContainerID
 	if len(sandboxLinkName) > 15 {
@@ -54,10 +76,10 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 		routeCommands = append(routeCommands, routeCommand)
 	}
 
-	err := c.Executor.Execute(
+	err = c.Executor.Execute(
 		commands.All(
 			commands.InNamespace{
-				Namespace: sandboxNS,
+				Namespace: sandboxCommand.Result,
 				Command: commands.Unless{
 					Condition: conditions.LinkExists{
 						LinkFinder: c.LinkFinder,
@@ -72,13 +94,16 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 									VNI:  config.VNI,
 								},
 								commands.SetLinkNamespace{
-									Namespace: sandboxNS.Path(),
+									Namespace: sandboxCommand.Result.Path(),
 									Name:      vxlanName,
 								},
 							),
 						},
-						commands.SetLinkUp{
-							LinkName: vxlanName,
+						commands.InNamespace{
+							Namespace: sandboxCommand.Result,
+							Command: commands.SetLinkUp{
+								LinkName: vxlanName,
+							},
 						},
 					),
 				},
@@ -95,7 +120,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 							},
 							commands.SetLinkNamespace{
 								Name:      sandboxLinkName,
-								Namespace: sandboxNS.Path(),
+								Namespace: sandboxCommand.Result.Path(),
 							},
 							commands.AddAddress{
 								InterfaceName: config.InterfaceName,
@@ -110,7 +135,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 				),
 			},
 			commands.InNamespace{
-				Namespace: sandboxNS,
+				Namespace: sandboxCommand.Result,
 				Command: commands.All(
 					commands.SetLinkUp{
 						LinkName: sandboxLinkName,
@@ -166,8 +191,9 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	}
 
 	return models.Container{
-		ID:  config.ContainerID,
-		MAC: getHardwareAddressCommand.Result.String(),
-		IP:  config.IPAMResult.IP4.IP.IP.String(),
+		ID:        config.ContainerID,
+		MAC:       getHardwareAddressCommand.Result.String(),
+		IP:        config.IPAMResult.IP4.IP.IP.String(),
+		NetworkID: config.NetworkID,
 	}, nil
 }
