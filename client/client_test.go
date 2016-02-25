@@ -9,6 +9,7 @@ import (
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/onsi/gomega/ghttp"
@@ -49,7 +50,7 @@ var _ = Describe("Client", func() {
 			HttpClient:  httpClient,
 		}
 
-		marshaler.MarshalReturns([]byte(`{"id":"some-container-id"}`), nil)
+		marshaler.MarshalStub = json.Marshal
 
 		container = models.Container{
 			ID: "some-container-id",
@@ -60,6 +61,79 @@ var _ = Describe("Client", func() {
 		server.Close()
 	})
 
+	Describe("ContainerUp", func() {
+		var cniPayload handlers.NetworksSetupContainerPayload
+
+		BeforeEach(func() {
+			cniPayload = handlers.NetworksSetupContainerPayload{
+				Args:               "FOO=BAR;ABC=123",
+				ContainerNamespace: "/some/namespace/path",
+				InterfaceName:      "interface-name",
+				VNI:                99,
+				IPAM:               types.Result{},
+			}
+
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/networks/some-network-id/some-container-id"),
+				ghttp.VerifyJSONRepresenting(cniPayload),
+				ghttp.VerifyHeaderKV("Content-type", "application/json"),
+				ghttp.RespondWith(http.StatusCreated, nil),
+			))
+		})
+
+		It("should POST to the /networks/:network_id/:container_id endpoint with a CNI payload", func() {
+			Expect(c.ContainerUp("some-network-id", "some-container-id", cniPayload)).To(Succeed())
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+			Expect(marshaler.MarshalCallCount()).To(Equal(1))
+			Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
+		})
+
+		It("uses the provided HTTP client", func() {
+			Expect(c.ContainerUp("some-network-id", "some-container-id", cniPayload)).To(Succeed())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/networks/some-network-id/some-container-id"))
+		})
+
+		Context("when an error occurs", func() {
+			Context("when the payload fails to marshal", func() {
+				It("returns an error", func() {
+					marshaler.MarshalReturns(nil, errors.New("explosion with marshal"))
+
+					err := c.ContainerUp("", "", cniPayload)
+					Expect(err).To(MatchError("failed to marshal cni payload: explosion with marshal"))
+				})
+			})
+
+			Context("when the request cannot be performed", func() {
+				It("returns an error", func() {
+					c = client.DaemonClient{
+						BaseURL:   "%%%%",
+						Marshaler: marshaler,
+					}
+
+					err := c.ContainerUp("", "", cniPayload)
+					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
+				})
+			})
+
+			Context("when the http request fails", func() {
+				BeforeEach(func() {
+					server.Reset()
+					server.AppendHandlers(ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/networks/some-network-id/some-container-id"),
+						ghttp.RespondWith(http.StatusInternalServerError, nil),
+					))
+				})
+
+				It("should return an error", func() {
+					err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+					Expect(err).To(MatchError(`unexpected status code on ContainerUp: expected 201 but got 500`))
+				})
+			})
+		})
+	})
+
 	Describe("SaveContainer", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(ghttp.CombineHandlers(
@@ -68,6 +142,8 @@ var _ = Describe("Client", func() {
 				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWith(http.StatusCreated, nil),
 			))
+
+			marshaler.MarshalReturns([]byte(`{"id":"some-container-id"}`), nil)
 		})
 
 		It("should call the backend to save the container", func() {

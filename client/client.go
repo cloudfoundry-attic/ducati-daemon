@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -31,6 +32,25 @@ type DaemonClient struct {
 	Marshaler   marshal.Marshaler
 	Unmarshaler marshal.Unmarshaler
 	HttpClient  *http.Client
+}
+
+func (d *DaemonClient) ContainerUp(networkID, containerID string, payload handlers.NetworksSetupContainerPayload) error {
+	postData, err := d.Marshaler.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal cni payload: %s", err)
+	}
+
+	url := d.buildURL("networks", networkID, containerID)
+	resp, err := d.HttpClient.Post(url, "application/json", bytes.NewReader(postData))
+	if err != nil {
+		return fmt.Errorf("failed to perform request: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if statusError := checkStatus("ContainerUp", resp.StatusCode, http.StatusCreated); statusError != nil {
+		return statusError
+	}
+	return nil
 }
 
 func (d *DaemonClient) SaveContainer(container models.Container) error {
