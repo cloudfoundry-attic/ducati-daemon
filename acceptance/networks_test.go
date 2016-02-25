@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/appc/cni/pkg/types"
-	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/nu7hatch/gouuid"
@@ -96,7 +95,7 @@ var _ = Describe("Networks", func() {
 			},
 		}
 
-		payload, err := json.Marshal(handlers.NetworksSetupContainerPayload{
+		payload, err := json.Marshal(models.NetworksSetupContainerPayload{
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: containerNamespace.Path(),
 			InterfaceName:      "interface-name",

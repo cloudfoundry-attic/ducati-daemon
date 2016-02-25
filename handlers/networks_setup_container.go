@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"runtime"
 
-	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -27,14 +26,6 @@ type NetworksSetupContainer struct {
 	Creator     creator
 }
 
-type NetworksSetupContainerPayload struct {
-	Args               string
-	ContainerNamespace string
-	InterfaceName      string
-	VNI                int
-	IPAM               types.Result
-}
-
 func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -49,7 +40,7 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 		return
 	}
 
-	var containerPayload NetworksSetupContainerPayload
+	var containerPayload models.NetworksSetupContainerPayload
 	err = h.Unmarshaler.Unmarshal(bodyBytes, &containerPayload)
 	if err != nil {
 		logger.Error("unmarshal-failed", err)

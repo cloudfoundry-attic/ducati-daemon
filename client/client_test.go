@@ -9,7 +9,6 @@ import (
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/onsi/gomega/ghttp"
@@ -62,10 +61,10 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("ContainerUp", func() {
-		var cniPayload handlers.NetworksSetupContainerPayload
+		var cniPayload models.NetworksSetupContainerPayload
 
 		BeforeEach(func() {
-			cniPayload = handlers.NetworksSetupContainerPayload{
+			cniPayload = models.NetworksSetupContainerPayload{
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "interface-name",

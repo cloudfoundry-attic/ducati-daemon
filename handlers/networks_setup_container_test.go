@@ -90,7 +90,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 	})
 
 	It("sets up the container network", func() {
-		payload, err := json.Marshal(handlers.NetworksSetupContainerPayload{
+		payload, err := json.Marshal(models.NetworksSetupContainerPayload{
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
