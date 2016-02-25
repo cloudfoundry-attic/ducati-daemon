@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 )
+
+const DEFAULT_TIMEOUT = "3s"
 
 var _ = Describe("Main", func() {
 	var session *gexec.Session
@@ -40,22 +40,23 @@ var _ = Describe("Main", func() {
 		Eventually(session).Should(gexec.Exit())
 	})
 
+	var serverIsAvailable = func() error {
+		return VerifyTCPConnection(address)
+	}
+
 	It("should boot and gracefully terminate", func() {
+		Eventually(serverIsAvailable, DEFAULT_TIMEOUT).Should(Succeed())
+
 		Consistently(session).ShouldNot(gexec.Exit())
 
 		session.Interrupt()
-		Eventually(session, 3*time.Second).Should(gexec.Exit(0))
+		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
 	})
-
-	var serverIsAvailable = func() error {
-		_, err := net.Dial("tcp", address)
-		return err
-	}
 
 	It("should respond to GET /containers", func() {
 		url := fmt.Sprintf("http://%s/containers", address)
 
-		Eventually(serverIsAvailable).Should(Succeed())
+		Eventually(serverIsAvailable, DEFAULT_TIMEOUT).Should(Succeed())
 
 		resp, err := http.Get(url)
 		Expect(err).NotTo(HaveOccurred())
@@ -73,7 +74,7 @@ var _ = Describe("Main", func() {
 		BeforeEach(func() {
 			url = fmt.Sprintf("http://%s/containers", address)
 
-			Eventually(serverIsAvailable).Should(Succeed())
+			Eventually(serverIsAvailable, DEFAULT_TIMEOUT).Should(Succeed())
 
 			addedContainers = []models.Container{
 				{ID: "container-0-id"},

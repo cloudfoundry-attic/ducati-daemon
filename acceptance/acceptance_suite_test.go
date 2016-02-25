@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	. "github.com/onsi/ginkgo"
@@ -69,3 +70,12 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	dbConnInfo.RemoveDatabase(testDatabase)
 })
+
+func VerifyTCPConnection(address string) error {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return err
+	}
+	conn.Close()
+	return nil
+}

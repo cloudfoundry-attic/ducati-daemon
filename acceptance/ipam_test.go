@@ -2,7 +2,6 @@ package acceptance_test
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"os/exec"
 	"time"
@@ -43,8 +42,7 @@ var _ = Describe("IP Address Management", func() {
 	})
 
 	var serverIsAvailable = func() error {
-		_, err := net.Dial("tcp", address)
-		return err
+		return VerifyTCPConnection(address)
 	}
 
 	It("should boot and gracefully terminate", func() {
