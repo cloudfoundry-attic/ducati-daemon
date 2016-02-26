@@ -102,14 +102,25 @@ var _ = Describe("Networks", func() {
 			ipamResult = types.Result{
 				IP4: &types.IPConfig{
 					IP: net.IPNet{
-						IP:   net.ParseIP("192.168.100.2"),
+						IP:   net.ParseIP("192.168.1.2"),
 						Mask: net.CIDRMask(24, 32),
 					},
-					Gateway: net.ParseIP("192.168.100.1"),
+					Gateway: net.ParseIP("192.168.1.1"),
+					Routes: []types.Route{{
+						Dst: net.IPNet{
+							IP:   net.ParseIP("192.168.0.0"),
+							Mask: net.CIDRMask(16, 32),
+						},
+						GW: net.ParseIP("192.168.1.1"),
+					}},
 				},
 			}
 
-			var err error
+			_, destination, err := net.ParseCIDR("10.10.10.0/24")
+			Expect(err).NotTo(HaveOccurred())
+
+			ipamResult.IP4.Routes = append(ipamResult.IP4.Routes, types.Route{Dst: *destination})
+
 			payload, err = json.Marshal(models.NetworksSetupContainerPayload{
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Path(),
@@ -271,6 +282,62 @@ var _ = Describe("Networks", func() {
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when there are routes", func() {
+			It("should contain the routes", func() {
+				req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
+				Expect(err).NotTo(HaveOccurred())
+
+				resp, err := http.DefaultClient.Do(req)
+				Expect(err).NotTo(HaveOccurred())
+				defer resp.Body.Close()
+
+				Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+
+				sandboxNS, err := sandboxRepo.Get("vni-99")
+				Expect(err).NotTo(HaveOccurred())
+				defer sandboxNS.Destroy()
+
+				err = containerNamespace.Execute(func(_ *os.File) error {
+					l, err := netlink.LinkByName("vx-eth0")
+					Expect(err).NotTo(HaveOccurred())
+
+					routes, err := netlink.RouteList(l, netlink.FAMILY_V4)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(routes).To(HaveLen(3))
+
+					var sanitizedRoutes []netlink.Route
+					for _, route := range routes {
+						sanitizedRoutes = append(sanitizedRoutes, netlink.Route{
+							Gw:  route.Gw,
+							Dst: route.Dst,
+							Src: route.Src,
+						})
+					}
+
+					_, vxlanNet, err := net.ParseCIDR("192.168.0.0/16")
+					Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
+						Dst: vxlanNet,
+						Gw:  ipamResult.IP4.Gateway.To4(),
+					}))
+
+					_, linkLocal, err := net.ParseCIDR("192.168.1.0/24")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
+						Dst: linkLocal,
+						Src: ipamResult.IP4.IP.IP.To4(),
+					}))
+
+					_, dest, err := net.ParseCIDR("10.10.10.0/24")
+					Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
+						Dst: dest,
+						Gw:  ipamResult.IP4.Gateway.To4(),
+					}))
+
+					return nil
+				})
+			})
 		})
 	})
 })
