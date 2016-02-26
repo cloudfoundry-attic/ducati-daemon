@@ -15,7 +15,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-const DEFAULT_TIMEOUT = "3s"
+const DEFAULT_TIMEOUT = "5s"
 
 var _ = Describe("Main", func() {
 	var session *gexec.Session

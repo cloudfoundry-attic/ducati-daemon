@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -76,17 +75,18 @@ var _ = Describe("Networks", func() {
 		containerNamespace.Destroy()
 	})
 
+	var serverIsAvailable = func() error {
+		return VerifyTCPConnection(address)
+	}
+
 	It("should boot and gracefully terminate", func() {
+		Eventually(serverIsAvailable, DEFAULT_TIMEOUT).Should(Succeed())
+
 		Consistently(session).ShouldNot(gexec.Exit())
 
 		session.Interrupt()
-		Eventually(session, 3*time.Second).Should(gexec.Exit(0))
+		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
 	})
-
-	var serverIsAvailable = func() error {
-		_, err := net.Dial("tcp", address)
-		return err
-	}
 
 	Describe("POST /networks/:network_id/:container_id", func() {
 		var (

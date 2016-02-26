@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
-	"time"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
@@ -52,11 +51,12 @@ var _ = Describe("IP Address Management", func() {
 	}
 
 	It("should boot and gracefully terminate", func() {
-		Eventually(serverIsAvailable).Should(Succeed())
+		Eventually(serverIsAvailable, DEFAULT_TIMEOUT).Should(Succeed())
+
 		Consistently(session).ShouldNot(gexec.Exit())
 
 		session.Interrupt()
-		Eventually(session, 3*time.Second).Should(gexec.Exit(0))
+		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
 	})
 
 	Describe("POST", func() {
