@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
@@ -11,7 +12,7 @@ import (
 
 //go:generate counterfeiter -o ../fakes/deletor.go --fake-name Deletor . deletor
 type deletor interface {
-	Delete(networkID, containerID string) error
+	Delete(networkID, containerID, interfaceName string) error
 }
 
 type NetworksDeleteContainer struct {
@@ -29,8 +30,15 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 
 	containerID := rata.Param(request, "container_id")
 	networkID := rata.Param(request, "network_id")
+	interfaceName := request.URL.Query().Get("interface")
 
-	err := h.Deletor.Delete(networkID, containerID)
+	if interfaceName == "" {
+		logger.Error("bad-request", errors.New("missing-interface"))
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := h.Deletor.Delete(networkID, containerID, interfaceName)
 	if err != nil {
 		logger.Error("deletor.delete-failed", err)
 		response.WriteHeader(http.StatusInternalServerError)

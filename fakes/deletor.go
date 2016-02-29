@@ -4,26 +4,28 @@ package fakes
 import "sync"
 
 type Deletor struct {
-	DeleteStub        func(networkID, containerID string) error
+	DeleteStub        func(networkID, containerID, interfaceName string) error
 	deleteMutex       sync.RWMutex
 	deleteArgsForCall []struct {
-		networkID   string
-		containerID string
+		networkID     string
+		containerID   string
+		interfaceName string
 	}
 	deleteReturns struct {
 		result1 error
 	}
 }
 
-func (fake *Deletor) Delete(networkID string, containerID string) error {
+func (fake *Deletor) Delete(networkID string, containerID string, interfaceName string) error {
 	fake.deleteMutex.Lock()
 	fake.deleteArgsForCall = append(fake.deleteArgsForCall, struct {
-		networkID   string
-		containerID string
-	}{networkID, containerID})
+		networkID     string
+		containerID   string
+		interfaceName string
+	}{networkID, containerID, interfaceName})
 	fake.deleteMutex.Unlock()
 	if fake.DeleteStub != nil {
-		return fake.DeleteStub(networkID, containerID)
+		return fake.DeleteStub(networkID, containerID, interfaceName)
 	} else {
 		return fake.deleteReturns.result1
 	}
@@ -35,10 +37,10 @@ func (fake *Deletor) DeleteCallCount() int {
 	return len(fake.deleteArgsForCall)
 }
 
-func (fake *Deletor) DeleteArgsForCall(i int) (string, string) {
+func (fake *Deletor) DeleteArgsForCall(i int) (string, string, string) {
 	fake.deleteMutex.RLock()
 	defer fake.deleteMutex.RUnlock()
-	return fake.deleteArgsForCall[i].networkID, fake.deleteArgsForCall[i].containerID
+	return fake.deleteArgsForCall[i].networkID, fake.deleteArgsForCall[i].containerID, fake.deleteArgsForCall[i].interfaceName
 }
 
 func (fake *Deletor) DeleteReturns(result1 error) {

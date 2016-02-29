@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -46,7 +47,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 			"network_id":   "some-network-id",
 			"container_id": "some-container-id",
 		})
-
+		request.URL.RawQuery = url.Values{"interface": []string{"some-interface-name"}}.Encode()
 	})
 
 	It("deletes the container from the network", func() {
@@ -54,9 +55,10 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		handler.ServeHTTP(resp, request)
 
 		Expect(deletor.DeleteCallCount()).To(Equal(1))
-		networkID, containerID := deletor.DeleteArgsForCall(0)
+		networkID, containerID, interfaceName := deletor.DeleteArgsForCall(0)
 		Expect(networkID).To(Equal("some-network-id"))
 		Expect(containerID).To(Equal("some-container-id"))
+		Expect(interfaceName).To(Equal("some-interface-name"))
 	})
 
 	It("deletes the container from the datastore", func() {
@@ -81,6 +83,20 @@ var _ = Describe("NetworksDeleteContainer", func() {
 
 		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
 		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
+	})
+
+	Context("when the interface name is not present as a query parameter", func() {
+		BeforeEach(func() {
+			request.URL.RawQuery = ""
+		})
+
+		It("should log and respond with status code 400", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusBadRequest))
+			Expect(logger).To(gbytes.Say("networks-delete-containers.bad-request.*missing-interface"))
+		})
 	})
 
 	Context("when deleting the container from the network fails", func() {
