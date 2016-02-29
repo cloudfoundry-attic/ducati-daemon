@@ -20,6 +20,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
+	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -126,6 +127,8 @@ func main() {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
 
+	osThreadLocker := &threading.OSLocker{}
+
 	executor := executor.New(addressManager, routeManager, linkFactory)
 	creator := &container.Creator{
 		LinkFinder:  linkFactory,
@@ -175,10 +178,18 @@ func main() {
 	}
 
 	rataHandlers["networks_setup_container"] = &handlers.NetworksSetupContainer{
-		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
-		Logger:      logger,
-		Datastore:   dataStore,
-		Creator:     creator,
+		Unmarshaler:    marshal.UnmarshalFunc(json.Unmarshal),
+		Logger:         logger,
+		Datastore:      dataStore,
+		Creator:        creator,
+		OSThreadLocker: osThreadLocker,
+	}
+
+	rataHandlers["networks_delete_container"] = &handlers.NetworksDeleteContainer{
+		Logger:         logger,
+		Datastore:      dataStore,
+		Deletor:        deletor,
+		OSThreadLocker: osThreadLocker,
 	}
 
 	routes := rata.Routes{
@@ -190,6 +201,7 @@ func main() {
 		{Name: "ipam_release", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
 		{Name: "networks_setup_container", Method: "POST", Path: "/networks/:network_id/:container_id"},
+		{Name: "networks_delete_container", Method: "DELETE", Path: "/networks/:network_id/:container_id"},
 	}
 
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)

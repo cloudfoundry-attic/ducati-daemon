@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"runtime"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
+	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
@@ -20,21 +20,22 @@ type creator interface {
 }
 
 type NetworksSetupContainer struct {
-	Unmarshaler marshal.Unmarshaler
-	Logger      lager.Logger
-	Datastore   store.Store
-	Creator     creator
+	Unmarshaler    marshal.Unmarshaler
+	Logger         lager.Logger
+	Datastore      store.Store
+	Creator        creator
+	OSThreadLocker threading.OSThreadLocker
 }
 
 func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+	h.OSThreadLocker.LockOSThread()
+	defer h.OSThreadLocker.UnlockOSThread()
 
 	logger := h.Logger.Session("networks-setup-containers")
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		// not tested
+		// untested
 		logger.Error("body-read-failed", err)
 		resp.WriteHeader(http.StatusInternalServerError)
 		return

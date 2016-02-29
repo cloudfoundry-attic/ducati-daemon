@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,18 +26,20 @@ import (
 
 var _ = Describe("NetworksSetupContainer", func() {
 	var (
-		setupHandler *handlers.NetworksSetupContainer
-		unmarshaler  *fakes.Unmarshaler
-		logger       *lagertest.TestLogger
-		datastore    *fakes.Store
-		executor     *exec_fakes.Executor
-		ipamResult   types.Result
-		creator      *fakes.Creator
-		handler      http.Handler
-		request      *http.Request
+		unmarshaler *fakes.Unmarshaler
+		logger      *lagertest.TestLogger
+		datastore   *fakes.Store
+		executor    *exec_fakes.Executor
+		ipamResult  types.Result
+		creator     *fakes.Creator
+		handler     http.Handler
+		request     *http.Request
+		osLocker    *fakes.OSThreadLocker
 	)
 
 	BeforeEach(func() {
+		osLocker = &fakes.OSThreadLocker{}
+
 		unmarshaler = &fakes.Unmarshaler{}
 		unmarshaler.UnmarshalStub = json.Unmarshal
 
@@ -45,11 +48,12 @@ var _ = Describe("NetworksSetupContainer", func() {
 		executor = &exec_fakes.Executor{}
 		creator = &fakes.Creator{}
 
-		setupHandler = &handlers.NetworksSetupContainer{
-			Unmarshaler: unmarshaler,
-			Logger:      logger,
-			Datastore:   datastore,
-			Creator:     creator,
+		setupHandler := &handlers.NetworksSetupContainer{
+			Unmarshaler:    unmarshaler,
+			Logger:         logger,
+			Datastore:      datastore,
+			Creator:        creator,
+			OSThreadLocker: osLocker,
 		}
 
 		ipamResult = types.Result{
@@ -125,6 +129,15 @@ var _ = Describe("NetworksSetupContainer", func() {
 			HostIP:    "10.12.100.4",
 			IP:        "192.168.160.3",
 		}))
+	})
+
+	It("locks and unlocks the os thread", func() {
+		request.Body = ioutil.NopCloser(strings.NewReader("{}"))
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
+
+		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
+		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
 	})
 
 	Context("when there are errors", func() {
