@@ -41,6 +41,6 @@ func (h *NetworksListContainers) ServeHTTP(resp http.ResponseWriter, req *http.R
 		return
 	}
 
-	resp.Write(payload)
 	resp.WriteHeader(http.StatusOK)
+	resp.Write(payload)
 }
