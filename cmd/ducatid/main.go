@@ -41,8 +41,6 @@ const localSubnetFlag = "localSubnet"
 const databaseURLFlag = "databaseURL"
 const sandboxRepoDirFlag = "sandboxRepoDir"
 
-const VNI = 1
-
 func parseFlags() {
 	flag.StringVar(&address, addressFlag, "", "")
 	flag.StringVar(&overlayNetwork, overlayNetworkFlag, "", "")
@@ -137,6 +135,7 @@ func main() {
 		LinkFinder:  linkFactory,
 		Executor:    executor,
 		SandboxRepo: sandboxRepo,
+		Locker:      globalLocker,
 	}
 	deletor := &container.Deletor{
 		Executor: executor,
@@ -198,7 +197,6 @@ func main() {
 		Deletor:        deletor,
 		OSThreadLocker: osThreadLocker,
 		SandboxRepo:    sandboxRepo,
-		VNI:            VNI,
 	}
 
 	routes := rata.Routes{

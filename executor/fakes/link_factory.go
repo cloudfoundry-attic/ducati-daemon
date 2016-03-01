@@ -79,6 +79,13 @@ type LinkFactory struct {
 	deleteLinkByNameReturns struct {
 		result1 error
 	}
+	VethDeviceCountStub        func() (int, error)
+	vethDeviceCountMutex       sync.RWMutex
+	vethDeviceCountArgsForCall []struct{}
+	vethDeviceCountReturns     struct {
+		result1 int
+		result2 error
+	}
 }
 
 func (fake *LinkFactory) CreateBridge(name string) error {
@@ -341,6 +348,31 @@ func (fake *LinkFactory) DeleteLinkByNameReturns(result1 error) {
 	fake.deleteLinkByNameReturns = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *LinkFactory) VethDeviceCount() (int, error) {
+	fake.vethDeviceCountMutex.Lock()
+	fake.vethDeviceCountArgsForCall = append(fake.vethDeviceCountArgsForCall, struct{}{})
+	fake.vethDeviceCountMutex.Unlock()
+	if fake.VethDeviceCountStub != nil {
+		return fake.VethDeviceCountStub()
+	} else {
+		return fake.vethDeviceCountReturns.result1, fake.vethDeviceCountReturns.result2
+	}
+}
+
+func (fake *LinkFactory) VethDeviceCountCallCount() int {
+	fake.vethDeviceCountMutex.RLock()
+	defer fake.vethDeviceCountMutex.RUnlock()
+	return len(fake.vethDeviceCountArgsForCall)
+}
+
+func (fake *LinkFactory) VethDeviceCountReturns(result1 int, result2 error) {
+	fake.VethDeviceCountStub = nil
+	fake.vethDeviceCountReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
 }
 
 var _ executor.LinkFactory = new(LinkFactory)

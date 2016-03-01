@@ -12,6 +12,7 @@ type Context interface {
 	VethFactory() VethFactory
 	VxlanFactory() VxlanFactory
 	LinkDeletor() LinkDeletor
+	VethDeviceCounter() VethDeviceCounter
 }
 
 //go:generate counterfeiter --fake-name Command . Command

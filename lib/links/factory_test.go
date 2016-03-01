@@ -479,5 +479,47 @@ var _ = Describe("Factory", func() {
 				})
 			})
 		})
+
+		Describe("VethDeviceCount", func() {
+			var link1, link2, link3 netlink.Link
+
+			BeforeEach(func() {
+				link1 = &netlink.Dummy{}
+				link2 = &netlink.Veth{}
+				link3 = &netlink.Veth{}
+
+				netlinker.LinkListReturns([]netlink.Link{link1, link2, link3}, nil)
+			})
+
+			It("returns the number of veth devices", func() {
+				count, err := factory.VethDeviceCount()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(count).To(Equal(2))
+			})
+
+			Context("when there are no veth devices", func() {
+				BeforeEach(func() {
+					netlinker.LinkListReturns([]netlink.Link{link1}, nil)
+				})
+
+				It("succeeds and returns 0", func() {
+					count, err := factory.VethDeviceCount()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(count).To(Equal(0))
+				})
+			})
+
+			Context("when listing links fails", func() {
+				BeforeEach(func() {
+					netlinker.LinkListReturns(nil, errors.New("banana"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := factory.VethDeviceCount()
+					Expect(err).To(MatchError("failed to list links: banana"))
+				})
+			})
+
+		})
 	})
 })

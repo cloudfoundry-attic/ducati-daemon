@@ -52,7 +52,6 @@ var _ = Describe("NetworksDeleteContainer", func() {
 			Deletor:        deletor,
 			OSThreadLocker: osLocker,
 			SandboxRepo:    sandboxRepo,
-			VNI:            42,
 		}
 
 		sandboxRepo.GetReturns(namespace.NewNamespace("/some/sandbox/repo/path"), nil)
@@ -64,6 +63,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		expectedQueryParams = url.Values{
 			"interface":                []string{"some-interface-name"},
 			"container_namespace_path": []string{"/some/container/namespace/path"},
+			"vni": []string{"42"},
 		}
 
 		request.URL.RawQuery = expectedQueryParams.Encode()
@@ -126,6 +126,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		},
 		Entry("interface", "interface"),
 		Entry("container_namespace_path", "container_namespace_path"),
+		Entry("vni", "vni"),
 	)
 
 	Context("when the sandbox repo fails", func() {

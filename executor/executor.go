@@ -22,6 +22,7 @@ type LinkFactory interface {
 	commands.VethFactory
 	commands.VxlanFactory
 	commands.LinkDeletor
+	commands.VethDeviceCounter
 }
 
 //go:generate counterfeiter --fake-name Command . Command
@@ -89,6 +90,10 @@ func (e *executor) VethFactory() commands.VethFactory {
 }
 
 func (e *executor) VxlanFactory() commands.VxlanFactory {
+	return e.LinkFactory
+}
+
+func (e *executor) VethDeviceCounter() commands.VethDeviceCounter {
 	return e.LinkFactory
 }
 

@@ -29,16 +29,19 @@ var _ = Describe("Setup", func() {
 		config            container.CreatorConfig
 		sandboxRepository *comm_fakes.Repository
 		sandboxNS         namespace.Namespace
+		locker            *comm_fakes.Locker
 	)
 
 	BeforeEach(func() {
 		executor = &exec_fakes.Executor{}
 		linkFinder = &cond_fakes.LinkFinder{}
 		sandboxRepository = &comm_fakes.Repository{}
+		locker = &comm_fakes.Locker{}
 		creator = container.Creator{
 			Executor:    executor,
 			LinkFinder:  linkFinder,
 			SandboxRepo: sandboxRepository,
+			Locker:      locker,
 		}
 
 		var err error
@@ -94,6 +97,16 @@ var _ = Describe("Setup", func() {
 			HostIP:          "10.11.12.13",
 			IPAMResult:      ipamResult,
 		}
+	})
+
+	It("should synchronize all operations by locking on the sandbox", func() {
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(locker.LockCallCount()).To(Equal(1))
+		Expect(locker.UnlockCallCount()).To(Equal(1))
+		Expect(locker.LockArgsForCall(0)).To(Equal("vni-99"))
+		Expect(locker.UnlockArgsForCall(0)).To(Equal("vni-99"))
 	})
 
 	It("should return a container that has been setup", func() {

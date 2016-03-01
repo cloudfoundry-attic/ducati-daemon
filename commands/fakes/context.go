@@ -68,6 +68,12 @@ type Context struct {
 	linkDeletorReturns     struct {
 		result1 commands.LinkDeletor
 	}
+	VethDeviceCounterStub        func() commands.VethDeviceCounter
+	vethDeviceCounterMutex       sync.RWMutex
+	vethDeviceCounterArgsForCall []struct{}
+	vethDeviceCounterReturns     struct {
+		result1 commands.VethDeviceCounter
+	}
 }
 
 func (fake *Context) AddressAdder() commands.AddressAdder {
@@ -307,6 +313,30 @@ func (fake *Context) LinkDeletorReturns(result1 commands.LinkDeletor) {
 	fake.LinkDeletorStub = nil
 	fake.linkDeletorReturns = struct {
 		result1 commands.LinkDeletor
+	}{result1}
+}
+
+func (fake *Context) VethDeviceCounter() commands.VethDeviceCounter {
+	fake.vethDeviceCounterMutex.Lock()
+	fake.vethDeviceCounterArgsForCall = append(fake.vethDeviceCounterArgsForCall, struct{}{})
+	fake.vethDeviceCounterMutex.Unlock()
+	if fake.VethDeviceCounterStub != nil {
+		return fake.VethDeviceCounterStub()
+	} else {
+		return fake.vethDeviceCounterReturns.result1
+	}
+}
+
+func (fake *Context) VethDeviceCounterCallCount() int {
+	fake.vethDeviceCounterMutex.RLock()
+	defer fake.vethDeviceCounterMutex.RUnlock()
+	return len(fake.vethDeviceCounterArgsForCall)
+}
+
+func (fake *Context) VethDeviceCounterReturns(result1 commands.VethDeviceCounter) {
+	fake.VethDeviceCounterStub = nil
+	fake.vethDeviceCounterReturns = struct {
+		result1 commands.VethDeviceCounter
 	}{result1}
 }
 

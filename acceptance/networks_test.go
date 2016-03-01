@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 
@@ -133,7 +134,6 @@ var _ = Describe("Networks", func() {
 
 			createURL = fmt.Sprintf("http://%s/networks/%s/%s", address, networkID, containerID)
 			deleteURL = createURL
-
 		})
 
 		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
@@ -167,18 +167,23 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(1))
 
-			// By("deleting the container")
-			// req, err = http.NewRequest("DELETE", deleteURL, nil)
-			// Expect(err).NotTo(HaveOccurred())
+			By("deleting the container")
+			req, err = http.NewRequest("DELETE", deleteURL, nil)
+			req.URL.RawQuery = url.Values{
+				"interface":                []string{"vx-eth0"},
+				"container_namespace_path": []string{containerNamespace.Path()},
+				"vni": []string{"99"},
+			}.Encode()
+			Expect(err).NotTo(HaveOccurred())
 
-			// resp, err = http.DefaultClient.Do(req)
-			// Expect(err).NotTo(HaveOccurred())
-			// defer resp.Body.Close()
+			resp, err = http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
 
-			// Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 
-			// _, err = sandboxRepo.Get("vni-99")
-			// Expect(err).To(MatchError("does not exist"))
+			_, err = sandboxRepo.Get("vni-99")
+			Expect(err).To(MatchError(ContainSubstring("no such file or directory")))
 		})
 
 		It("moves a vxlan adapter into the sandbox", func() {
@@ -301,23 +306,28 @@ var _ = Describe("Networks", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			// By("deleting")
-			// req, err = http.NewRequest("DELETE", deleteURL, nil)
-			// Expect(err).NotTo(HaveOccurred())
+			By("deleting")
+			req, err = http.NewRequest("DELETE", deleteURL, nil)
+			req.URL.RawQuery = url.Values{
+				"interface":                []string{"vx-eth0"},
+				"container_namespace_path": []string{containerNamespace.Path()},
+				"vni": []string{"99"},
+			}.Encode()
+			Expect(err).NotTo(HaveOccurred())
 
-			// resp, err = http.DefaultClient.Do(req)
-			// Expect(err).NotTo(HaveOccurred())
-			// defer resp.Body.Close()
+			resp, err = http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
 
-			// Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 
-			// By("checking that the veth device is no longer in the container")
-			// err = containerNamespace.Execute(func(_ *os.File) error {
-			// 	_, err := netlink.LinkByName("vx-eth0")
-			// 	Expect(err).To(MatchError("not found or something"))
-			// 	return nil
-			// })
-			// Expect(err).NotTo(HaveOccurred())
+			By("checking that the veth device is no longer in the container")
+			err = containerNamespace.Execute(func(_ *os.File) error {
+				_, err := netlink.LinkByName("vx-eth0")
+				Expect(err).To(MatchError(ContainSubstring("Link not found")))
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when there are routes", func() {

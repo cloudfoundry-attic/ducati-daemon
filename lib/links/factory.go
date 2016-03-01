@@ -163,3 +163,19 @@ func (f *Factory) SetUp(name string) error {
 
 	return nil
 }
+
+func (f *Factory) VethDeviceCount() (int, error) {
+	count := 0
+
+	links, err := f.Netlinker.LinkList()
+	if err != nil {
+		return 0, fmt.Errorf("failed to list links: %s", err)
+	}
+	for _, link := range links {
+		if _, ok := link.(*netlink.Veth); ok {
+			count++
+		}
+	}
+
+	return count, nil
+}

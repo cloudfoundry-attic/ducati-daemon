@@ -28,7 +28,6 @@ type NetworksDeleteContainer struct {
 	Deletor        deletor
 	OSThreadLocker threading.OSThreadLocker
 	SandboxRepo    repository
-	VNI            int
 }
 
 func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, request *http.Request) {
@@ -41,6 +40,7 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 	_ = rata.Param(request, "network_id") // we may want this later
 	interfaceName := request.URL.Query().Get("interface")
 	containerNSPath := request.URL.Query().Get("container_namespace_path")
+	vni := request.URL.Query().Get("vni")
 
 	if interfaceName == "" {
 		logger.Error("bad-request", errors.New("missing-interface"))
@@ -54,7 +54,13 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 		return
 	}
 
-	sandboxName := fmt.Sprintf("vni-%d", h.VNI)
+	if vni == "" {
+		logger.Error("bad-request", errors.New("missing-vni"))
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	sandboxName := fmt.Sprintf("vni-%s", vni)
 	sandboxNS, err := h.SandboxRepo.Get(sandboxName)
 	if err != nil {
 		logger.Error("sandbox-repo", err)

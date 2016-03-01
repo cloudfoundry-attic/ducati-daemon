@@ -16,6 +16,7 @@ type Creator struct {
 	LinkFinder  conditions.LinkFinder
 	Executor    executor.Executor
 	SandboxRepo namespace.Repository
+	Locker      commands.Locker
 }
 
 type CreatorConfig struct {
@@ -32,16 +33,20 @@ type CreatorConfig struct {
 func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	hostNamespace := namespace.NewNamespace(fmt.Sprintf("/proc/self/ns/net"))
 	vxlanName := fmt.Sprintf("vxlan%d", config.VNI)
+	sandboxName := fmt.Sprintf("vni-%d", config.VNI)
 	containerNS := namespace.NewNamespace(config.ContainerNsPath)
 
+	c.Locker.Lock(sandboxName)
+	defer c.Locker.Unlock(sandboxName)
+
 	sandboxCommand := &commands.CreateNamespace{
-		Name:       fmt.Sprintf("vni-%d", config.VNI),
+		Name:       sandboxName,
 		Repository: c.SandboxRepo,
 	}
 
 	err := c.Executor.Execute(commands.Unless{
 		Condition: conditions.NamespaceExists{
-			Name:       fmt.Sprintf("vni-%d", config.VNI),
+			Name:       sandboxName,
 			Repository: c.SandboxRepo,
 		},
 		Command: sandboxCommand,
@@ -51,7 +56,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	}
 
 	if sandboxCommand.Result == nil {
-		sandboxCommand.Result, err = c.SandboxRepo.Get(fmt.Sprintf("vni-%d", config.VNI))
+		sandboxCommand.Result, err = c.SandboxRepo.Get(sandboxName)
 		if err != nil {
 			panic(err)
 		}

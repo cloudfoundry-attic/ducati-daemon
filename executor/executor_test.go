@@ -96,8 +96,14 @@ var _ = Describe("Executor", func() {
 			})
 		})
 
+		Describe("VethDeviceCounter", func() {
+			It("returns the link factory", func() {
+				Expect(context.VethDeviceCounter()).To(Equal(linkFactory))
+			})
+		})
+
 		Describe("LinkDeletor", func() {
-			It("returns the link deletor", func() {
+			It("returns the link factory", func() {
 				Expect(context.LinkDeletor()).To(Equal(linkFactory))
 			})
 		})
