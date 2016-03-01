@@ -12,9 +12,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/rata"
 )
@@ -29,6 +31,8 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		request   *http.Request
 		osLocker  *fakes.OSThreadLocker
 
+		sandboxRepo *fakes.Repository
+
 		expectedQueryParams url.Values
 	)
 
@@ -40,12 +44,18 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		executor = &exec_fakes.Executor{}
 		deletor = &fakes.Deletor{}
 
+		sandboxRepo = &fakes.Repository{}
+
 		deleteHandler := &handlers.NetworksDeleteContainer{
 			Logger:         logger,
 			Datastore:      datastore,
 			Deletor:        deletor,
 			OSThreadLocker: osLocker,
+			SandboxRepo:    sandboxRepo,
+			VNI:            42,
 		}
+
+		sandboxRepo.GetReturns(namespace.NewNamespace("/some/sandbox/repo/path"), nil)
 
 		handler, request = rataWrap(deleteHandler, "DELETE", "/networks/:network_id/:container_id", rata.Params{
 			"network_id":   "some-network-id",
@@ -59,16 +69,24 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		request.URL.RawQuery = expectedQueryParams.Encode()
 	})
 
+	It("computes the sandbox name from the VNI", func() {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
+
+		Expect(sandboxRepo.GetCallCount()).To(Equal(1))
+		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("vni-42"))
+	})
+
 	It("deletes the container from the network", func() {
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)
 
 		Expect(deletor.DeleteCallCount()).To(Equal(1))
-		networkID, containerID, interfaceName, containerNSPath := deletor.DeleteArgsForCall(0)
-		Expect(networkID).To(Equal("some-network-id"))
-		Expect(containerID).To(Equal("some-container-id"))
-		Expect(interfaceName).To(Equal("some-interface-name"))
-		Expect(containerNSPath).To(Equal("/some/container/namespace/path"))
+		Expect(deletor.DeleteArgsForCall(0)).To(Equal(container.DeletorConfig{
+			InterfaceName:   "some-interface-name",
+			ContainerNSPath: "/some/container/namespace/path",
+			SandboxNSPath:   "/some/sandbox/repo/path",
+		}))
 	})
 
 	It("deletes the container from the datastore", func() {
@@ -109,6 +127,20 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		Entry("interface", "interface"),
 		Entry("container_namespace_path", "container_namespace_path"),
 	)
+
+	Context("when the sandbox repo fails", func() {
+		BeforeEach(func() {
+			sandboxRepo.GetReturns(nil, errors.New("some-repo-error"))
+		})
+
+		It("should log and respond with status 500", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			Expect(logger).To(gbytes.Say("networks-delete-containers.sandbox-repo.*some-repo-error"))
+		})
+	})
 
 	Context("when deleting the container from the network fails", func() {
 		BeforeEach(func() {

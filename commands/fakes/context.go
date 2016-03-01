@@ -62,6 +62,12 @@ type Context struct {
 	vxlanFactoryReturns     struct {
 		result1 commands.VxlanFactory
 	}
+	LinkDeletorStub        func() commands.LinkDeletor
+	linkDeletorMutex       sync.RWMutex
+	linkDeletorArgsForCall []struct{}
+	linkDeletorReturns     struct {
+		result1 commands.LinkDeletor
+	}
 }
 
 func (fake *Context) AddressAdder() commands.AddressAdder {
@@ -277,6 +283,30 @@ func (fake *Context) VxlanFactoryReturns(result1 commands.VxlanFactory) {
 	fake.VxlanFactoryStub = nil
 	fake.vxlanFactoryReturns = struct {
 		result1 commands.VxlanFactory
+	}{result1}
+}
+
+func (fake *Context) LinkDeletor() commands.LinkDeletor {
+	fake.linkDeletorMutex.Lock()
+	fake.linkDeletorArgsForCall = append(fake.linkDeletorArgsForCall, struct{}{})
+	fake.linkDeletorMutex.Unlock()
+	if fake.LinkDeletorStub != nil {
+		return fake.LinkDeletorStub()
+	} else {
+		return fake.linkDeletorReturns.result1
+	}
+}
+
+func (fake *Context) LinkDeletorCallCount() int {
+	fake.linkDeletorMutex.RLock()
+	defer fake.linkDeletorMutex.RUnlock()
+	return len(fake.linkDeletorArgsForCall)
+}
+
+func (fake *Context) LinkDeletorReturns(result1 commands.LinkDeletor) {
+	fake.LinkDeletorStub = nil
+	fake.linkDeletorReturns = struct {
+		result1 commands.LinkDeletor
 	}{result1}
 }
 

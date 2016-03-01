@@ -4,7 +4,6 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
@@ -94,5 +93,3 @@ func (fake *Repository) CreateReturns(result1 namespace.Namespace, result2 error
 		result2 error
 	}{result1, result2}
 }
-
-var _ commands.Repository = new(Repository)

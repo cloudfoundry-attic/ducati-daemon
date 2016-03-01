@@ -11,6 +11,7 @@ type Context interface {
 	SetUpper() SetUpper
 	VethFactory() VethFactory
 	VxlanFactory() VxlanFactory
+	LinkDeletor() LinkDeletor
 }
 
 //go:generate counterfeiter --fake-name Command . Command

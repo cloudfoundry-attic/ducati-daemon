@@ -91,6 +91,7 @@ var _ = Describe("Networks", func() {
 	Describe("POST /networks/:network_id/:container_id", func() {
 		var (
 			createURL  string
+			deleteURL  string
 			payload    []byte
 			ipamResult types.Result
 		)
@@ -131,10 +132,11 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			createURL = fmt.Sprintf("http://%s/networks/%s/%s", address, networkID, containerID)
+			deleteURL = createURL
 
 		})
 
-		It("should respond to POST /networks/:network_id/:container_id", func() {
+		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
 			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -164,6 +166,19 @@ var _ = Describe("Networks", func() {
 			err = json.Unmarshal(jsonBytes, &containers)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(1))
+
+			// By("deleting the container")
+			// req, err = http.NewRequest("DELETE", deleteURL, nil)
+			// Expect(err).NotTo(HaveOccurred())
+
+			// resp, err = http.DefaultClient.Do(req)
+			// Expect(err).NotTo(HaveOccurred())
+			// defer resp.Body.Close()
+
+			// Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+
+			// _, err = sandboxRepo.Get("vni-99")
+			// Expect(err).To(MatchError("does not exist"))
 		})
 
 		It("moves a vxlan adapter into the sandbox", func() {
@@ -247,6 +262,7 @@ var _ = Describe("Networks", func() {
 			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
 			Expect(err).NotTo(HaveOccurred())
 
+			By("creating")
 			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
@@ -257,6 +273,7 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
 
+			By("checking that the container has a veth device")
 			err = containerNamespace.Execute(func(_ *os.File) error {
 				link, err := netlink.LinkByName("vx-eth0")
 				Expect(err).NotTo(HaveOccurred())
@@ -270,6 +287,7 @@ var _ = Describe("Networks", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
+			By("checking that the sandbox has a veth device")
 			err = sandboxNS.Execute(func(_ *os.File) error {
 				link, err := netlink.LinkByName("some-container-")
 				Expect(err).NotTo(HaveOccurred())
@@ -282,6 +300,24 @@ var _ = Describe("Networks", func() {
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
+
+			// By("deleting")
+			// req, err = http.NewRequest("DELETE", deleteURL, nil)
+			// Expect(err).NotTo(HaveOccurred())
+
+			// resp, err = http.DefaultClient.Do(req)
+			// Expect(err).NotTo(HaveOccurred())
+			// defer resp.Body.Close()
+
+			// Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+
+			// By("checking that the veth device is no longer in the container")
+			// err = containerNamespace.Execute(func(_ *os.File) error {
+			// 	_, err := netlink.LinkByName("vx-eth0")
+			// 	Expect(err).To(MatchError("not found or something"))
+			// 	return nil
+			// })
+			// Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when there are routes", func() {

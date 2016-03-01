@@ -95,5 +95,11 @@ var _ = Describe("Executor", func() {
 				Expect(context.VxlanFactory()).To(Equal(linkFactory))
 			})
 		})
+
+		Describe("LinkDeletor", func() {
+			It("returns the link deletor", func() {
+				Expect(context.LinkDeletor()).To(Equal(linkFactory))
+			})
+		})
 	})
 })

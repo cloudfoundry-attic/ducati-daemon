@@ -71,6 +71,14 @@ type LinkFactory struct {
 	createVxlanReturns struct {
 		result1 error
 	}
+	DeleteLinkByNameStub        func(name string) error
+	deleteLinkByNameMutex       sync.RWMutex
+	deleteLinkByNameArgsForCall []struct {
+		name string
+	}
+	deleteLinkByNameReturns struct {
+		result1 error
+	}
 }
 
 func (fake *LinkFactory) CreateBridge(name string) error {
@@ -299,6 +307,38 @@ func (fake *LinkFactory) CreateVxlanArgsForCall(i int) (string, int) {
 func (fake *LinkFactory) CreateVxlanReturns(result1 error) {
 	fake.CreateVxlanStub = nil
 	fake.createVxlanReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *LinkFactory) DeleteLinkByName(name string) error {
+	fake.deleteLinkByNameMutex.Lock()
+	fake.deleteLinkByNameArgsForCall = append(fake.deleteLinkByNameArgsForCall, struct {
+		name string
+	}{name})
+	fake.deleteLinkByNameMutex.Unlock()
+	if fake.DeleteLinkByNameStub != nil {
+		return fake.DeleteLinkByNameStub(name)
+	} else {
+		return fake.deleteLinkByNameReturns.result1
+	}
+}
+
+func (fake *LinkFactory) DeleteLinkByNameCallCount() int {
+	fake.deleteLinkByNameMutex.RLock()
+	defer fake.deleteLinkByNameMutex.RUnlock()
+	return len(fake.deleteLinkByNameArgsForCall)
+}
+
+func (fake *LinkFactory) DeleteLinkByNameArgsForCall(i int) string {
+	fake.deleteLinkByNameMutex.RLock()
+	defer fake.deleteLinkByNameMutex.RUnlock()
+	return fake.deleteLinkByNameArgsForCall[i].name
+}
+
+func (fake *LinkFactory) DeleteLinkByNameReturns(result1 error) {
+	fake.DeleteLinkByNameStub = nil
+	fake.deleteLinkByNameReturns = struct {
 		result1 error
 	}{result1}
 }

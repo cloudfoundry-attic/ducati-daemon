@@ -41,6 +41,8 @@ const localSubnetFlag = "localSubnet"
 const databaseURLFlag = "databaseURL"
 const sandboxRepoDirFlag = "sandboxRepoDir"
 
+const VNI = 1
+
 func parseFlags() {
 	flag.StringVar(&address, addressFlag, "", "")
 	flag.StringVar(&overlayNetwork, overlayNetworkFlag, "", "")
@@ -128,12 +130,17 @@ func main() {
 	}
 
 	osThreadLocker := &threading.OSLocker{}
+	globalLocker := &threading.GlobalLocker{}
 
 	executor := executor.New(addressManager, routeManager, linkFactory)
 	creator := &container.Creator{
 		LinkFinder:  linkFactory,
 		Executor:    executor,
 		SandboxRepo: sandboxRepo,
+	}
+	deletor := &container.Deletor{
+		Executor: executor,
+		Locker:   globalLocker,
 	}
 
 	rataHandlers["containers_list"] = &handlers.ContainersList{
@@ -190,6 +197,8 @@ func main() {
 		Datastore:      dataStore,
 		Deletor:        deletor,
 		OSThreadLocker: osThreadLocker,
+		SandboxRepo:    sandboxRepo,
+		VNI:            VNI,
 	}
 
 	routes := rata.Routes{
