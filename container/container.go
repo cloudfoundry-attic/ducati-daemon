@@ -94,7 +94,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 									Name: vxlanName,
 									VNI:  config.VNI,
 								},
-								commands.SetLinkNamespace{
+								commands.MoveLink{
 									Namespace: sandboxCommand.Result.Path(),
 									Name:      vxlanName,
 								},
@@ -119,7 +119,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 								PeerName: sandboxLinkName,
 								MTU:      1450,
 							},
-							commands.SetLinkNamespace{
+							commands.MoveLink{
 								Name:      sandboxLinkName,
 								Namespace: sandboxCommand.Result.Path(),
 							},

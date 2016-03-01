@@ -5,11 +5,11 @@ type SetNamespacer interface {
 	SetNamespace(intefaceName, namespace string) error
 }
 
-type SetLinkNamespace struct {
+type MoveLink struct {
 	Name      string
 	Namespace string
 }
 
-func (s SetLinkNamespace) Execute(context Context) error {
+func (s MoveLink) Execute(context Context) error {
 	return context.SetNamespacer().SetNamespace(s.Name, s.Namespace)
 }

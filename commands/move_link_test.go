@@ -9,11 +9,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SetLinkNamespace", func() {
+var _ = Describe("MoveLink", func() {
 	var (
 		context          *fakes.Context
 		setNamespacer    *fakes.SetNamespacer
-		setLinkNamespace commands.SetLinkNamespace
+		setLinkNamespace commands.MoveLink
 	)
 
 	BeforeEach(func() {
@@ -21,7 +21,7 @@ var _ = Describe("SetLinkNamespace", func() {
 		setNamespacer = &fakes.SetNamespacer{}
 		context.SetNamespacerReturns(setNamespacer)
 
-		setLinkNamespace = commands.SetLinkNamespace{
+		setLinkNamespace = commands.MoveLink{
 			Name:      "link-name",
 			Namespace: "some-namespace-path",
 		}

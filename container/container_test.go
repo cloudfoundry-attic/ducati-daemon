@@ -140,7 +140,7 @@ var _ = Describe("Setup", func() {
 										Name: "vxlan99",
 										VNI:  99,
 									},
-									commands.SetLinkNamespace{
+									commands.MoveLink{
 										Namespace: "/some/sandbox/namespace",
 										Name:      "vxlan99",
 									},
@@ -163,7 +163,7 @@ var _ = Describe("Setup", func() {
 							PeerName: "sandbox-link",
 							MTU:      1450,
 						},
-						commands.SetLinkNamespace{
+						commands.MoveLink{
 							Name:      "sandbox-link",
 							Namespace: "/some/sandbox/namespace",
 						},
@@ -272,7 +272,7 @@ var _ = Describe("Setup", func() {
 											Name: "vxlan99",
 											VNI:  99,
 										},
-										commands.SetLinkNamespace{
+										commands.MoveLink{
 											Namespace: "/some/sandbox/namespace",
 											Name:      "vxlan99",
 										},
@@ -295,7 +295,7 @@ var _ = Describe("Setup", func() {
 								PeerName: "123456789012345",
 								MTU:      1450,
 							},
-							commands.SetLinkNamespace{
+							commands.MoveLink{
 								Name:      "123456789012345",
 								Namespace: "/some/sandbox/namespace",
 							},
