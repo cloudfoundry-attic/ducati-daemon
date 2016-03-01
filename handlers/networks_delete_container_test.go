@@ -2,11 +2,13 @@ package handlers_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
@@ -26,6 +28,8 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		handler   http.Handler
 		request   *http.Request
 		osLocker  *fakes.OSThreadLocker
+
+		expectedQueryParams url.Values
 	)
 
 	BeforeEach(func() {
@@ -47,7 +51,12 @@ var _ = Describe("NetworksDeleteContainer", func() {
 			"network_id":   "some-network-id",
 			"container_id": "some-container-id",
 		})
-		request.URL.RawQuery = url.Values{"interface": []string{"some-interface-name"}}.Encode()
+		expectedQueryParams = url.Values{
+			"interface":                []string{"some-interface-name"},
+			"container_namespace_path": []string{"/some/container/namespace/path"},
+		}
+
+		request.URL.RawQuery = expectedQueryParams.Encode()
 	})
 
 	It("deletes the container from the network", func() {
@@ -55,10 +64,11 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		handler.ServeHTTP(resp, request)
 
 		Expect(deletor.DeleteCallCount()).To(Equal(1))
-		networkID, containerID, interfaceName := deletor.DeleteArgsForCall(0)
+		networkID, containerID, interfaceName, containerNSPath := deletor.DeleteArgsForCall(0)
 		Expect(networkID).To(Equal("some-network-id"))
 		Expect(containerID).To(Equal("some-container-id"))
 		Expect(interfaceName).To(Equal("some-interface-name"))
+		Expect(containerNSPath).To(Equal("/some/container/namespace/path"))
 	})
 
 	It("deletes the container from the datastore", func() {
@@ -85,19 +95,20 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
 	})
 
-	Context("when the interface name is not present as a query parameter", func() {
-		BeforeEach(func() {
-			request.URL.RawQuery = ""
-		})
+	DescribeTable("missing query params",
+		func(paramToRemove string) {
+			delete(expectedQueryParams, paramToRemove)
+			request.URL.RawQuery = expectedQueryParams.Encode()
 
-		It("should log and respond with status code 400", func() {
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, request)
 
 			Expect(resp.Code).To(Equal(http.StatusBadRequest))
-			Expect(logger).To(gbytes.Say("networks-delete-containers.bad-request.*missing-interface"))
-		})
-	})
+			Expect(logger).To(gbytes.Say(fmt.Sprintf("networks-delete-containers.bad-request.*missing-%s", paramToRemove)))
+		},
+		Entry("interface", "interface"),
+		Entry("container_namespace_path", "container_namespace_path"),
+	)
 
 	Context("when deleting the container from the network fails", func() {
 		BeforeEach(func() {

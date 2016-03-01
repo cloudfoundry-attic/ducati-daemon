@@ -12,7 +12,7 @@ import (
 
 //go:generate counterfeiter -o ../fakes/deletor.go --fake-name Deletor . deletor
 type deletor interface {
-	Delete(networkID, containerID, interfaceName string) error
+	Delete(networkID, containerID, interfaceName, containerNamespacePath string) error
 }
 
 type NetworksDeleteContainer struct {
@@ -31,6 +31,7 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 	containerID := rata.Param(request, "container_id")
 	networkID := rata.Param(request, "network_id")
 	interfaceName := request.URL.Query().Get("interface")
+	containerNSPath := request.URL.Query().Get("container_namespace_path")
 
 	if interfaceName == "" {
 		logger.Error("bad-request", errors.New("missing-interface"))
@@ -38,7 +39,13 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 		return
 	}
 
-	err := h.Deletor.Delete(networkID, containerID, interfaceName)
+	if containerNSPath == "" {
+		logger.Error("bad-request", errors.New("missing-container_namespace_path"))
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := h.Deletor.Delete(networkID, containerID, interfaceName, containerNSPath)
 	if err != nil {
 		logger.Error("deletor.delete-failed", err)
 		response.WriteHeader(http.StatusInternalServerError)

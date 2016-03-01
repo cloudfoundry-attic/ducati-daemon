@@ -4,28 +4,30 @@ package fakes
 import "sync"
 
 type Deletor struct {
-	DeleteStub        func(networkID, containerID, interfaceName string) error
+	DeleteStub        func(networkID, containerID, interfaceName, containerNamespacePath string) error
 	deleteMutex       sync.RWMutex
 	deleteArgsForCall []struct {
-		networkID     string
-		containerID   string
-		interfaceName string
+		networkID              string
+		containerID            string
+		interfaceName          string
+		containerNamespacePath string
 	}
 	deleteReturns struct {
 		result1 error
 	}
 }
 
-func (fake *Deletor) Delete(networkID string, containerID string, interfaceName string) error {
+func (fake *Deletor) Delete(networkID string, containerID string, interfaceName string, containerNamespacePath string) error {
 	fake.deleteMutex.Lock()
 	fake.deleteArgsForCall = append(fake.deleteArgsForCall, struct {
-		networkID     string
-		containerID   string
-		interfaceName string
-	}{networkID, containerID, interfaceName})
+		networkID              string
+		containerID            string
+		interfaceName          string
+		containerNamespacePath string
+	}{networkID, containerID, interfaceName, containerNamespacePath})
 	fake.deleteMutex.Unlock()
 	if fake.DeleteStub != nil {
-		return fake.DeleteStub(networkID, containerID, interfaceName)
+		return fake.DeleteStub(networkID, containerID, interfaceName, containerNamespacePath)
 	} else {
 		return fake.deleteReturns.result1
 	}
@@ -37,10 +39,10 @@ func (fake *Deletor) DeleteCallCount() int {
 	return len(fake.deleteArgsForCall)
 }
 
-func (fake *Deletor) DeleteArgsForCall(i int) (string, string, string) {
+func (fake *Deletor) DeleteArgsForCall(i int) (string, string, string, string) {
 	fake.deleteMutex.RLock()
 	defer fake.deleteMutex.RUnlock()
-	return fake.deleteArgsForCall[i].networkID, fake.deleteArgsForCall[i].containerID, fake.deleteArgsForCall[i].interfaceName
+	return fake.deleteArgsForCall[i].networkID, fake.deleteArgsForCall[i].containerID, fake.deleteArgsForCall[i].interfaceName, fake.deleteArgsForCall[i].containerNamespacePath
 }
 
 func (fake *Deletor) DeleteReturns(result1 error) {
