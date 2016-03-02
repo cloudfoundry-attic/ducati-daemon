@@ -15,15 +15,13 @@ type repository interface {
 type CreateNamespace struct {
 	Name       string
 	Repository repository
-	Result     Namespace
 }
 
-func (cn *CreateNamespace) Execute(context Context) error {
-	ns, err := cn.Repository.Create(cn.Name)
+func (cn CreateNamespace) Execute(context Context) error {
+	_, err := cn.Repository.Create(cn.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create namespace %q: %s", cn.Name, err)
 	}
 
-	cn.Result = ns
 	return nil
 }

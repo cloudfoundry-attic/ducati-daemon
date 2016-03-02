@@ -13,6 +13,7 @@ import (
 type Repository interface {
 	Get(name string) (Namespace, error)
 	Create(name string) (Namespace, error)
+	PathOf(path string) string
 }
 
 func init() {
@@ -69,6 +70,10 @@ func (r *repository) Create(name string) (Namespace, error) {
 	}
 
 	return NewNamespace(file.Name()), nil
+}
+
+func (r *repository) PathOf(path string) string {
+	return filepath.Join(r.root, path)
 }
 
 func (r *repository) open(name string) (*os.File, error) {

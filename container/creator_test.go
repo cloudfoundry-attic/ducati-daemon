@@ -12,6 +12,7 @@ import (
 	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/conditions/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 
@@ -27,7 +28,7 @@ var _ = Describe("Setup", func() {
 		containerMAC      net.HardwareAddr
 		ipamResult        types.Result
 		config            container.CreatorConfig
-		sandboxRepository *comm_fakes.Repository
+		sandboxRepository *fakes.Repository
 		sandboxNS         namespace.Namespace
 		locker            *comm_fakes.Locker
 	)
@@ -35,7 +36,7 @@ var _ = Describe("Setup", func() {
 	BeforeEach(func() {
 		executor = &exec_fakes.Executor{}
 		linkFinder = &cond_fakes.LinkFinder{}
-		sandboxRepository = &comm_fakes.Repository{}
+		sandboxRepository = &fakes.Repository{}
 		locker = &comm_fakes.Locker{}
 		creator = container.Creator{
 			Executor:    executor,
@@ -73,13 +74,10 @@ var _ = Describe("Setup", func() {
 		}
 
 		sandboxNS = namespace.NewNamespace("/some/sandbox/namespace")
+		sandboxRepository.PathOfReturns("/some/sandbox/namespace")
 		executor.ExecuteStub = func(command commands.Command) error {
 			switch executor.ExecuteCallCount() {
-			case 1:
-				cnsUnless := command.(commands.Unless)
-				cnsCommand := cnsUnless.Command.(*commands.CreateNamespace)
-				cnsCommand.Result = sandboxNS
-			case 3:
+			case 2:
 				nsCommand := command.(commands.InNamespace)
 				getCommand := nsCommand.Command.(*commands.GetHardwareAddress)
 				getCommand.Result = containerMAC
@@ -120,24 +118,20 @@ var _ = Describe("Setup", func() {
 			HostIP:    "10.11.12.13",
 		}))
 
-		Expect(executor.ExecuteCallCount()).To(Equal(3))
+		Expect(executor.ExecuteCallCount()).To(Equal(2))
 
-		Expect(executor.ExecuteArgsForCall(0)).To(Equal(
-			commands.Unless{
-				Condition: conditions.NamespaceExists{
-					Name:       fmt.Sprintf("vni-%d", config.VNI),
-					Repository: sandboxRepository,
-				},
-				Command: &commands.CreateNamespace{
-					Name:       fmt.Sprintf("vni-%d", config.VNI),
-					Repository: sandboxRepository,
-					Result:     sandboxNS,
-				},
-			},
-		))
-
-		Expect(executor.ExecuteArgsForCall(1)).To(BeEquivalentTo(
+		Expect(executor.ExecuteArgsForCall(0)).To(BeEquivalentTo(
 			commands.All(
+				commands.Unless{
+					Condition: conditions.NamespaceExists{
+						Name:       fmt.Sprintf("vni-%d", config.VNI),
+						Repository: sandboxRepository,
+					},
+					Command: commands.CreateNamespace{
+						Name:       fmt.Sprintf("vni-%d", config.VNI),
+						Repository: sandboxRepository,
+					},
+				},
 				commands.InNamespace{
 					Namespace: sandboxNS,
 					Command: commands.Unless{
@@ -267,9 +261,19 @@ var _ = Describe("Setup", func() {
 			_, err := creator.Setup(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(executor.ExecuteCallCount()).To(Equal(3))
-			Expect(executor.ExecuteArgsForCall(1)).To(BeEquivalentTo(
+			Expect(executor.ExecuteCallCount()).To(Equal(2))
+			Expect(executor.ExecuteArgsForCall(0)).To(BeEquivalentTo(
 				commands.All(
+					commands.Unless{
+						Condition: conditions.NamespaceExists{
+							Name:       fmt.Sprintf("vni-%d", config.VNI),
+							Repository: sandboxRepository,
+						},
+						Command: commands.CreateNamespace{
+							Name:       fmt.Sprintf("vni-%d", config.VNI),
+							Repository: sandboxRepository,
+						},
+					},
 					commands.InNamespace{
 						Namespace: sandboxNS,
 						Command: commands.Unless{
@@ -383,33 +387,11 @@ var _ = Describe("Setup", func() {
 	})
 
 	Context("when an error occurs", func() {
-		Context("when creating the sandbox namespace fails", func() {
-			BeforeEach(func() {
-				executor.ExecuteStub = func(command commands.Command) error {
-					switch executor.ExecuteCallCount() {
-					case 1:
-						return errors.New("some sandbox create error")
-					}
-
-					return nil
-				}
-			})
-
-			It("should return an error", func() {
-				_, err := creator.Setup(config)
-				Expect(err).To(MatchError("some sandbox create error"))
-			})
-		})
-
 		Context("when setting up the container fails", func() {
 			BeforeEach(func() {
 				executor.ExecuteStub = func(command commands.Command) error {
 					switch executor.ExecuteCallCount() {
 					case 1:
-						cnsUnless := command.(commands.Unless)
-						cnsCommand := cnsUnless.Command.(*commands.CreateNamespace)
-						cnsCommand.Result = sandboxNS
-					case 2:
 						return errors.New("some setup error")
 					}
 
@@ -427,11 +409,7 @@ var _ = Describe("Setup", func() {
 			BeforeEach(func() {
 				executor.ExecuteStub = func(command commands.Command) error {
 					switch executor.ExecuteCallCount() {
-					case 1:
-						cnsUnless := command.(commands.Unless)
-						cnsCommand := cnsUnless.Command.(*commands.CreateNamespace)
-						cnsCommand.Result = sandboxNS
-					case 3:
+					case 2:
 						return errors.New("some hardware error")
 					}
 

@@ -26,6 +26,14 @@ type Repository struct {
 		result1 namespace.Namespace
 		result2 error
 	}
+	PathOfStub        func(path string) string
+	pathOfMutex       sync.RWMutex
+	pathOfArgsForCall []struct {
+		path string
+	}
+	pathOfReturns struct {
+		result1 string
+	}
 }
 
 func (fake *Repository) Get(name string) (namespace.Namespace, error) {
@@ -92,6 +100,38 @@ func (fake *Repository) CreateReturns(result1 namespace.Namespace, result2 error
 		result1 namespace.Namespace
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *Repository) PathOf(path string) string {
+	fake.pathOfMutex.Lock()
+	fake.pathOfArgsForCall = append(fake.pathOfArgsForCall, struct {
+		path string
+	}{path})
+	fake.pathOfMutex.Unlock()
+	if fake.PathOfStub != nil {
+		return fake.PathOfStub(path)
+	} else {
+		return fake.pathOfReturns.result1
+	}
+}
+
+func (fake *Repository) PathOfCallCount() int {
+	fake.pathOfMutex.RLock()
+	defer fake.pathOfMutex.RUnlock()
+	return len(fake.pathOfArgsForCall)
+}
+
+func (fake *Repository) PathOfArgsForCall(i int) string {
+	fake.pathOfMutex.RLock()
+	defer fake.pathOfMutex.RUnlock()
+	return fake.pathOfArgsForCall[i].path
+}
+
+func (fake *Repository) PathOfReturns(result1 string) {
+	fake.PathOfStub = nil
+	fake.pathOfReturns = struct {
+		result1 string
+	}{result1}
 }
 
 var _ namespace.Repository = new(Repository)

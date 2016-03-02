@@ -3,8 +3,8 @@ package conditions_test
 import (
 	"errors"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/conditions"
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

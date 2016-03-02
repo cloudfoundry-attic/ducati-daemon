@@ -36,31 +36,11 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	sandboxName := fmt.Sprintf("vni-%d", config.VNI)
 	containerNS := namespace.NewNamespace(config.ContainerNsPath)
 
+	sandboxNSPath := c.SandboxRepo.PathOf(sandboxName)
+	sandboxNS := namespace.NewNamespace(sandboxNSPath)
+
 	c.Locker.Lock(sandboxName)
 	defer c.Locker.Unlock(sandboxName)
-
-	sandboxCommand := &commands.CreateNamespace{
-		Name:       sandboxName,
-		Repository: c.SandboxRepo,
-	}
-
-	err := c.Executor.Execute(commands.Unless{
-		Condition: conditions.NamespaceExists{
-			Name:       sandboxName,
-			Repository: c.SandboxRepo,
-		},
-		Command: sandboxCommand,
-	})
-	if err != nil {
-		return models.Container{}, err
-	}
-
-	if sandboxCommand.Result == nil {
-		sandboxCommand.Result, err = c.SandboxRepo.Get(sandboxName)
-		if err != nil {
-			panic(err)
-		}
-	}
 
 	sandboxLinkName := config.ContainerID
 	if len(sandboxLinkName) > 15 {
@@ -82,10 +62,20 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 		routeCommands = append(routeCommands, routeCommand)
 	}
 
-	err = c.Executor.Execute(
+	err := c.Executor.Execute(
 		commands.All(
+			commands.Unless{
+				Condition: conditions.NamespaceExists{
+					Name:       sandboxName,
+					Repository: c.SandboxRepo,
+				},
+				Command: commands.CreateNamespace{
+					Name:       sandboxName,
+					Repository: c.SandboxRepo,
+				},
+			},
 			commands.InNamespace{
-				Namespace: sandboxCommand.Result,
+				Namespace: sandboxNS,
 				Command: commands.Unless{
 					Condition: conditions.LinkExists{
 						LinkFinder: c.LinkFinder,
@@ -100,13 +90,13 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 									VNI:  config.VNI,
 								},
 								commands.MoveLink{
-									Namespace: sandboxCommand.Result.Path(),
+									Namespace: sandboxNSPath,
 									Name:      vxlanName,
 								},
 							),
 						},
 						commands.InNamespace{
-							Namespace: sandboxCommand.Result,
+							Namespace: sandboxNS,
 							Command: commands.SetLinkUp{
 								LinkName: vxlanName,
 							},
@@ -126,7 +116,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 							},
 							commands.MoveLink{
 								Name:      sandboxLinkName,
-								Namespace: sandboxCommand.Result.Path(),
+								Namespace: sandboxNSPath,
 							},
 							commands.AddAddress{
 								InterfaceName: config.InterfaceName,
@@ -141,7 +131,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 				),
 			},
 			commands.InNamespace{
-				Namespace: sandboxCommand.Result,
+				Namespace: sandboxNS,
 				Command: commands.All(
 					commands.SetLinkUp{
 						LinkName: sandboxLinkName,
