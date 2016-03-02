@@ -146,26 +146,26 @@ var _ = Describe("Networks", func() {
 
 			createURL = fmt.Sprintf("http://%s/networks/%s/%s", address, networkID, containerID)
 			deleteURL = createURL
-		})
 
-		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
+			By("POSTing to the endpoint")
 			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
 			Expect(err).NotTo(HaveOccurred())
 
-			By("creating the container")
 			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+		})
 
+		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
 
 			By("getting the newly created container")
 			listURL := fmt.Sprintf("http://%s/networks/%s", address, networkID)
-			resp, err = http.Get(listURL)
+			resp, err := http.Get(listURL)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
@@ -180,7 +180,7 @@ var _ = Describe("Networks", func() {
 			Expect(containers).To(HaveLen(1))
 
 			By("deleting the container")
-			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 			Expect(err).NotTo(HaveOccurred())
 
 			resp, err = http.DefaultClient.Do(req)
@@ -194,15 +194,6 @@ var _ = Describe("Networks", func() {
 		})
 
 		It("moves a vxlan adapter into the sandbox", func() {
-			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
@@ -225,10 +216,10 @@ var _ = Describe("Networks", func() {
 			})
 
 			By("deleting")
-			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 			Expect(err).NotTo(HaveOccurred())
 
-			resp, err = http.DefaultClient.Do(req)
+			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
@@ -238,15 +229,6 @@ var _ = Describe("Networks", func() {
 		It("creates a vxlan bridge in the sandbox", func() {
 			var bridge *netlink.Bridge
 			var addrs []netlink.Addr
-
-			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
@@ -280,10 +262,10 @@ var _ = Describe("Networks", func() {
 			Expect(addrs[0].IPNet.IP.String()).To(Equal(ipamResult.IP4.Gateway.String()))
 
 			By("deleting")
-			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 			Expect(err).NotTo(HaveOccurred())
 
-			resp, err = http.DefaultClient.Do(req)
+			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
@@ -291,16 +273,6 @@ var _ = Describe("Networks", func() {
 		})
 
 		It("creates a veth pair in the container and sandbox namespaces", func() {
-			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
-			Expect(err).NotTo(HaveOccurred())
-
-			By("creating")
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
@@ -334,10 +306,10 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("deleting")
-			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 			Expect(err).NotTo(HaveOccurred())
 
-			resp, err = http.DefaultClient.Do(req)
+			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
@@ -354,15 +326,6 @@ var _ = Describe("Networks", func() {
 
 		Context("when there are routes", func() {
 			It("should contain the routes", func() {
-				req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
-				Expect(err).NotTo(HaveOccurred())
-
-				resp, err := http.DefaultClient.Do(req)
-				Expect(err).NotTo(HaveOccurred())
-				defer resp.Body.Close()
-
-				Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-
 				sandboxNS, err := sandboxRepo.Get(sandboxName)
 				Expect(err).NotTo(HaveOccurred())
 				defer sandboxNS.Destroy()
@@ -407,10 +370,10 @@ var _ = Describe("Networks", func() {
 				})
 
 				By("deleting")
-				req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+				req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 				Expect(err).NotTo(HaveOccurred())
 
-				resp, err = http.DefaultClient.Do(req)
+				resp, err := http.DefaultClient.Do(req)
 				Expect(err).NotTo(HaveOccurred())
 				defer resp.Body.Close()
 
