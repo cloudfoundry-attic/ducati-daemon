@@ -35,9 +35,8 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		// untested
 		logger.Error("body-read-failed", err)
-		resp.WriteHeader(http.StatusInternalServerError)
+		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -45,7 +44,7 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 	err = h.Unmarshaler.Unmarshal(bodyBytes, &containerPayload)
 	if err != nil {
 		logger.Error("unmarshal-failed", err)
-		resp.WriteHeader(http.StatusInternalServerError)
+		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 

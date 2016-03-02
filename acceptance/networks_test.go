@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 
@@ -28,6 +28,8 @@ var _ = Describe("Networks", func() {
 		address     string
 		networkID   string
 		containerID string
+		vni         int
+		sandboxName string
 
 		sandboxRepo        namespace.Repository
 		containerNamespace namespace.Namespace
@@ -66,8 +68,10 @@ var _ = Describe("Networks", func() {
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 
-		networkID = "some-network-id"
-		containerID = "some-container-id"
+		networkID = fmt.Sprintf("some-network-id-%x", rand.Int())
+		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
+		vni = GinkgoParallelNode() // necessary to avoid test pollution in parallel
+		sandboxName = fmt.Sprintf("vni-%d", vni)
 	})
 
 	AfterEach(func() {
@@ -89,12 +93,13 @@ var _ = Describe("Networks", func() {
 		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
 	})
 
-	Describe("POST /networks/:network_id/:container_id", func() {
+	Describe("POST and DELETE /networks/:network_id/:container_id", func() {
 		var (
-			createURL  string
-			deleteURL  string
-			payload    []byte
-			ipamResult types.Result
+			createURL     string
+			deleteURL     string
+			payload       []byte
+			deletePayload []byte
+			ipamResult    types.Result
 		)
 
 		BeforeEach(func() {
@@ -127,8 +132,15 @@ var _ = Describe("Networks", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Path(),
 				InterfaceName:      "vx-eth0",
-				VNI:                99,
+				VNI:                vni,
 				IPAM:               ipamResult,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			deletePayload, err = json.Marshal(models.NetworksDeleteContainerPayload{
+				InterfaceName:      "vx-eth0",
+				ContainerNamespace: containerNamespace.Path(),
+				VNI:                vni,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -147,7 +159,7 @@ var _ = Describe("Networks", func() {
 
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
-			sandboxNS, err := sandboxRepo.Get("vni-99")
+			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
 
@@ -168,12 +180,7 @@ var _ = Describe("Networks", func() {
 			Expect(containers).To(HaveLen(1))
 
 			By("deleting the container")
-			req, err = http.NewRequest("DELETE", deleteURL, nil)
-			req.URL.RawQuery = url.Values{
-				"interface":                []string{"vx-eth0"},
-				"container_namespace_path": []string{containerNamespace.Path()},
-				"vni": []string{"99"},
-			}.Encode()
+			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 			Expect(err).NotTo(HaveOccurred())
 
 			resp, err = http.DefaultClient.Do(req)
@@ -182,7 +189,7 @@ var _ = Describe("Networks", func() {
 
 			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 
-			_, err = sandboxRepo.Get("vni-99")
+			_, err = sandboxRepo.Get(sandboxName)
 			Expect(err).To(MatchError(ContainSubstring("no such file or directory")))
 		})
 
@@ -196,17 +203,17 @@ var _ = Describe("Networks", func() {
 
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
-			sandboxNS, err := sandboxRepo.Get("vni-99")
+			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
 
 			sandboxNS.Execute(func(_ *os.File) error {
-				link, err := netlink.LinkByName("vxlan99")
+				link, err := netlink.LinkByName(fmt.Sprintf("vxlan%d", vni))
 				Expect(err).NotTo(HaveOccurred())
 				vxlan, ok := link.(*netlink.Vxlan)
 				Expect(ok).To(BeTrue())
 
-				Expect(vxlan.VxlanId).To(Equal(99))
+				Expect(vxlan.VxlanId).To(Equal(vni))
 				Expect(vxlan.Learning).To(BeTrue())
 				Expect(vxlan.Port).To(BeEquivalentTo(nl.Swap16(4789)))
 				Expect(vxlan.Proxy).To(BeTrue())
@@ -216,6 +223,16 @@ var _ = Describe("Networks", func() {
 
 				return nil
 			})
+
+			By("deleting")
+			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err = http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 		})
 
 		It("creates a vxlan bridge in the sandbox", func() {
@@ -231,12 +248,12 @@ var _ = Describe("Networks", func() {
 
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
-			sandboxNS, err := sandboxRepo.Get("vni-99")
+			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
 
 			err = sandboxNS.Execute(func(_ *os.File) error {
-				link, err := netlink.LinkByName("vxlanbr99")
+				link, err := netlink.LinkByName(fmt.Sprintf("vxlanbr%d", vni))
 				if err != nil {
 					return fmt.Errorf("finding link by name: %s", err)
 				}
@@ -261,6 +278,16 @@ var _ = Describe("Networks", func() {
 
 			Expect(addrs).To(HaveLen(1))
 			Expect(addrs[0].IPNet.IP.String()).To(Equal(ipamResult.IP4.Gateway.String()))
+
+			By("deleting")
+			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err = http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 		})
 
 		It("creates a veth pair in the container and sandbox namespaces", func() {
@@ -274,7 +301,7 @@ var _ = Describe("Networks", func() {
 
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
-			sandboxNS, err := sandboxRepo.Get("vni-99")
+			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 			defer sandboxNS.Destroy()
 
@@ -307,12 +334,7 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("deleting")
-			req, err = http.NewRequest("DELETE", deleteURL, nil)
-			req.URL.RawQuery = url.Values{
-				"interface":                []string{"vx-eth0"},
-				"container_namespace_path": []string{containerNamespace.Path()},
-				"vni": []string{"99"},
-			}.Encode()
+			req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 			Expect(err).NotTo(HaveOccurred())
 
 			resp, err = http.DefaultClient.Do(req)
@@ -341,7 +363,7 @@ var _ = Describe("Networks", func() {
 
 				Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
-				sandboxNS, err := sandboxRepo.Get("vni-99")
+				sandboxNS, err := sandboxRepo.Get(sandboxName)
 				Expect(err).NotTo(HaveOccurred())
 				defer sandboxNS.Destroy()
 
@@ -383,6 +405,16 @@ var _ = Describe("Networks", func() {
 
 					return nil
 				})
+
+				By("deleting")
+				req, err = http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
+				Expect(err).NotTo(HaveOccurred())
+
+				resp, err = http.DefaultClient.Do(req)
+				Expect(err).NotTo(HaveOccurred())
+				defer resp.Body.Close()
+
+				Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 			})
 		})
 	})

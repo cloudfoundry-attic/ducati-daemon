@@ -1,11 +1,15 @@
 package handlers_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"reflect"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -17,27 +21,38 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/rata"
 )
 
 var _ = Describe("NetworksDeleteContainer", func() {
 	var (
-		logger    *lagertest.TestLogger
-		datastore *fakes.Store
-		executor  *exec_fakes.Executor
-		deletor   *fakes.Deletor
-		handler   http.Handler
-		request   *http.Request
-		osLocker  *fakes.OSThreadLocker
+		logger      *lagertest.TestLogger
+		datastore   *fakes.Store
+		executor    *exec_fakes.Executor
+		deletor     *fakes.Deletor
+		handler     http.Handler
+		request     *http.Request
+		osLocker    *fakes.OSThreadLocker
+		unmarshaler *fakes.Unmarshaler
 
 		sandboxRepo *fakes.Repository
 
-		expectedQueryParams url.Values
+		payload models.NetworksDeleteContainerPayload
 	)
+
+	var setPayload = func() {
+		payloadBytes, err := json.Marshal(payload)
+		Expect(err).NotTo(HaveOccurred())
+		request.Body = ioutil.NopCloser(bytes.NewBuffer(payloadBytes))
+	}
 
 	BeforeEach(func() {
 		osLocker = &fakes.OSThreadLocker{}
+
+		unmarshaler = &fakes.Unmarshaler{}
+		unmarshaler.UnmarshalStub = json.Unmarshal
 
 		logger = lagertest.NewTestLogger("test")
 		datastore = &fakes.Store{}
@@ -47,6 +62,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		sandboxRepo = &fakes.Repository{}
 
 		deleteHandler := &handlers.NetworksDeleteContainer{
+			Unmarshaler:    unmarshaler,
 			Logger:         logger,
 			Datastore:      datastore,
 			Deletor:        deletor,
@@ -60,13 +76,12 @@ var _ = Describe("NetworksDeleteContainer", func() {
 			"network_id":   "some-network-id",
 			"container_id": "some-container-id",
 		})
-		expectedQueryParams = url.Values{
-			"interface":                []string{"some-interface-name"},
-			"container_namespace_path": []string{"/some/container/namespace/path"},
-			"vni": []string{"42"},
+		payload = models.NetworksDeleteContainerPayload{
+			InterfaceName:      "some-interface-name",
+			ContainerNamespace: "/some/container/namespace/path",
+			VNI:                42,
 		}
-
-		request.URL.RawQuery = expectedQueryParams.Encode()
+		setPayload()
 	})
 
 	It("computes the sandbox name from the VNI", func() {
@@ -113,20 +128,53 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
 	})
 
-	DescribeTable("missing query params",
-		func(paramToRemove string) {
-			delete(expectedQueryParams, paramToRemove)
-			request.URL.RawQuery = expectedQueryParams.Encode()
+	Context("when the request body cannot be read", func() {
+		BeforeEach(func() {
+			request.Body = ioutil.NopCloser(&badReader{})
+		})
+
+		It("should log and respond with status 400", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusBadRequest))
+			Expect(logger).To(gbytes.Say("networks-delete-containers.*body-read-failed"))
+		})
+	})
+
+	Context("when the request body is not valid JSON", func() {
+		BeforeEach(func() {
+			request.Body = ioutil.NopCloser(strings.NewReader(`{{{`))
+		})
+
+		It("should log and respond with status 400", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusBadRequest))
+			Expect(logger).To(gbytes.Say("networks-delete-containers.*unmarshal-failed"))
+		})
+	})
+
+	DescribeTable("missing payload fields",
+		func(paramToRemove, jsonName string) {
+			field := reflect.ValueOf(&payload).Elem().FieldByName(paramToRemove)
+			if !field.IsValid() {
+				Fail("invalid test: payload does not have a field named " + paramToRemove)
+			}
+			field.Set(reflect.Zero(field.Type()))
+			setPayload()
 
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, request)
 
 			Expect(resp.Code).To(Equal(http.StatusBadRequest))
-			Expect(logger).To(gbytes.Say(fmt.Sprintf("networks-delete-containers.bad-request.*missing-%s", paramToRemove)))
+			Expect(logger).To(gbytes.Say(fmt.Sprintf(
+				"networks-delete-containers.bad-request.*missing-%s", jsonName)))
 		},
-		Entry("interface", "interface"),
-		Entry("container_namespace_path", "container_namespace_path"),
-		Entry("vni", "vni"),
+		Entry("interface", "InterfaceName", "interface_name"),
+		Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
+		Entry("vni", "VNI", "vni"),
 	)
 
 	Context("when the sandbox repo fails", func() {

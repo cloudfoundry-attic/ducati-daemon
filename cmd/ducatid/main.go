@@ -192,6 +192,7 @@ func main() {
 	}
 
 	rataHandlers["networks_delete_container"] = &handlers.NetworksDeleteContainer{
+		Unmarshaler:    marshal.UnmarshalFunc(json.Unmarshal),
 		Logger:         logger,
 		Datastore:      dataStore,
 		Deletor:        deletor,

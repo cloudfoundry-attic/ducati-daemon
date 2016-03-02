@@ -10,3 +10,9 @@ type NetworksSetupContainerPayload struct {
 	VNI                int          `json:"vni"`
 	IPAM               types.Result `json:"ipam"`
 }
+
+type NetworksDeleteContainerPayload struct {
+	InterfaceName      string `json:"interface_name"`
+	ContainerNamespace string `json:"container_namespace"`
+	VNI                int    `json:"vni"`
+}

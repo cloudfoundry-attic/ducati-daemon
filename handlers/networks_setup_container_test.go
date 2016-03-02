@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -91,6 +90,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 			"network_id":   "network-id-1",
 			"container_id": "container-id",
 		})
+		request.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(`{}`)))
 	})
 
 	It("sets up the container network", func() {
@@ -132,7 +132,6 @@ var _ = Describe("NetworksSetupContainer", func() {
 	})
 
 	It("locks and unlocks the os thread", func() {
-		request.Body = ioutil.NopCloser(strings.NewReader("{}"))
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)
 
@@ -141,17 +140,30 @@ var _ = Describe("NetworksSetupContainer", func() {
 	})
 
 	Context("when there are errors", func() {
-		BeforeEach(func() {
-			request.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(`{}`)))
+		Context("when the request body cannot be read", func() {
+			BeforeEach(func() {
+				request.Body = ioutil.NopCloser(&badReader{})
+			})
+
+			It("should log and respond with status 400", func() {
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(resp.Code).To(Equal(http.StatusBadRequest))
+				Expect(logger).To(gbytes.Say("networks-setup-containers.*body-read-failed"))
+			})
 		})
 
 		Context("when unmarshalling payload fails", func() {
-			It("logs an error and 500s", func() {
+			BeforeEach(func() {
+				request.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(`{}`)))
+			})
+			It("logs an error and responds with code 400", func() {
 				unmarshaler.UnmarshalReturns(errors.New("some-unmarshal-error"))
 				resp := httptest.NewRecorder()
 				handler.ServeHTTP(resp, request)
 
-				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+				Expect(resp.Code).To(Equal(http.StatusBadRequest))
 				Expect(logger).To(gbytes.Say("networks-setup-containers.unmarshal-failed.*some-unmarshal-error"))
 
 				Expect(creator.SetupCallCount()).To(BeZero())

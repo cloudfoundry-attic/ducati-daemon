@@ -3,10 +3,13 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/pivotal-golang/lager"
@@ -23,6 +26,7 @@ type repository interface {
 }
 
 type NetworksDeleteContainer struct {
+	Unmarshaler    marshal.Unmarshaler
 	Logger         lager.Logger
 	Datastore      store.Store
 	Deletor        deletor
@@ -38,29 +42,41 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 
 	containerID := rata.Param(request, "container_id")
 	_ = rata.Param(request, "network_id") // we may want this later
-	interfaceName := request.URL.Query().Get("interface")
-	containerNSPath := request.URL.Query().Get("container_namespace_path")
-	vni := request.URL.Query().Get("vni")
 
-	if interfaceName == "" {
-		logger.Error("bad-request", errors.New("missing-interface"))
+	bodyBytes, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		logger.Error("body-read-failed", err)
 		response.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if containerNSPath == "" {
-		logger.Error("bad-request", errors.New("missing-container_namespace_path"))
+	var payload models.NetworksDeleteContainerPayload
+	err = h.Unmarshaler.Unmarshal(bodyBytes, &payload)
+	if err != nil {
+		logger.Error("unmarshal-failed", err)
 		response.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if vni == "" {
+	if payload.InterfaceName == "" {
+		logger.Error("bad-request", errors.New("missing-interface_name"))
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if payload.ContainerNamespace == "" {
+		logger.Error("bad-request", errors.New("missing-container_namespace"))
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if payload.VNI == 0 {
 		logger.Error("bad-request", errors.New("missing-vni"))
 		response.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	sandboxName := fmt.Sprintf("vni-%s", vni)
+	sandboxName := fmt.Sprintf("vni-%d", payload.VNI)
 	sandboxNS, err := h.SandboxRepo.Get(sandboxName)
 	if err != nil {
 		logger.Error("sandbox-repo", err)
@@ -69,8 +85,8 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 	}
 
 	deletorConfig := container.DeletorConfig{
-		InterfaceName:   interfaceName,
-		ContainerNSPath: containerNSPath,
+		InterfaceName:   payload.InterfaceName,
+		ContainerNSPath: payload.ContainerNamespace,
 		SandboxNSPath:   sandboxNS.Path(),
 	}
 
