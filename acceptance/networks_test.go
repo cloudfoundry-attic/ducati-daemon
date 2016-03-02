@@ -158,12 +158,31 @@ var _ = Describe("Networks", func() {
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 		})
 
-		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
-			sandboxNS, err := sandboxRepo.Get(sandboxName)
+		AfterEach(func() {
+			By("DELETEing to the endpoint")
+			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 			Expect(err).NotTo(HaveOccurred())
-			defer sandboxNS.Destroy()
 
-			By("getting the newly created container")
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+
+			By("checking that the sandbox has been cleaned up")
+			_, err = sandboxRepo.Get(sandboxName)
+			Expect(err).To(MatchError(ContainSubstring("no such file or directory")))
+
+			By("checking that the veth device is no longer in the container")
+			err = containerNamespace.Execute(func(_ *os.File) error {
+				_, err := netlink.LinkByName("vx-eth0")
+				Expect(err).To(MatchError(ContainSubstring("Link not found")))
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
 			listURL := fmt.Sprintf("http://%s/networks/%s", address, networkID)
 			resp, err := http.Get(listURL)
 			Expect(err).NotTo(HaveOccurred())
@@ -178,25 +197,11 @@ var _ = Describe("Networks", func() {
 			err = json.Unmarshal(jsonBytes, &containers)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(1))
-
-			By("deleting the container")
-			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err = http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
-
-			_, err = sandboxRepo.Get(sandboxName)
-			Expect(err).To(MatchError(ContainSubstring("no such file or directory")))
 		})
 
 		It("moves a vxlan adapter into the sandbox", func() {
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
-			defer sandboxNS.Destroy()
 
 			sandboxNS.Execute(func(_ *os.File) error {
 				link, err := netlink.LinkByName(fmt.Sprintf("vxlan%d", vni))
@@ -214,16 +219,6 @@ var _ = Describe("Networks", func() {
 
 				return nil
 			})
-
-			By("deleting")
-			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 		})
 
 		It("creates a vxlan bridge in the sandbox", func() {
@@ -232,7 +227,6 @@ var _ = Describe("Networks", func() {
 
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
-			defer sandboxNS.Destroy()
 
 			err = sandboxNS.Execute(func(_ *os.File) error {
 				link, err := netlink.LinkByName(fmt.Sprintf("vxlanbr%d", vni))
@@ -260,22 +254,11 @@ var _ = Describe("Networks", func() {
 
 			Expect(addrs).To(HaveLen(1))
 			Expect(addrs[0].IPNet.IP.String()).To(Equal(ipamResult.IP4.Gateway.String()))
-
-			By("deleting")
-			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 		})
 
 		It("creates a veth pair in the container and sandbox namespaces", func() {
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
-			defer sandboxNS.Destroy()
 
 			By("checking that the container has a veth device")
 			err = containerNamespace.Execute(func(_ *os.File) error {
@@ -305,32 +288,11 @@ var _ = Describe("Networks", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("deleting")
-			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
-
-			By("checking that the veth device is no longer in the container")
-			err = containerNamespace.Execute(func(_ *os.File) error {
-				_, err := netlink.LinkByName("vx-eth0")
-				Expect(err).To(MatchError(ContainSubstring("Link not found")))
-				return nil
-			})
-			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when there are routes", func() {
 			It("should contain the routes", func() {
-				sandboxNS, err := sandboxRepo.Get(sandboxName)
-				Expect(err).NotTo(HaveOccurred())
-				defer sandboxNS.Destroy()
-
-				err = containerNamespace.Execute(func(_ *os.File) error {
+				err := containerNamespace.Execute(func(_ *os.File) error {
 					l, err := netlink.LinkByName("vx-eth0")
 					Expect(err).NotTo(HaveOccurred())
 
@@ -368,16 +330,7 @@ var _ = Describe("Networks", func() {
 
 					return nil
 				})
-
-				By("deleting")
-				req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
 				Expect(err).NotTo(HaveOccurred())
-
-				resp, err := http.DefaultClient.Do(req)
-				Expect(err).NotTo(HaveOccurred())
-				defer resp.Body.Close()
-
-				Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 			})
 		})
 	})
