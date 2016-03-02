@@ -39,9 +39,6 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	sandboxNSPath := c.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 
-	c.Locker.Lock(sandboxName)
-	defer c.Locker.Unlock(sandboxName)
-
 	sandboxLinkName := config.ContainerID
 	if len(sandboxLinkName) > 15 {
 		sandboxLinkName = sandboxLinkName[:15]
@@ -61,6 +58,9 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 
 		routeCommands = append(routeCommands, routeCommand)
 	}
+
+	c.Locker.Lock(sandboxName)
+	defer c.Locker.Unlock(sandboxName)
 
 	err := c.Executor.Execute(
 		commands.All(
