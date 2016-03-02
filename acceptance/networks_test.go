@@ -1,7 +1,6 @@
 package acceptance_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +11,7 @@ import (
 	"os/exec"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/nu7hatch/gouuid"
@@ -95,15 +95,16 @@ var _ = Describe("Networks", func() {
 
 	Describe("POST and DELETE /networks/:network_id/:container_id", func() {
 		var (
-			createURL     string
-			deleteURL     string
-			payload       []byte
-			deletePayload []byte
-			ipamResult    types.Result
+			upSpec       models.NetworksSetupContainerPayload
+			downSpec     models.NetworksDeleteContainerPayload
+			daemonClient *client.DaemonClient
+			ipamResult   types.Result
 		)
 
 		BeforeEach(func() {
 			Eventually(serverIsAvailable).Should(Succeed())
+
+			daemonClient = client.New("http://"+address, http.DefaultClient)
 
 			By("generating config and creating the request")
 			ipamResult = types.Result{
@@ -128,49 +129,30 @@ var _ = Describe("Networks", func() {
 
 			ipamResult.IP4.Routes = append(ipamResult.IP4.Routes, types.Route{Dst: *destination})
 
-			payload, err = json.Marshal(models.NetworksSetupContainerPayload{
+			upSpec = models.NetworksSetupContainerPayload{
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Path(),
 				InterfaceName:      "vx-eth0",
 				VNI:                vni,
 				IPAM:               ipamResult,
-			})
-			Expect(err).NotTo(HaveOccurred())
+			}
 
-			deletePayload, err = json.Marshal(models.NetworksDeleteContainerPayload{
+			downSpec = models.NetworksDeleteContainerPayload{
 				InterfaceName:      "vx-eth0",
 				ContainerNamespace: containerNamespace.Path(),
 				VNI:                vni,
-			})
-			Expect(err).NotTo(HaveOccurred())
+			}
 
-			createURL = fmt.Sprintf("http://%s/networks/%s/%s", address, networkID, containerID)
-			deleteURL = createURL
-
-			By("POSTing to the endpoint")
-			req, err := http.NewRequest("POST", createURL, bytes.NewReader(payload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+			By("adding the container to a network")
+			Expect(daemonClient.ContainerUp(networkID, containerID, upSpec)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			By("DELETEing to the endpoint")
-			req, err := http.NewRequest("DELETE", deleteURL, bytes.NewReader(deletePayload))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+			By("adding the container to a network")
+			Expect(daemonClient.ContainerDown(networkID, containerID, downSpec)).To(Succeed())
 
 			By("checking that the sandbox has been cleaned up")
-			_, err = sandboxRepo.Get(sandboxName)
+			_, err := sandboxRepo.Get(sandboxName)
 			Expect(err).To(MatchError(ContainSubstring("no such file or directory")))
 
 			By("checking that the veth device is no longer in the container")
@@ -290,48 +272,46 @@ var _ = Describe("Networks", func() {
 
 		})
 
-		Context("when there are routes", func() {
-			It("should contain the routes", func() {
-				err := containerNamespace.Execute(func(_ *os.File) error {
-					l, err := netlink.LinkByName("vx-eth0")
-					Expect(err).NotTo(HaveOccurred())
-
-					routes, err := netlink.RouteList(l, netlink.FAMILY_V4)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(routes).To(HaveLen(3))
-
-					var sanitizedRoutes []netlink.Route
-					for _, route := range routes {
-						sanitizedRoutes = append(sanitizedRoutes, netlink.Route{
-							Gw:  route.Gw,
-							Dst: route.Dst,
-							Src: route.Src,
-						})
-					}
-
-					_, vxlanNet, err := net.ParseCIDR("192.168.0.0/16")
-					Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
-						Dst: vxlanNet,
-						Gw:  ipamResult.IP4.Gateway.To4(),
-					}))
-
-					_, linkLocal, err := net.ParseCIDR("192.168.1.0/24")
-					Expect(err).NotTo(HaveOccurred())
-					Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
-						Dst: linkLocal,
-						Src: ipamResult.IP4.IP.IP.To4(),
-					}))
-
-					_, dest, err := net.ParseCIDR("10.10.10.0/24")
-					Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
-						Dst: dest,
-						Gw:  ipamResult.IP4.Gateway.To4(),
-					}))
-
-					return nil
-				})
+		It("should contain the routes", func() {
+			err := containerNamespace.Execute(func(_ *os.File) error {
+				l, err := netlink.LinkByName("vx-eth0")
 				Expect(err).NotTo(HaveOccurred())
+
+				routes, err := netlink.RouteList(l, netlink.FAMILY_V4)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(routes).To(HaveLen(3))
+
+				var sanitizedRoutes []netlink.Route
+				for _, route := range routes {
+					sanitizedRoutes = append(sanitizedRoutes, netlink.Route{
+						Gw:  route.Gw,
+						Dst: route.Dst,
+						Src: route.Src,
+					})
+				}
+
+				_, vxlanNet, err := net.ParseCIDR("192.168.0.0/16")
+				Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
+					Dst: vxlanNet,
+					Gw:  ipamResult.IP4.Gateway.To4(),
+				}))
+
+				_, linkLocal, err := net.ParseCIDR("192.168.1.0/24")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
+					Dst: linkLocal,
+					Src: ipamResult.IP4.IP.IP.To4(),
+				}))
+
+				_, dest, err := net.ParseCIDR("10.10.10.0/24")
+				Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
+					Dst: dest,
+					Gw:  ipamResult.IP4.Gateway.To4(),
+				}))
+
+				return nil
 			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
