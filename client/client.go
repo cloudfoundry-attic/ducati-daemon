@@ -52,6 +52,30 @@ func (d *DaemonClient) ContainerUp(networkID, containerID string, payload models
 	return nil
 }
 
+func (d *DaemonClient) ContainerDown(networkID, containerID string, payload models.NetworksDeleteContainerPayload) error {
+	deleteData, err := d.Marshaler.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal cni payload: %s", err)
+	}
+
+	url := d.buildURL("networks", networkID, containerID)
+	req, err := http.NewRequest("DELETE", url, bytes.NewReader(deleteData))
+	if err != nil {
+		return fmt.Errorf("failed to construct request: %s", err)
+	}
+	req.Header.Set("Content-type", "application/json")
+	resp, err := d.HttpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if statusError := checkStatus("ContainerDown", resp.StatusCode, http.StatusNoContent); statusError != nil {
+		return statusError
+	}
+	return nil
+}
+
 func (d *DaemonClient) SaveContainer(container models.Container) error {
 	postData, err := d.Marshaler.Marshal(container)
 	if err != nil {

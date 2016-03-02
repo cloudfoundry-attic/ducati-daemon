@@ -133,6 +133,87 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("ContainerDown", func() {
+		var cniPayload models.NetworksDeleteContainerPayload
+
+		BeforeEach(func() {
+			cniPayload = models.NetworksDeleteContainerPayload{
+				ContainerNamespace: "/some/namespace/path",
+				InterfaceName:      "some-interface-name",
+				VNI:                42,
+			}
+
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("DELETE", "/networks/some-network-id/some-container-id"),
+				ghttp.VerifyJSONRepresenting(cniPayload),
+				ghttp.VerifyHeaderKV("Content-type", "application/json"),
+				ghttp.RespondWith(http.StatusNoContent, nil),
+			))
+		})
+
+		It("should DELETE the /networks/:network_id/:container_id endpoint with a CNI payload", func() {
+			Expect(c.ContainerDown("some-network-id", "some-container-id", cniPayload)).To(Succeed())
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+			Expect(marshaler.MarshalCallCount()).To(Equal(1))
+			Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
+		})
+
+		It("uses the provided HTTP client", func() {
+			Expect(c.ContainerDown("some-network-id", "some-container-id", cniPayload)).To(Succeed())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/networks/some-network-id/some-container-id"))
+		})
+
+		Context("when an error occurs", func() {
+			Context("when the payload fails to marshal", func() {
+				It("returns an error", func() {
+					marshaler.MarshalReturns(nil, errors.New("explosion with marshal"))
+
+					err := c.ContainerDown("", "", cniPayload)
+					Expect(err).To(MatchError("failed to marshal cni payload: explosion with marshal"))
+				})
+			})
+
+			Context("when the request cannot be constructed", func() {
+				It("returns an error", func() {
+					c = client.DaemonClient{
+						BaseURL:   "%%%%",
+						Marshaler: marshaler,
+					}
+
+					err := c.ContainerDown("", "", cniPayload)
+					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+				})
+			})
+
+			Context("when the request fails to connect", func() {
+				BeforeEach(func() {
+					c.BaseURL = "http://0.0.0.0:12345"
+				})
+				It("should return an error", func() {
+					err := c.ContainerDown("", "", cniPayload)
+					Expect(err).To(MatchError(ContainSubstring("request failed: dial")))
+				})
+			})
+
+			Context("when the http response code is unexpected", func() {
+				BeforeEach(func() {
+					server.Reset()
+					server.AppendHandlers(ghttp.CombineHandlers(
+						ghttp.VerifyRequest("DELETE", "/networks/some-network-id/some-container-id"),
+						ghttp.RespondWith(http.StatusInternalServerError, nil),
+					))
+				})
+
+				It("should return an error", func() {
+					err := c.ContainerDown("some-network-id", "some-container-id", cniPayload)
+					Expect(err).To(MatchError(`unexpected status code on ContainerDown: expected 204 but got 500`))
+				})
+			})
+		})
+	})
+
 	Describe("SaveContainer", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(ghttp.CombineHandlers(
