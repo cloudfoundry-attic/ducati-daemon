@@ -75,8 +75,8 @@ var _ = Describe("Networks", func() {
 	})
 
 	AfterEach(func() {
-		session.Kill()
-		Eventually(session).Should(gexec.Exit())
+		session.Interrupt()
+		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
 		containerNamespace.Destroy()
 	})
 

@@ -54,8 +54,8 @@ var _ = Describe("Ducati Daemon Flag Validation", func() {
 
 	AfterEach(func() {
 		if session != nil {
-			session.Kill()
-			Eventually(session).Should(gexec.Exit())
+			session.Interrupt()
+			Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit())
 		}
 	})
 

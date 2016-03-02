@@ -42,8 +42,8 @@ var _ = Describe("IP Address Management", func() {
 	})
 
 	AfterEach(func() {
-		session.Kill()
-		Eventually(session).Should(gexec.Exit())
+		session.Interrupt()
+		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
 	})
 
 	var serverIsAvailable = func() error {
