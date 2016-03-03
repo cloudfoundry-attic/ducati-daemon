@@ -1,7 +1,6 @@
 package acceptance_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -165,19 +164,9 @@ var _ = Describe("Networks", func() {
 		})
 
 		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
-			listURL := fmt.Sprintf("http://%s/networks/%s", address, networkID)
-			resp, err := http.Get(listURL)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-
-			Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-			jsonBytes, err := ioutil.ReadAll(resp.Body)
+			containers, err := daemonClient.ListNetworkContainers(networkID)
 			Expect(err).NotTo(HaveOccurred())
 
-			var containers []models.Container
-			err = json.Unmarshal(jsonBytes, &containers)
-			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(1))
 		})
 
