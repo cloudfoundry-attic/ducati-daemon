@@ -60,6 +60,86 @@ var _ = Describe("Client", func() {
 		server.Close()
 	})
 
+	Describe("ListNetworkContainers", func() {
+		var expectedContainers []models.Container
+
+		BeforeEach(func() {
+			expectedContainers = []models.Container{
+				models.Container{
+					ID:     "some-id",
+					IP:     "192.168.1.9",
+					MAC:    "HH:HH:HH:HH:HH",
+					HostIP: "10.0.0.0",
+				},
+				models.Container{
+					ID:     "some-other-id",
+					IP:     "192.168.1.10",
+					MAC:    "HH:HH:HH:HH:HA",
+					HostIP: "10.0.0.0",
+				},
+			}
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/networks/some-network-id"),
+				ghttp.RespondWithJSONEncoded(http.StatusOK, expectedContainers),
+			))
+
+			unmarshaler.UnmarshalStub = json.Unmarshal
+		})
+
+		It("should GET /networks/:network_id", func() {
+			containers, err := c.ListNetworkContainers("some-network-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+			Expect(unmarshaler.UnmarshalCallCount()).To(Equal(1))
+			Expect(containers).To(ConsistOf(expectedContainers))
+		})
+
+		It("uses the provided HTTP client", func() {
+			_, err := c.ListNetworkContainers("some-network-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/networks/some-network-id"))
+		})
+
+		Context("when an error occurs", func() {
+			Context("when the request cannot be performed", func() {
+				It("returns an error", func() {
+					c = client.DaemonClient{
+						BaseURL:   "%%%%",
+						Marshaler: marshaler,
+					}
+
+					_, err := c.ListNetworkContainers("some-network-id")
+					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
+				})
+			})
+
+			Context("when the endpoint responds with the wrong status", func() {
+				BeforeEach(func() {
+					server.SetHandler(0, ghttp.RespondWith(http.StatusTeapot, nil))
+				})
+
+				It("should return and error", func() {
+					_, err := c.ListNetworkContainers("some-network-id")
+					Expect(err).To(MatchError(`unexpected status code on ListNetworkContainers: expected 200 but got 418`))
+				})
+			})
+
+			Context("when the response JSON cannot be unmarshaled", func() {
+				BeforeEach(func() {
+					unmarshaler.UnmarshalReturns(errors.New("something went wrong"))
+				})
+
+				It("should return an error", func() {
+					_, err := c.ListNetworkContainers("some-network-id")
+					Expect(err).To(MatchError("failed to unmarshal containers: something went wrong"))
+				})
+			})
+		})
+	})
+
 	Describe("ContainerUp", func() {
 		var cniPayload models.NetworksSetupContainerPayload
 

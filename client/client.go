@@ -76,6 +76,32 @@ func (d *DaemonClient) ContainerDown(networkID, containerID string, payload mode
 	return nil
 }
 
+func (d *DaemonClient) ListNetworkContainers(networkID string) ([]models.Container, error) {
+	url := d.buildURL("networks", networkID)
+	resp, err := d.HttpClient.Get(url)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("failed to perform request: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if statusError := checkStatus("ListNetworkContainers", resp.StatusCode, http.StatusOK); statusError != nil {
+		return []models.Container{}, statusError
+	}
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []models.Container{}, nil // not tested
+	}
+
+	var containers []models.Container
+	err = d.Unmarshaler.Unmarshal(respBytes, &containers)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("failed to unmarshal containers: %s", err)
+	}
+
+	return containers, nil
+}
+
 func (d *DaemonClient) SaveContainer(container models.Container) error {
 	postData, err := d.Marshaler.Marshal(container)
 	if err != nil {
