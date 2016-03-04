@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"sync"
 
@@ -26,12 +27,15 @@ type MissWatcher interface {
 }
 
 func New(logger lager.Logger, subscriber sub, locker sync.Locker) MissWatcher {
-	return &missWatcher{
+	w := &missWatcher{
 		Logger:     logger,
 		Subscriber: subscriber,
 		DoneChans:  make(map[string]chan struct{}),
 		Locker:     locker,
+		Firehose:   make(chan Miss),
 	}
+	go w.DrainFirehose()
+	return w
 }
 
 type missWatcher struct {
@@ -39,10 +43,26 @@ type missWatcher struct {
 	Subscriber sub
 	DoneChans  map[string]chan struct{}
 	Locker     sync.Locker
+	Firehose   chan Miss
+}
+
+type Miss struct {
+	SandboxName string
+	DestIP      net.IP
+}
+
+func (w *missWatcher) DrainFirehose() {
+	for {
+		msg := <-w.Firehose
+		w.Logger.Info("sandbox-miss", lager.Data{
+			"sandbox": msg.SandboxName,
+			"dest_ip": msg.DestIP,
+		})
+	}
 }
 
 func (w *missWatcher) StartMonitor(ns Namespace) error {
-	ch := make(chan<- *subscriber.Neigh, 100)
+	subChan := make(chan *subscriber.Neigh)
 
 	doneChan := make(chan struct{})
 
@@ -51,7 +71,7 @@ func (w *missWatcher) StartMonitor(ns Namespace) error {
 	w.Locker.Unlock()
 
 	err := ns.Execute(func(f *os.File) error {
-		err := w.Subscriber.Subscribe(ch, doneChan)
+		err := w.Subscriber.Subscribe(subChan, doneChan)
 		if err != nil {
 			return fmt.Errorf("subscribe in %s: %s", ns.Name(), err)
 		}
@@ -60,6 +80,17 @@ func (w *missWatcher) StartMonitor(ns Namespace) error {
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		for neigh := range subChan {
+			miss := Miss{
+				SandboxName: ns.Name(),
+				DestIP:      neigh.IP,
+			}
+
+			w.Firehose <- miss
+		}
+	}()
 
 	return nil
 }

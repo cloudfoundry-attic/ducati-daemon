@@ -138,6 +138,6 @@ var _ = Describe("Networks", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(session.Out, "5s").Should(gbytes.Say("STALE.*IP: 192.168.1.100"))
+		Eventually(session.Out, "5s").Should(gbytes.Say("ducati-d.sandbox-miss.*dest_ip.*192.168.1.100.*sandbox.*vni-%d", vni))
 	})
 })

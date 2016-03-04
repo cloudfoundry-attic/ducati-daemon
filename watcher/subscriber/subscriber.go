@@ -108,8 +108,6 @@ func (s *Subscriber) Subscribe(neighChan chan<- *Neigh, doneChan <-chan struct{}
 					return
 				}
 				neigh := convertNeigh(n)
-				s.Logger.Info("message", lager.Data{"msg": neigh.String()})
-
 				neighChan <- neigh
 			}
 		}

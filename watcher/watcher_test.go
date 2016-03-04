@@ -3,6 +3,7 @@ package watcher_test
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
@@ -10,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher/subscriber"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
@@ -55,6 +57,19 @@ var _ = Describe("Watcher", func() {
 
 			missWatcher.StartMonitor(namespace)
 			Expect(namespace.ExecuteCallCount()).To(Equal(1))
+		})
+
+		It("forwards Miss messages to the Firehose", func() {
+			sub.SubscribeStub = func(subChan chan<- *subscriber.Neigh, done <-chan struct{}) error {
+				go func() {
+					subChan <- &subscriber.Neigh{IP: net.ParseIP("1.2.3.4")}
+				}()
+				return nil
+			}
+
+			missWatcher.StartMonitor(namespace)
+
+			Eventually(logger).Should(gbytes.Say("1.2.3.4.*%s", namespace.Name()))
 		})
 
 		It("locks and unlocks to protect the map", func() {
