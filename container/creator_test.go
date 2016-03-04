@@ -15,6 +15,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -31,6 +32,7 @@ var _ = Describe("Setup", func() {
 		sandboxRepository *fakes.Repository
 		sandboxNS         namespace.Namespace
 		locker            *comm_fakes.Locker
+		missWatcher       watcher.MissWatcher
 	)
 
 	BeforeEach(func() {
@@ -38,11 +40,13 @@ var _ = Describe("Setup", func() {
 		linkFinder = &cond_fakes.LinkFinder{}
 		sandboxRepository = &fakes.Repository{}
 		locker = &comm_fakes.Locker{}
+		missWatcher = &fakes.MissWatcher{}
 		creator = container.Creator{
 			Executor:    executor,
 			LinkFinder:  linkFinder,
 			SandboxRepo: sandboxRepository,
 			Locker:      locker,
+			Watcher:     missWatcher,
 		}
 
 		var err error
@@ -127,10 +131,16 @@ var _ = Describe("Setup", func() {
 						Name:       fmt.Sprintf("vni-%d", config.VNI),
 						Repository: sandboxRepository,
 					},
-					Command: commands.CreateNamespace{
-						Name:       fmt.Sprintf("vni-%d", config.VNI),
-						Repository: sandboxRepository,
-					},
+					Command: commands.All(
+						commands.CreateNamespace{
+							Name:       fmt.Sprintf("vni-%d", config.VNI),
+							Repository: sandboxRepository,
+						},
+						commands.StartMonitor{
+							Watcher:   missWatcher,
+							Namespace: sandboxNS,
+						},
+					),
 				},
 				commands.InNamespace{
 					Namespace: sandboxNS,
@@ -269,10 +279,16 @@ var _ = Describe("Setup", func() {
 							Name:       fmt.Sprintf("vni-%d", config.VNI),
 							Repository: sandboxRepository,
 						},
-						Command: commands.CreateNamespace{
-							Name:       fmt.Sprintf("vni-%d", config.VNI),
-							Repository: sandboxRepository,
-						},
+						Command: commands.All(
+							commands.CreateNamespace{
+								Name:       fmt.Sprintf("vni-%d", config.VNI),
+								Repository: sandboxRepository,
+							},
+							commands.StartMonitor{
+								Watcher:   missWatcher,
+								Namespace: sandboxNS,
+							},
+						),
 					},
 					commands.InNamespace{
 						Namespace: sandboxNS,

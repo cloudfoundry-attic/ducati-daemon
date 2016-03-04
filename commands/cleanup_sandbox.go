@@ -3,6 +3,8 @@ package commands
 import (
 	"fmt"
 	"os"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 //go:generate counterfeiter --fake-name Locker . Locker
@@ -24,6 +26,7 @@ type VethDeviceCounter interface {
 type CleanupSandbox struct {
 	Namespace cleanableNamespace
 	Locker    Locker
+	Watcher   watcher.MissWatcher
 }
 
 func (c CleanupSandbox) Execute(context Context) error {
@@ -46,7 +49,12 @@ func (c CleanupSandbox) Execute(context Context) error {
 	}
 
 	if vethLinkCount == 0 {
-		err := c.Namespace.Destroy()
+		err := c.Watcher.StopMonitor(c.Namespace)
+		if err != nil {
+			return fmt.Errorf("watcher stop monitor: %s", err)
+		}
+
+		err = c.Namespace.Destroy()
 		if err != nil {
 			return fmt.Errorf("destroying sandbox %s: %s", sandboxName, err)
 		}

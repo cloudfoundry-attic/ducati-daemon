@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 )
 
+//go:generate counterfeiter -o ../../fakes/namespace.go --fake-name Namespace . Namespace
 type Namespace interface {
 	Destroy() error
 	Execute(func(*os.File) error) error

@@ -147,7 +147,7 @@ var _ = Describe("Networks", func() {
 		})
 
 		AfterEach(func() {
-			By("adding the container to a network")
+			By("removing the container from the network")
 			Expect(daemonClient.ContainerDown(networkID, containerID, downSpec)).To(Succeed())
 
 			By("checking that the sandbox has been cleaned up")

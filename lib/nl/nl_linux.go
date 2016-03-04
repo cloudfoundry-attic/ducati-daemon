@@ -1,6 +1,9 @@
 package nl
 
-import "github.com/vishvananda/netlink"
+import (
+	"github.com/vishvananda/netlink"
+	vish_nl "github.com/vishvananda/netlink/nl"
+)
 
 type nl struct{}
 
@@ -48,4 +51,12 @@ func (*nl) LinkList() ([]netlink.Link, error) {
 
 func (*nl) RouteList(link netlink.Link, family int) ([]netlink.Route, error) {
 	return netlink.RouteList(link, family)
+}
+
+func (*nl) Subscribe(protocol int, groups ...uint) (NLSocket, error) {
+	return vish_nl.Subscribe(protocol, groups...)
+}
+
+func (*nl) NeighDeserialize(data []byte) (*netlink.Neigh, error) {
+	return netlink.NeighDeserialize(data)
 }

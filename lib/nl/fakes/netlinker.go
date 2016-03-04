@@ -103,6 +103,25 @@ type Netlinker struct {
 		result1 []netlink.Route
 		result2 error
 	}
+	SubscribeStub        func(int, ...uint) (nl.NLSocket, error)
+	subscribeMutex       sync.RWMutex
+	subscribeArgsForCall []struct {
+		arg1 int
+		arg2 []uint
+	}
+	subscribeReturns struct {
+		result1 nl.NLSocket
+		result2 error
+	}
+	NeighDeserializeStub        func([]byte) (*netlink.Neigh, error)
+	neighDeserializeMutex       sync.RWMutex
+	neighDeserializeArgsForCall []struct {
+		arg1 []byte
+	}
+	neighDeserializeReturns struct {
+		result1 *netlink.Neigh
+		result2 error
+	}
 }
 
 func (fake *Netlinker) LinkAdd(link netlink.Link) error {
@@ -453,6 +472,73 @@ func (fake *Netlinker) RouteListReturns(result1 []netlink.Route, result2 error) 
 	fake.RouteListStub = nil
 	fake.routeListReturns = struct {
 		result1 []netlink.Route
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Netlinker) Subscribe(arg1 int, arg2 ...uint) (nl.NLSocket, error) {
+	fake.subscribeMutex.Lock()
+	fake.subscribeArgsForCall = append(fake.subscribeArgsForCall, struct {
+		arg1 int
+		arg2 []uint
+	}{arg1, arg2})
+	fake.subscribeMutex.Unlock()
+	if fake.SubscribeStub != nil {
+		return fake.SubscribeStub(arg1, arg2...)
+	} else {
+		return fake.subscribeReturns.result1, fake.subscribeReturns.result2
+	}
+}
+
+func (fake *Netlinker) SubscribeCallCount() int {
+	fake.subscribeMutex.RLock()
+	defer fake.subscribeMutex.RUnlock()
+	return len(fake.subscribeArgsForCall)
+}
+
+func (fake *Netlinker) SubscribeArgsForCall(i int) (int, []uint) {
+	fake.subscribeMutex.RLock()
+	defer fake.subscribeMutex.RUnlock()
+	return fake.subscribeArgsForCall[i].arg1, fake.subscribeArgsForCall[i].arg2
+}
+
+func (fake *Netlinker) SubscribeReturns(result1 nl.NLSocket, result2 error) {
+	fake.SubscribeStub = nil
+	fake.subscribeReturns = struct {
+		result1 nl.NLSocket
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Netlinker) NeighDeserialize(arg1 []byte) (*netlink.Neigh, error) {
+	fake.neighDeserializeMutex.Lock()
+	fake.neighDeserializeArgsForCall = append(fake.neighDeserializeArgsForCall, struct {
+		arg1 []byte
+	}{arg1})
+	fake.neighDeserializeMutex.Unlock()
+	if fake.NeighDeserializeStub != nil {
+		return fake.NeighDeserializeStub(arg1)
+	} else {
+		return fake.neighDeserializeReturns.result1, fake.neighDeserializeReturns.result2
+	}
+}
+
+func (fake *Netlinker) NeighDeserializeCallCount() int {
+	fake.neighDeserializeMutex.RLock()
+	defer fake.neighDeserializeMutex.RUnlock()
+	return len(fake.neighDeserializeArgsForCall)
+}
+
+func (fake *Netlinker) NeighDeserializeArgsForCall(i int) []byte {
+	fake.neighDeserializeMutex.RLock()
+	defer fake.neighDeserializeMutex.RUnlock()
+	return fake.neighDeserializeArgsForCall[i].arg1
+}
+
+func (fake *Netlinker) NeighDeserializeReturns(result1 *netlink.Neigh, result2 error) {
+	fake.NeighDeserializeStub = nil
+	fake.neighDeserializeReturns = struct {
+		result1 *netlink.Neigh
 		result2 error
 	}{result1, result2}
 }

@@ -21,6 +21,8 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher/subscriber"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -130,33 +132,43 @@ func main() {
 	osThreadLocker := &threading.OSLocker{}
 	globalLocker := &threading.GlobalLocker{}
 
+	subscriber := &subscriber.Subscriber{
+		Logger:    logger.Session("subscriber"),
+		Netlinker: nl.Netlink,
+	}
+	missWatcher := watcher.New(logger, subscriber, &sync.Mutex{})
+
 	executor := executor.New(addressManager, routeManager, linkFactory)
 	creator := &container.Creator{
 		LinkFinder:  linkFactory,
 		Executor:    executor,
 		SandboxRepo: sandboxRepo,
 		Locker:      globalLocker,
+		Watcher:     missWatcher,
 	}
 	deletor := &container.Deletor{
 		Executor: executor,
 		Locker:   globalLocker,
+		Watcher:  missWatcher,
 	}
 
+	marshaler := marshal.MarshalFunc(json.Marshal)
+	unmarshaler := marshal.UnmarshalFunc(json.Unmarshal)
 	rataHandlers["containers_list"] = &handlers.ContainersList{
 		Store:     dataStore,
-		Marshaler: marshal.MarshalFunc(json.Marshal),
+		Marshaler: marshaler,
 		Logger:    logger,
 	}
 
 	rataHandlers["container_create"] = &handlers.ContainerCreate{
 		Store:       dataStore,
-		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
+		Unmarshaler: unmarshaler,
 		Logger:      logger,
 	}
 
 	rataHandlers["container_get"] = &handlers.ContainerGet{
 		Store:     dataStore,
-		Marshaler: marshal.MarshalFunc(json.Marshal),
+		Marshaler: marshaler,
 		Logger:    logger,
 	}
 
@@ -167,24 +179,24 @@ func main() {
 
 	rataHandlers["ipam_allocate"] = &handlers.IPAMAllocate{
 		IPAllocator: ipAllocator,
-		Marshaler:   marshal.MarshalFunc(json.Marshal),
+		Marshaler:   marshaler,
 		Logger:      logger,
 	}
 
 	rataHandlers["ipam_release"] = &handlers.IPAMRelease{
 		IPAllocator: ipAllocator,
-		Marshaler:   marshal.MarshalFunc(json.Marshal),
+		Marshaler:   marshaler,
 		Logger:      logger,
 	}
 
 	rataHandlers["networks_list_containers"] = &handlers.NetworksListContainers{
-		Marshaler: marshal.MarshalFunc(json.Marshal),
+		Marshaler: marshaler,
 		Logger:    logger,
 		Datastore: dataStore,
 	}
 
 	rataHandlers["networks_setup_container"] = &handlers.NetworksSetupContainer{
-		Unmarshaler:    marshal.UnmarshalFunc(json.Unmarshal),
+		Unmarshaler:    unmarshaler,
 		Logger:         logger,
 		Datastore:      dataStore,
 		Creator:        creator,
@@ -192,7 +204,7 @@ func main() {
 	}
 
 	rataHandlers["networks_delete_container"] = &handlers.NetworksDeleteContainer{
-		Unmarshaler:    marshal.UnmarshalFunc(json.Unmarshal),
+		Unmarshaler:    unmarshaler,
 		Logger:         logger,
 		Datastore:      dataStore,
 		Deletor:        deletor,

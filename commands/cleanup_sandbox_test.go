@@ -6,32 +6,36 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
-	"github.com/cloudfoundry-incubator/ducati-daemon/commands/fakes"
+	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/commands/fakes"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("CleanupSandbox", func() {
 	var (
-		context               *fakes.Context
-		sandboxNS             *fakes.CleanableNamespace
-		locker                *fakes.Locker
+		context               *cmd_fakes.Context
+		sandboxNS             *cmd_fakes.CleanableNamespace
+		locker                *cmd_fakes.Locker
 		linkFactory           *exec_fakes.LinkFactory
 		cleanupSandboxCommand commands.CleanupSandbox
+		missWatcher           *fakes.MissWatcher
 	)
 
 	BeforeEach(func() {
-		context = &fakes.Context{}
-		sandboxNS = &fakes.CleanableNamespace{}
+		context = &cmd_fakes.Context{}
+		sandboxNS = &cmd_fakes.CleanableNamespace{}
 		sandboxNS.NameReturns("some-sandbox-name")
-		locker = &fakes.Locker{}
+		locker = &cmd_fakes.Locker{}
 		linkFactory = &exec_fakes.LinkFactory{}
 		context.VethDeviceCounterReturns(linkFactory)
+		missWatcher = &fakes.MissWatcher{}
 
 		cleanupSandboxCommand = commands.CleanupSandbox{
 			Namespace: sandboxNS,
 			Locker:    locker,
+			Watcher:   missWatcher,
 		}
 
 		sandboxNS.ExecuteStub = func(callback func(ns *os.File) error) error {
@@ -89,6 +93,28 @@ var _ = Describe("CleanupSandbox", func() {
 	})
 
 	Context("when there are no more veth devices in the sandbox", func() {
+		It("stops monitoring the namespace", func() {
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(missWatcher.StopMonitorCallCount()).To(Equal(1))
+			Expect(missWatcher.StopMonitorArgsForCall(0)).To(Equal(sandboxNS))
+		})
+
+		Context("when stopping monitoring fails", func() {
+			BeforeEach(func() {
+				missWatcher.StopMonitorReturns(errors.New("potato"))
+			})
+			It("wraps and returns the error", func() {
+				err := cleanupSandboxCommand.Execute(context)
+				Expect(err).To(MatchError("watcher stop monitor: potato"))
+			})
+
+			It("does not attempt to destroy the namespace", func() {
+				cleanupSandboxCommand.Execute(context)
+				Expect(sandboxNS.DestroyCallCount()).To(Equal(0))
+			})
+		})
 		It("destroys the namespace", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())

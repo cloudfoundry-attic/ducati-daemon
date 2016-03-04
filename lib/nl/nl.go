@@ -1,8 +1,18 @@
 package nl
 
-import "github.com/vishvananda/netlink"
+import (
+	"syscall"
+
+	"github.com/vishvananda/netlink"
+)
 
 const FAMILY_V4 = netlink.FAMILY_V4
+
+//go:generate counterfeiter --fake-name NLSocket . NLSocket
+type NLSocket interface {
+	Receive() ([]syscall.NetlinkMessage, error)
+	Close()
+}
 
 //go:generate counterfeiter --fake-name Netlinker . Netlinker
 type Netlinker interface {
@@ -17,4 +27,6 @@ type Netlinker interface {
 	LinkByIndex(int) (netlink.Link, error)
 	RouteAdd(*netlink.Route) error
 	RouteList(netlink.Link, int) ([]netlink.Route, error)
+	Subscribe(int, ...uint) (NLSocket, error)
+	NeighDeserialize([]byte) (*netlink.Neigh, error)
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type Creator struct {
@@ -17,6 +18,7 @@ type Creator struct {
 	Executor    executor.Executor
 	SandboxRepo namespace.Repository
 	Locker      commands.Locker
+	Watcher     watcher.MissWatcher
 }
 
 type CreatorConfig struct {
@@ -69,10 +71,16 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 					Name:       sandboxName,
 					Repository: c.SandboxRepo,
 				},
-				Command: commands.CreateNamespace{
-					Name:       sandboxName,
-					Repository: c.SandboxRepo,
-				},
+				Command: commands.All(
+					commands.CreateNamespace{
+						Name:       sandboxName,
+						Repository: c.SandboxRepo,
+					},
+					commands.StartMonitor{
+						Watcher:   c.Watcher,
+						Namespace: sandboxNS,
+					},
+				),
 			},
 			commands.InNamespace{
 				Namespace: sandboxNS,
