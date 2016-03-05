@@ -83,6 +83,10 @@ func (w *missWatcher) StartMonitor(ns Namespace) error {
 
 	go func() {
 		for neigh := range subChan {
+			if neigh.IP == nil {
+				continue
+			}
+
 			miss := Miss{
 				SandboxName: ns.Name(),
 				DestIP:      neigh.IP,

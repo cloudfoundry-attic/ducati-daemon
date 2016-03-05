@@ -72,6 +72,21 @@ var _ = Describe("Watcher", func() {
 			Eventually(logger).Should(gbytes.Say("1.2.3.4.*%s", namespace.Name()))
 		})
 
+		Context("when the miss message doesn't have a destination IP", func() {
+			It("does not forward it to the firehose", func() {
+				sub.SubscribeStub = func(subChan chan<- *subscriber.Neigh, done <-chan struct{}) error {
+					go func() {
+						subChan <- &subscriber.Neigh{State: 42}
+					}()
+					return nil
+				}
+
+				missWatcher.StartMonitor(namespace)
+
+				Consistently(logger).ShouldNot(gbytes.Say("test"))
+			})
+		})
+
 		It("locks and unlocks to protect the map", func() {
 			missWatcher.StartMonitor(namespace)
 			Expect(locker.LockCallCount()).To(Equal(1))
