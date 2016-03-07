@@ -17,6 +17,7 @@ type DeletorConfig struct {
 	InterfaceName   string
 	ContainerNSPath string
 	SandboxNSPath   string
+	VxlanDeviceName string
 }
 
 func (d *Deletor) Delete(deletorConfig DeletorConfig) error {
@@ -30,9 +31,10 @@ func (d *Deletor) Delete(deletorConfig DeletorConfig) error {
 			},
 
 			commands.CleanupSandbox{
-				Namespace: namespace.NewNamespace(deletorConfig.SandboxNSPath),
-				Locker:    d.Locker,
-				Watcher:   d.Watcher,
+				Namespace:       namespace.NewNamespace(deletorConfig.SandboxNSPath),
+				Locker:          d.Locker,
+				Watcher:         d.Watcher,
+				VxlanDeviceName: deletorConfig.VxlanDeviceName,
 			},
 		),
 	)

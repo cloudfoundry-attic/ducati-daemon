@@ -101,6 +101,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 			InterfaceName:   "some-interface-name",
 			ContainerNSPath: "/some/container/namespace/path",
 			SandboxNSPath:   "/some/sandbox/repo/path",
+			VxlanDeviceName: "vxlan42",
 		}))
 	})
 

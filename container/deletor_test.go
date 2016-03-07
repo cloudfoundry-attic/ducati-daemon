@@ -7,6 +7,7 @@ import (
 	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 
 	. "github.com/onsi/ginkgo"
@@ -18,16 +19,18 @@ var _ = Describe("Delete", func() {
 		deletor           container.Deletor
 		executor          *exec_fakes.Executor
 		sandboxRepoLocker *cmd_fakes.Locker
+		watcher           *fakes.MissWatcher
 	)
 
 	BeforeEach(func() {
 		executor = &exec_fakes.Executor{}
 		sandboxRepoLocker = &cmd_fakes.Locker{}
+		watcher = &fakes.MissWatcher{}
 		deletor = container.Deletor{
 			Executor: executor,
 			Locker:   sandboxRepoLocker,
+			Watcher:  watcher,
 		}
-
 	})
 
 	It("should construct the correct command sequence", func() {
@@ -35,6 +38,7 @@ var _ = Describe("Delete", func() {
 			InterfaceName:   "some-interface-name",
 			ContainerNSPath: "/some/container/namespace/path",
 			SandboxNSPath:   "/some/sandbox/namespace/path",
+			VxlanDeviceName: "some-vxlan",
 		}
 
 		err := deletor.Delete(deletorConfig)
@@ -52,8 +56,10 @@ var _ = Describe("Delete", func() {
 				},
 
 				commands.CleanupSandbox{
-					Namespace: namespace.NewNamespace("/some/sandbox/namespace/path"),
-					Locker:    sandboxRepoLocker,
+					Namespace:       namespace.NewNamespace("/some/sandbox/namespace/path"),
+					Locker:          sandboxRepoLocker,
+					Watcher:         watcher,
+					VxlanDeviceName: "some-vxlan",
 				},
 			),
 		))

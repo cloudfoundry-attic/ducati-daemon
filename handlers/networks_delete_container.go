@@ -88,6 +88,7 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 		InterfaceName:   payload.InterfaceName,
 		ContainerNSPath: payload.ContainerNamespace,
 		SandboxNSPath:   sandboxNS.Path(),
+		VxlanDeviceName: fmt.Sprintf("vxlan%d", payload.VNI),
 	}
 
 	err = h.Deletor.Delete(deletorConfig)

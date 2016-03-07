@@ -30,12 +30,14 @@ var _ = Describe("CleanupSandbox", func() {
 		locker = &cmd_fakes.Locker{}
 		linkFactory = &exec_fakes.LinkFactory{}
 		context.VethDeviceCounterReturns(linkFactory)
+		context.LinkDeletorReturns(linkFactory)
 		missWatcher = &fakes.MissWatcher{}
 
 		cleanupSandboxCommand = commands.CleanupSandbox{
-			Namespace: sandboxNS,
-			Locker:    locker,
-			Watcher:   missWatcher,
+			Namespace:       sandboxNS,
+			Locker:          locker,
+			Watcher:         missWatcher,
+			VxlanDeviceName: "some-vxlan",
 		}
 
 		sandboxNS.ExecuteStub = func(callback func(ns *os.File) error) error {
@@ -90,6 +92,13 @@ var _ = Describe("CleanupSandbox", func() {
 
 			Expect(sandboxNS.DestroyCallCount()).To(Equal(0))
 		})
+
+		It("does NOT destroy the vxlan device", func() {
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(0))
+		})
 	})
 
 	Context("when there are no more veth devices in the sandbox", func() {
@@ -115,6 +124,29 @@ var _ = Describe("CleanupSandbox", func() {
 				Expect(sandboxNS.DestroyCallCount()).To(Equal(0))
 			})
 		})
+
+		It("destroys the vxlan device in the sandbox namespace", func() {
+			sandboxNS.ExecuteStub = func(callback func(ns *os.File) error) error {
+				Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(0))
+				callback(nil)
+				Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(1))
+				Expect(linkFactory.DeleteLinkByNameArgsForCall(0)).To(Equal(cleanupSandboxCommand.VxlanDeviceName))
+				return nil
+			}
+
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when there is an error destroying vxlan device", func() {
+			It("wraps and returns the error", func() {
+				linkFactory.DeleteLinkByNameReturns(errors.New("some-error"))
+
+				err := cleanupSandboxCommand.Execute(context)
+				Expect(err).To(MatchError("in namespace some-sandbox-name: callback failed: destroying vxlan some-vxlan: some-error"))
+			})
+		})
+
 		It("destroys the namespace", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())

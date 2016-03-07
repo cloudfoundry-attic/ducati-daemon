@@ -24,9 +24,10 @@ type VethDeviceCounter interface {
 	VethDeviceCount() (int, error)
 }
 type CleanupSandbox struct {
-	Namespace cleanableNamespace
-	Locker    Locker
-	Watcher   watcher.MissWatcher
+	Namespace       cleanableNamespace
+	Locker          Locker
+	Watcher         watcher.MissWatcher
+	VxlanDeviceName string
 }
 
 func (c CleanupSandbox) Execute(context Context) error {
@@ -42,6 +43,14 @@ func (c CleanupSandbox) Execute(context Context) error {
 		if err != nil {
 			return fmt.Errorf("counting veth devices: %s", err)
 		}
+
+		if vethLinkCount == 0 {
+			err = context.LinkDeletor().DeleteLinkByName(c.VxlanDeviceName)
+			if err != nil {
+				return fmt.Errorf("destroying vxlan %s: %s", c.VxlanDeviceName, err)
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
