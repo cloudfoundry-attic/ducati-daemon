@@ -131,6 +131,8 @@ var _ = Describe("Watcher", func() {
 
 		It("locks and unlocks to protect the map", func() {
 			missWatcher.StopMonitor(namespace)
+			Eventually(complete).Should(Receive())
+
 			Expect(locker.LockCallCount()).To(Equal(2))
 			Expect(locker.UnlockCallCount()).To(Equal(2))
 		})
@@ -138,6 +140,8 @@ var _ = Describe("Watcher", func() {
 		Context("when StopMonitor called many times", func() {
 			It("returns a channel not found error", func() {
 				Expect(missWatcher.StopMonitor(namespace)).To(Succeed())
+				Eventually(complete).Should(Receive())
+
 				Expect(missWatcher.StopMonitor(namespace)).To(MatchError("namespace some-namespace not monitored"))
 			})
 		})
