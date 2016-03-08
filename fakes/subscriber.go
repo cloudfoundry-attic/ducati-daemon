@@ -4,14 +4,14 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/watcher/subscriber"
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type Subscriber struct {
-	SubscribeStub        func(ch chan<- *subscriber.Neigh, done <-chan struct{}) error
+	SubscribeStub        func(ch chan<- *watcher.Neigh, done <-chan struct{}) error
 	subscribeMutex       sync.RWMutex
 	subscribeArgsForCall []struct {
-		ch   chan<- *subscriber.Neigh
+		ch   chan<- *watcher.Neigh
 		done <-chan struct{}
 	}
 	subscribeReturns struct {
@@ -19,10 +19,10 @@ type Subscriber struct {
 	}
 }
 
-func (fake *Subscriber) Subscribe(ch chan<- *subscriber.Neigh, done <-chan struct{}) error {
+func (fake *Subscriber) Subscribe(ch chan<- *watcher.Neigh, done <-chan struct{}) error {
 	fake.subscribeMutex.Lock()
 	fake.subscribeArgsForCall = append(fake.subscribeArgsForCall, struct {
-		ch   chan<- *subscriber.Neigh
+		ch   chan<- *watcher.Neigh
 		done <-chan struct{}
 	}{ch, done})
 	fake.subscribeMutex.Unlock()
@@ -39,7 +39,7 @@ func (fake *Subscriber) SubscribeCallCount() int {
 	return len(fake.subscribeArgsForCall)
 }
 
-func (fake *Subscriber) SubscribeArgsForCall(i int) (chan<- *subscriber.Neigh, <-chan struct{}) {
+func (fake *Subscriber) SubscribeArgsForCall(i int) (chan<- *watcher.Neigh, <-chan struct{}) {
 	fake.subscribeMutex.RLock()
 	defer fake.subscribeMutex.RUnlock()
 	return fake.subscribeArgsForCall[i].ch, fake.subscribeArgsForCall[i].done

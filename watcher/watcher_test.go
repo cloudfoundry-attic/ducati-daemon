@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
-	"github.com/cloudfoundry-incubator/ducati-daemon/watcher/subscriber"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -60,9 +59,9 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("forwards Miss messages to the Firehose", func() {
-			sub.SubscribeStub = func(subChan chan<- *subscriber.Neigh, done <-chan struct{}) error {
+			sub.SubscribeStub = func(subChan chan<- *watcher.Neigh, done <-chan struct{}) error {
 				go func() {
-					subChan <- &subscriber.Neigh{IP: net.ParseIP("1.2.3.4")}
+					subChan <- &watcher.Neigh{IP: net.ParseIP("1.2.3.4")}
 				}()
 				return nil
 			}
@@ -74,9 +73,9 @@ var _ = Describe("Watcher", func() {
 
 		Context("when the miss message doesn't have a destination IP", func() {
 			It("does not forward it to the firehose", func() {
-				sub.SubscribeStub = func(subChan chan<- *subscriber.Neigh, done <-chan struct{}) error {
+				sub.SubscribeStub = func(subChan chan<- *watcher.Neigh, done <-chan struct{}) error {
 					go func() {
-						subChan <- &subscriber.Neigh{State: 42}
+						subChan <- &watcher.Neigh{State: 42}
 					}()
 					return nil
 				}
@@ -113,7 +112,7 @@ var _ = Describe("Watcher", func() {
 		var complete chan struct{}
 		BeforeEach(func() {
 			complete = make(chan struct{})
-			sub.SubscribeStub = func(ch chan<- *subscriber.Neigh, done <-chan struct{}) error {
+			sub.SubscribeStub = func(ch chan<- *watcher.Neigh, done <-chan struct{}) error {
 				go func() {
 					<-done
 					complete <- struct{}{}

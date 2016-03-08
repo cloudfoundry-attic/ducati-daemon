@@ -8,7 +8,8 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/watcher/subscriber"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/subscriber"
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -18,14 +19,14 @@ import (
 
 var _ = Describe("Subscriber (real messages)", func() {
 	var (
-		neighChan    chan *subscriber.Neigh
+		neighChan    chan *watcher.Neigh
 		doneChan     chan struct{}
 		mySubscriber *subscriber.Subscriber
 		logger       *lagertest.TestLogger
 	)
 
 	BeforeEach(func() {
-		neighChan = make(chan *subscriber.Neigh, 100)
+		neighChan = make(chan *watcher.Neigh, 100)
 		doneChan = make(chan struct{})
 		logger = lagertest.NewTestLogger("test")
 
@@ -51,7 +52,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		fakeNetlinker *fakes.Netlinker
 		fakeSocket    *fakes.NLSocket
 		mySubscriber  *subscriber.Subscriber
-		neighChan     chan *subscriber.Neigh
+		neighChan     chan *watcher.Neigh
 		doneChan      chan struct{}
 		logger        *lagertest.TestLogger
 	)
@@ -59,7 +60,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 	BeforeEach(func() {
 		fakeNetlinker = &fakes.Netlinker{}
 		fakeSocket = &fakes.NLSocket{}
-		neighChan = make(chan *subscriber.Neigh, 100)
+		neighChan = make(chan *watcher.Neigh, 100)
 		doneChan = make(chan struct{})
 		logger = lagertest.NewTestLogger("test")
 
@@ -88,7 +89,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		err := mySubscriber.Subscribe(neighChan, doneChan)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(neighChan).Should(Receive(Equal(&subscriber.Neigh{
+		Eventually(neighChan).Should(Receive(Equal(&watcher.Neigh{
 			LinkIndex:    1,
 			Family:       2,
 			State:        3,

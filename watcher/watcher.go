@@ -6,13 +6,22 @@ import (
 	"os"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/watcher/subscriber"
 	"github.com/pivotal-golang/lager"
 )
 
+type Neigh struct {
+	LinkIndex    int
+	Family       int
+	State        int
+	Type         int
+	Flags        int
+	IP           net.IP
+	HardwareAddr net.HardwareAddr
+}
+
 //go:generate counterfeiter -o ../fakes/subscriber.go --fake-name Subscriber . sub
 type sub interface {
-	Subscribe(ch chan<- *subscriber.Neigh, done <-chan struct{}) error
+	Subscribe(ch chan<- *Neigh, done <-chan struct{}) error
 }
 
 type Namespace interface {
@@ -62,7 +71,7 @@ func (w *missWatcher) DrainFirehose() {
 }
 
 func (w *missWatcher) StartMonitor(ns Namespace) error {
-	subChan := make(chan *subscriber.Neigh)
+	subChan := make(chan *Neigh)
 
 	doneChan := make(chan struct{})
 
