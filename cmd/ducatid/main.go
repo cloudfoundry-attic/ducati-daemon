@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
@@ -90,7 +91,14 @@ func main() {
 		log.Fatalf("overlay network does not contain local subnet")
 	}
 
-	dbConnectionPool, err := db.GetConnectionPool(databaseURL)
+	retriableConnector := db.RetriableConnector{
+		Connector:     db.GetConnectionPool,
+		Sleeper:       db.SleeperFunc(time.Sleep),
+		RetryInterval: 3 * time.Second,
+		MaxRetries:    10,
+	}
+
+	dbConnectionPool, err := retriableConnector.GetConnectionPool(databaseURL)
 	if err != nil {
 		log.Fatalf("db connect: %s", err)
 	}
