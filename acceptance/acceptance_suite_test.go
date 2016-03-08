@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"runtime"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	. "github.com/onsi/ginkgo"
@@ -50,6 +51,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	dbConnInfo = &data.DBConnInfo
 
 	rand.Seed(config.GinkgoConfig.RandomSeed + int64(GinkgoParallelNode()))
+
+	runtime.LockOSThread()
 })
 
 var _ = SynchronizedAfterSuite(func() {
