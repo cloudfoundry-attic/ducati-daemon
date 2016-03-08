@@ -42,9 +42,9 @@ var _ = Describe("SetLinkMaster", func() {
 			masterSetter.SetMasterReturns(errors.New("you're not a slave"))
 		})
 
-		It("propagates the error", func() {
+		It("wraps and propogates the error", func() {
 			err := setLinkMaster.Execute(context)
-			Expect(err).To(MatchError("you're not a slave"))
+			Expect(err).To(MatchError("set link master: you're not a slave"))
 		})
 	})
 })

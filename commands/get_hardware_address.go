@@ -1,6 +1,9 @@
 package commands
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 //go:generate counterfeiter --fake-name HardwareAddresser . HardwareAddresser
 type HardwareAddresser interface {
@@ -14,6 +17,11 @@ type GetHardwareAddress struct {
 
 func (cmd *GetHardwareAddress) Execute(context Context) error {
 	hwAddr, err := context.HardwareAddresser().HardwareAddress(cmd.LinkName)
+	if err != nil {
+		return fmt.Errorf("get hardware address: %s", err)
+	}
+
 	cmd.Result = hwAddr
-	return err
+
+	return nil
 }

@@ -39,9 +39,9 @@ var _ = Describe("CreateBridge", func() {
 			bridgeFactory.CreateBridgeReturns(errors.New("no bridge for sale"))
 		})
 
-		It("propagates the error", func() {
+		It("wraps and propagates the error", func() {
 			err := createBridge.Execute(context)
-			Expect(err).To(MatchError("no bridge for sale"))
+			Expect(err).To(MatchError("create bridge: no bridge for sale"))
 		})
 	})
 })

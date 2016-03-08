@@ -1,5 +1,7 @@
 package commands
 
+import "fmt"
+
 //go:generate counterfeiter --fake-name VxlanFactory  . VxlanFactory
 type VxlanFactory interface {
 	CreateVxlan(name string, vni int) error
@@ -11,5 +13,10 @@ type CreateVxlan struct {
 }
 
 func (cv CreateVxlan) Execute(context Context) error {
-	return context.VxlanFactory().CreateVxlan(cv.Name, cv.VNI)
+	err := context.VxlanFactory().CreateVxlan(cv.Name, cv.VNI)
+	if err != nil {
+		return fmt.Errorf("create vxlan: %s", err)
+	}
+
+	return nil
 }

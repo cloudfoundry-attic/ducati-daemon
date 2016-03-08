@@ -50,9 +50,9 @@ var _ = Describe("GetHardwareAddress", func() {
 			hardwareAddresser.HardwareAddressReturns(nil, errors.New("boom"))
 		})
 
-		It("returns the error", func() {
+		It("wraps and propogates the error", func() {
 			err := getHWAddress.Execute(context)
-			Expect(err).To(MatchError("boom"))
+			Expect(err).To(MatchError("get hardware address: boom"))
 		})
 	})
 })

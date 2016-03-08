@@ -59,9 +59,9 @@ var _ = Describe("ExecuteInNamespace", func() {
 			namespace.ExecuteReturns(errors.New("go away"))
 		})
 
-		It("propagates the error", func() {
+		It("wraps and propagates the error", func() {
 			err := inNamespace.Execute(context)
-			Expect(err).To(MatchError("go away"))
+			Expect(err).To(MatchError("execute in namespace: go away"))
 		})
 	})
 
@@ -70,9 +70,9 @@ var _ = Describe("ExecuteInNamespace", func() {
 			command.ExecuteReturns(errors.New("i died"))
 		})
 
-		It("propagates the error", func() {
+		It("wraps and propagates the error", func() {
 			err := inNamespace.Execute(context)
-			Expect(err).To(MatchError("i died"))
+			Expect(err).To(MatchError("execute in namespace: i died"))
 		})
 	})
 })

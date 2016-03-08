@@ -33,9 +33,14 @@ var _ = Describe("DeleteLink", func() {
 		Expect(linkDeletor.DeleteLinkByNameArgsForCall(0)).To(Equal("some-link-name"))
 	})
 
-	It("returns the result of the LinkDeletor call", func() {
-		linkDeletor.DeleteLinkByNameReturns(errors.New("whatever"))
-		err := deleteLinkCommand.Execute(context)
-		Expect(err).To(MatchError("whatever"))
+	Context("when deleting the link by name fails", func() {
+		BeforeEach(func() {
+			linkDeletor.DeleteLinkByNameReturns(errors.New("whatever"))
+		})
+
+		It("wraps and propogates the error", func() {
+			err := deleteLinkCommand.Execute(context)
+			Expect(err).To(MatchError("delete link: whatever"))
+		})
 	})
 })

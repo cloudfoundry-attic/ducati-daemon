@@ -114,6 +114,7 @@ var _ = Describe("CleanupSandbox", func() {
 			BeforeEach(func() {
 				missWatcher.StopMonitorReturns(errors.New("potato"))
 			})
+
 			It("wraps and returns the error", func() {
 				err := cleanupSandboxCommand.Execute(context)
 				Expect(err).To(MatchError("watcher stop monitor: potato"))
@@ -158,7 +159,8 @@ var _ = Describe("CleanupSandbox", func() {
 			BeforeEach(func() {
 				sandboxNS.DestroyReturns(errors.New("some-destroy-error"))
 			})
-			It("wraps and returns an error", func() {
+
+			It("wraps and propogates the error", func() {
 				Expect(cleanupSandboxCommand.Execute(context)).To(MatchError("destroying sandbox some-sandbox-name: some-destroy-error"))
 			})
 		})

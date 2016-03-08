@@ -42,9 +42,9 @@ var _ = Describe("CreateVxlan", func() {
 			vxlanFactory.CreateVxlanReturns(errors.New("no vxlan for you"))
 		})
 
-		It("propagates the error", func() {
+		It("wraps and propagates the error", func() {
 			err := createVxlan.Execute(context)
-			Expect(err).To(MatchError("no vxlan for you"))
+			Expect(err).To(MatchError("create vxlan: no vxlan for you"))
 		})
 	})
 })

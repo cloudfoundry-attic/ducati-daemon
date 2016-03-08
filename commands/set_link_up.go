@@ -1,5 +1,7 @@
 package commands
 
+import "fmt"
+
 //go:generate counterfeiter --fake-name SetUpper . SetUpper
 type SetUpper interface {
 	SetUp(name string) error
@@ -10,5 +12,10 @@ type SetLinkUp struct {
 }
 
 func (s SetLinkUp) Execute(context Context) error {
-	return context.SetUpper().SetUp(s.LinkName)
+	err := context.SetUpper().SetUp(s.LinkName)
+	if err != nil {
+		return fmt.Errorf("set link up: %s", err)
+	}
+
+	return nil
 }

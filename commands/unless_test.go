@@ -57,9 +57,9 @@ var _ = Describe("unless", func() {
 				command.ExecuteReturns(errors.New("go away"))
 			})
 
-			It("propagates the error", func() {
+			It("wraps and propagates the error", func() {
 				err := unless.Execute(context)
-				Expect(err).To(MatchError("go away"))
+				Expect(err).To(MatchError("unless: go away"))
 			})
 		})
 	})

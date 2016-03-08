@@ -48,9 +48,9 @@ var _ = Describe("AddRoute", func() {
 			routeAdder.AddRouteReturns(errors.New("no route for you"))
 		})
 
-		It("preserves the error", func() {
+		It("wraps and propogates the error", func() {
 			err := addRoute.Execute(context)
-			Expect(err).To(MatchError("no route for you"))
+			Expect(err).To(MatchError("add route: no route for you"))
 		})
 	})
 })

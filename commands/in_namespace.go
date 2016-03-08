@@ -1,6 +1,9 @@
 package commands
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 //go:generate counterfeiter --fake-name Namespace . Namespace
 type Namespace interface {
@@ -14,7 +17,12 @@ type InNamespace struct {
 }
 
 func (i InNamespace) Execute(context Context) error {
-	return i.Namespace.Execute(func(_ *os.File) error {
+	err := i.Namespace.Execute(func(_ *os.File) error {
 		return i.Command.Execute(context)
 	})
+	if err != nil {
+		return fmt.Errorf("execute in namespace: %s", err)
+	}
+
+	return nil
 }

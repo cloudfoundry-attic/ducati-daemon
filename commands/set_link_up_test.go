@@ -35,11 +35,11 @@ var _ = Describe("SetLinkUp", func() {
 	})
 
 	Context("when setting the link UP fails", func() {
-		It("propagates the error", func() {
+		It("wraps and propagates the error", func() {
 			setUpper.SetUpReturns(errors.New("welp"))
 
 			err := setLinkUp.Execute(context)
-			Expect(err).To(MatchError("welp"))
+			Expect(err).To(MatchError("set link up: welp"))
 		})
 	})
 })

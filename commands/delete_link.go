@@ -1,5 +1,7 @@
 package commands
 
+import "fmt"
+
 //go:generate counterfeiter --fake-name LinkDeletor . LinkDeletor
 type LinkDeletor interface {
 	DeleteLinkByName(name string) error
@@ -10,5 +12,10 @@ type DeleteLink struct {
 }
 
 func (c DeleteLink) Execute(context Context) error {
-	return context.LinkDeletor().DeleteLinkByName(c.LinkName)
+	err := context.LinkDeletor().DeleteLinkByName(c.LinkName)
+	if err != nil {
+		return fmt.Errorf("delete link: %s", err)
+	}
+
+	return nil
 }

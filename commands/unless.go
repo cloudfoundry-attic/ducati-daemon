@@ -1,5 +1,7 @@
 package commands
 
+import "fmt"
+
 type Unless struct {
 	Condition Condition
 	Command   Command
@@ -10,5 +12,10 @@ func (u Unless) Execute(context Context) error {
 		return nil
 	}
 
-	return u.Command.Execute(context)
+	err := u.Command.Execute(context)
+	if err != nil {
+		return fmt.Errorf("unless: %s", err)
+	}
+
+	return nil
 }

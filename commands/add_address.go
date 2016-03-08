@@ -1,6 +1,9 @@
 package commands
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 //go:generate counterfeiter --fake-name AddressAdder . AddressAdder
 type AddressAdder interface {
@@ -13,5 +16,10 @@ type AddAddress struct {
 }
 
 func (aa AddAddress) Execute(context Context) error {
-	return context.AddressAdder().AddAddress(aa.InterfaceName, &aa.Address)
+	err := context.AddressAdder().AddAddress(aa.InterfaceName, &aa.Address)
+	if err != nil {
+		return fmt.Errorf("add address: %s", err)
+	}
+
+	return nil
 }

@@ -1,6 +1,9 @@
 package commands
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 //go:generate counterfeiter --fake-name RouteAdder . RouteAdder
 type RouteAdder interface {
@@ -14,5 +17,10 @@ type AddRoute struct {
 }
 
 func (ad AddRoute) Execute(context Context) error {
-	return context.RouteAdder().AddRoute(ad.Interface, &ad.Destination, ad.Gateway)
+	err := context.RouteAdder().AddRoute(ad.Interface, &ad.Destination, ad.Gateway)
+	if err != nil {
+		return fmt.Errorf("add route: %s", err)
+	}
+
+	return nil
 }

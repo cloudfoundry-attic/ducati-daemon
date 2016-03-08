@@ -20,7 +20,7 @@ type CreateNamespace struct {
 func (cn CreateNamespace) Execute(context Context) error {
 	_, err := cn.Repository.Create(cn.Name)
 	if err != nil {
-		return fmt.Errorf("failed to create namespace %q: %s", cn.Name, err)
+		return fmt.Errorf("create namespace: %s", err)
 	}
 
 	return nil

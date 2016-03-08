@@ -43,9 +43,9 @@ var _ = Describe("CreateNamespace", func() {
 			repository.CreateReturns(nil, errors.New("welp"))
 		})
 
-		It("returns a meaningful error", func() {
+		It("wraps and propogates the error", func() {
 			err := createNamespace.Execute(context)
-			Expect(err).To(MatchError(`failed to create namespace "my-namespace": welp`))
+			Expect(err).To(MatchError("create namespace: welp"))
 		})
 	})
 })

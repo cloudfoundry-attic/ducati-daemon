@@ -46,9 +46,9 @@ var _ = Describe("AddAddress", func() {
 			addressAdder.AddAddressReturns(errors.New("no address for you"))
 		})
 
-		It("propagates the error", func() {
+		It("wraps and propagates the error", func() {
 			err := addAddress.Execute(context)
-			Expect(err).To(MatchError("no address for you"))
+			Expect(err).To(MatchError("add address: no address for you"))
 		})
 	})
 })

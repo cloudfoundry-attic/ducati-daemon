@@ -1,5 +1,7 @@
 package commands
 
+import "fmt"
+
 //go:generate counterfeiter --fake-name BridgeFactory  . BridgeFactory
 type BridgeFactory interface {
 	CreateBridge(name string) error
@@ -10,5 +12,10 @@ type CreateBridge struct {
 }
 
 func (cb CreateBridge) Execute(context Context) error {
-	return context.BridgeFactory().CreateBridge(cb.Name)
+	err := context.BridgeFactory().CreateBridge(cb.Name)
+	if err != nil {
+		return fmt.Errorf("create bridge: %s", err)
+	}
+
+	return nil
 }

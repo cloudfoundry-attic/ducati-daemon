@@ -40,11 +40,13 @@ var _ = Describe("CreateVeth", func() {
 	})
 
 	Context("when creating the link fails", func() {
-		It("propogates the error", func() {
+		BeforeEach(func() {
 			vethFactory.CreateVethReturns(errors.New("welp"))
+		})
 
+		It("wraps and propogates the error", func() {
 			err := createVeth.Execute(context)
-			Expect(err).To(MatchError("failed to create veth pair if-name:peer-if-name: welp"))
+			Expect(err).To(MatchError("create veth: welp"))
 		})
 	})
 })

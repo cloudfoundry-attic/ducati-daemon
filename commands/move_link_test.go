@@ -38,11 +38,11 @@ var _ = Describe("MoveLink", func() {
 	})
 
 	Context("when moving the link fails", func() {
-		It("propagates the error", func() {
+		It("wraps and propagates the error", func() {
 			setNamespacer.SetNamespaceReturns(errors.New("welp"))
 
 			err := setLinkNamespace.Execute(context)
-			Expect(err).To(MatchError("welp"))
+			Expect(err).To(MatchError("move link: welp"))
 		})
 	})
 })

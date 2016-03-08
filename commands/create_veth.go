@@ -16,7 +16,7 @@ type CreateVeth struct {
 func (cv CreateVeth) Execute(context Context) error {
 	err := context.VethFactory().CreateVeth(cv.Name, cv.PeerName, cv.MTU)
 	if err != nil {
-		return fmt.Errorf("failed to create veth pair %s:%s: %s", cv.Name, cv.PeerName, err)
+		return fmt.Errorf("create veth: %s", err)
 	}
 	return nil
 }

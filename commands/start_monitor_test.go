@@ -42,7 +42,8 @@ var _ = Describe("StartMonitor", func() {
 			BeforeEach(func() {
 				fakeWatcher.StartMonitorReturns(errors.New("banana"))
 			})
-			It("should wrap and return the error", func() {
+
+			It("wraps and propogates the error", func() {
 				err := startMonitor.Execute(context)
 				Expect(err).To(MatchError("watcher start monitor: banana"))
 			})
