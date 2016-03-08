@@ -92,7 +92,7 @@ var _ = Describe("Main", func() {
 
 				resp, err := http.Post(url, "application/json", bytes.NewReader(containerJSON))
 				Expect(err).NotTo(HaveOccurred())
-				defer resp.Body.Close()
+				resp.Body.Close()
 				Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 			}
 		})
@@ -130,7 +130,7 @@ var _ = Describe("Main", func() {
 			Expect(foundContainer).To(Equal(addedContainers[0]))
 		})
 
-		It("can delete a container", func() {
+		It("can delete a container and create a new one", func() {
 			url = fmt.Sprintf("http://%s/containers/%s", address, "container-0-id")
 
 			By("issuing a DELETE request")
@@ -139,16 +139,25 @@ var _ = Describe("Main", func() {
 
 			resp, err := http.DefaultClient.Do(req)
 			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			resp.Body.Close()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 
 			By("checking that the GET now returns a 404")
 			resp, err = http.Get(url)
 			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			resp.Body.Close()
 
 			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+
+			By("issuing a POST request")
+			url = fmt.Sprintf("http://%s/containers", address)
+
+			containerJSON := `{ "id": "container-0-id" }`
+			resp, err = http.Post(url, "application/json", strings.NewReader(containerJSON))
+			Expect(err).NotTo(HaveOccurred())
+			resp.Body.Close()
+			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 		})
 
 		Context("when another container is POSTed with the same id", func() {
