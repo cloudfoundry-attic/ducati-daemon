@@ -60,7 +60,6 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	// run only on node 1
 	gexec.CleanupBuildArtifacts()
-
 })
 
 var testDatabase *testsupport.TestDatabase
