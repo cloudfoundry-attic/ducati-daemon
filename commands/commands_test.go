@@ -55,9 +55,22 @@ var _ = Describe("Commands", func() {
 				command2.ExecuteReturns(errors.New("go away"))
 			})
 
-			It("propagates the error", func() {
+			It("wraps the error with contextual information", func() {
 				err := all.Execute(context)
-				Expect(err).To(MatchError("go away"))
+				Expect(err.Error()).To(Equal("go away: commands: (\n" +
+					"    some-command 1 &&\n" +
+					"--> some-command 2 &&\n" +
+					"    some-command 3\n" +
+					")"))
+			})
+
+			It("makes the original error available", func() {
+				err := all.Execute(context)
+				Expect(err).To(HaveOccurred())
+
+				groupError, ok := err.(*commands.GroupError)
+				Expect(ok).To(BeTrue())
+				Expect(groupError.Err).To(Equal(errors.New("go away")))
 			})
 
 			It("stops execution after first failure", func() {
