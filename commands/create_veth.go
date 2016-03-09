@@ -20,3 +20,7 @@ func (cv CreateVeth) Execute(context Context) error {
 	}
 	return nil
 }
+
+func (cs CreateVeth) String() string {
+	return fmt.Sprintf("ip link add dev %s mtu %d type veth peer name %s mtu %d", cs.Name, cs.MTU, cs.PeerName, cs.MTU)
+}

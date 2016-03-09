@@ -25,3 +25,7 @@ func (cn CreateNamespace) Execute(context Context) error {
 
 	return nil
 }
+
+func (cn CreateNamespace) String() string {
+	return fmt.Sprintf("ip netns add %s", cn.Name)
+}

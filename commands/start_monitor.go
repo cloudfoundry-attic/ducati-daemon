@@ -19,3 +19,7 @@ func (sm StartMonitor) Execute(context Context) error {
 	}
 	return nil
 }
+
+func (sm StartMonitor) String() string {
+	return fmt.Sprintf("ip netns exec %s ip monitor neigh", sm.Namespace.Name())
+}

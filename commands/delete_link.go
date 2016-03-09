@@ -19,3 +19,7 @@ func (c DeleteLink) Execute(context Context) error {
 
 	return nil
 }
+
+func (c DeleteLink) String() string {
+	return fmt.Sprintf("ip link del %s", c.LinkName)
+}

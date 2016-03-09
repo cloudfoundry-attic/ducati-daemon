@@ -20,3 +20,7 @@ func (s MoveLink) Execute(context Context) error {
 
 	return nil
 }
+
+func (s MoveLink) String() string {
+	return fmt.Sprintf("ip link set dev %s netns %s", s.Name, s.Namespace)
+}

@@ -53,4 +53,10 @@ var _ = Describe("AddRoute", func() {
 			Expect(err).To(MatchError("add route: no route for you"))
 		})
 	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(addRoute.String()).To(Equal("ip route add dev my-interface 192.168.1.1/24 via 192.168.1.4"))
+		})
+	})
 })

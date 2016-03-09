@@ -48,4 +48,10 @@ var _ = Describe("CreateNamespace", func() {
 			Expect(err).To(MatchError("create namespace: welp"))
 		})
 	})
+
+	Describe("String", func() {
+		It("is self describing", func() {
+			Expect(createNamespace.String()).To(Equal("ip netns add my-namespace"))
+		})
+	})
 })

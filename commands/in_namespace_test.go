@@ -22,8 +22,11 @@ var _ = Describe("ExecuteInNamespace", func() {
 	BeforeEach(func() {
 		context = &fakes.Context{}
 		command = &fakes.Command{}
+		command.StringReturns("some-command")
 
 		namespace = &fakes.Namespace{}
+		namespace.PathReturns("/some/namespace")
+
 		namespace.ExecuteStub = func(callback func(*os.File) error) error {
 			Expect(command.ExecuteCallCount()).To(Equal(0))
 
@@ -73,6 +76,12 @@ var _ = Describe("ExecuteInNamespace", func() {
 		It("wraps and propagates the error", func() {
 			err := inNamespace.Execute(context)
 			Expect(err).To(MatchError("execute in namespace: i died"))
+		})
+	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(inNamespace.String()).To(Equal("ip netns exec /some/namespace some-command"))
 		})
 	})
 })

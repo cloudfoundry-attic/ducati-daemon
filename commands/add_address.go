@@ -23,3 +23,7 @@ func (aa AddAddress) Execute(context Context) error {
 
 	return nil
 }
+
+func (aa AddAddress) String() string {
+	return fmt.Sprintf("ip addr add %s dev %s", aa.Address.String(), aa.InterfaceName)
+}

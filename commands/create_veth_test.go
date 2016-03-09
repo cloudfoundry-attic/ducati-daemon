@@ -49,4 +49,10 @@ var _ = Describe("CreateVeth", func() {
 			Expect(err).To(MatchError("create veth: welp"))
 		})
 	})
+
+	Describe("String", func() {
+		It("is self describing", func() {
+			Expect(createVeth.String()).To(Equal("ip link add dev if-name mtu 99 type veth peer name peer-if-name mtu 99"))
+		})
+	})
 })

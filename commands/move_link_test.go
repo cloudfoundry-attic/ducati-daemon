@@ -45,4 +45,10 @@ var _ = Describe("MoveLink", func() {
 			Expect(err).To(MatchError("move link: welp"))
 		})
 	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(setLinkNamespace.String()).To(Equal("ip link set dev link-name netns some-namespace-path"))
+		})
+	})
 })

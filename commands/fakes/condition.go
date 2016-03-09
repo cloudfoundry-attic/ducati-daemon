@@ -16,6 +16,12 @@ type Condition struct {
 	satisfiedReturns struct {
 		result1 bool
 	}
+	StringStub        func() string
+	stringMutex       sync.RWMutex
+	stringArgsForCall []struct{}
+	stringReturns     struct {
+		result1 string
+	}
 }
 
 func (fake *Condition) Satisfied(arg1 interface{}) bool {
@@ -47,6 +53,30 @@ func (fake *Condition) SatisfiedReturns(result1 bool) {
 	fake.SatisfiedStub = nil
 	fake.satisfiedReturns = struct {
 		result1 bool
+	}{result1}
+}
+
+func (fake *Condition) String() string {
+	fake.stringMutex.Lock()
+	fake.stringArgsForCall = append(fake.stringArgsForCall, struct{}{})
+	fake.stringMutex.Unlock()
+	if fake.StringStub != nil {
+		return fake.StringStub()
+	} else {
+		return fake.stringReturns.result1
+	}
+}
+
+func (fake *Condition) StringCallCount() int {
+	fake.stringMutex.RLock()
+	defer fake.stringMutex.RUnlock()
+	return len(fake.stringArgsForCall)
+}
+
+func (fake *Condition) StringReturns(result1 string) {
+	fake.StringStub = nil
+	fake.stringReturns = struct {
+		result1 string
 	}{result1}
 }
 

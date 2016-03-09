@@ -25,3 +25,7 @@ func (cmd *GetHardwareAddress) Execute(context Context) error {
 
 	return nil
 }
+
+func (cmd *GetHardwareAddress) String() string {
+	return fmt.Sprintf("ip link show %s", cmd.LinkName)
+}

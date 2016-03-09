@@ -22,8 +22,8 @@ var _ = Describe("SetLinkMaster", func() {
 		context.MasterSetterReturns(masterSetter)
 
 		setLinkMaster = commands.SetLinkMaster{
-			Master: "master",
-			Slave:  "slave",
+			Master: "master-dev",
+			Slave:  "slave-dev",
 		}
 	})
 
@@ -33,8 +33,8 @@ var _ = Describe("SetLinkMaster", func() {
 
 		Expect(masterSetter.SetMasterCallCount()).To(Equal(1))
 		slave, master := masterSetter.SetMasterArgsForCall(0)
-		Expect(slave).To(Equal("slave"))
-		Expect(master).To(Equal("master"))
+		Expect(slave).To(Equal("slave-dev"))
+		Expect(master).To(Equal("master-dev"))
 	})
 
 	Context("when the master setter fails", func() {
@@ -45,6 +45,12 @@ var _ = Describe("SetLinkMaster", func() {
 		It("wraps and propogates the error", func() {
 			err := setLinkMaster.Execute(context)
 			Expect(err).To(MatchError("set link master: you're not a slave"))
+		})
+	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(setLinkMaster.String()).To(Equal("ip link set slave-dev master master-dev"))
 		})
 	})
 })

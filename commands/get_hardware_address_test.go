@@ -55,4 +55,10 @@ var _ = Describe("GetHardwareAddress", func() {
 			Expect(err).To(MatchError("get hardware address: boom"))
 		})
 	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(getHWAddress.String()).To(Equal("ip link show some-link-name"))
+		})
+	})
 })

@@ -19,3 +19,7 @@ func (u Unless) Execute(context Context) error {
 
 	return nil
 }
+
+func (u Unless) String() string {
+	return fmt.Sprintf("%s || %s", u.Condition, u.Command)
+}

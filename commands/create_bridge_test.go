@@ -44,4 +44,10 @@ var _ = Describe("CreateBridge", func() {
 			Expect(err).To(MatchError("create bridge: no bridge for sale"))
 		})
 	})
+
+	Describe("String", func() {
+		It("is self describing", func() {
+			Expect(createBridge.String()).To(Equal("ip link add dev my-bridge type bridge"))
+		})
+	})
 })

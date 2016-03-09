@@ -20,3 +20,7 @@ func (cv CreateVxlan) Execute(context Context) error {
 
 	return nil
 }
+
+func (cv CreateVxlan) String() string {
+	return fmt.Sprintf("ip link add %s type vxlan vni %d", cv.Name, cv.VNI)
+}

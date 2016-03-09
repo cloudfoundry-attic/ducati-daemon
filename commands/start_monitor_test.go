@@ -22,11 +22,13 @@ var _ = Describe("StartMonitor", func() {
 		context = &comm_fakes.Context{}
 		fakeWatcher = &fakes.MissWatcher{}
 		sandboxNS = &fakes.Namespace{}
+
+		sandboxNS.NameReturns("some-namespace")
+
 		startMonitor = commands.StartMonitor{
 			Watcher:   fakeWatcher,
 			Namespace: sandboxNS,
 		}
-
 	})
 
 	Describe("Execute", func() {
@@ -47,6 +49,12 @@ var _ = Describe("StartMonitor", func() {
 				err := startMonitor.Execute(context)
 				Expect(err).To(MatchError("watcher start monitor: banana"))
 			})
+		})
+	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(startMonitor.String()).To(Equal("ip netns exec some-namespace ip monitor neigh"))
 		})
 	})
 })

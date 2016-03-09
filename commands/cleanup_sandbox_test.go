@@ -166,4 +166,9 @@ var _ = Describe("CleanupSandbox", func() {
 		})
 	})
 
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(cleanupSandboxCommand.String()).To(Equal("cleanup-sandbox some-sandbox-name"))
+		})
+	})
 })

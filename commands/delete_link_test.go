@@ -43,4 +43,10 @@ var _ = Describe("DeleteLink", func() {
 			Expect(err).To(MatchError("delete link: whatever"))
 		})
 	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(deleteLinkCommand.String()).To(Equal("ip link del some-link-name"))
+		})
+	})
 })

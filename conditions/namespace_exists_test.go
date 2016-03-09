@@ -18,6 +18,8 @@ var _ = Describe("NamespaceExists", func() {
 
 	BeforeEach(func() {
 		repo = &fakes.Repository{}
+		repo.PathOfReturns("/some/namespace")
+
 		namespaceExists = conditions.NamespaceExists{
 			Name:       "namespace",
 			Repository: repo,
@@ -47,6 +49,12 @@ var _ = Describe("NamespaceExists", func() {
 
 			Expect(repo.GetCallCount()).To(Equal(1))
 			Expect(repo.GetArgsForCall(0)).To(Equal("namespace"))
+		})
+	})
+
+	Context("String", func() {
+		It("describes itself", func() {
+			Expect(namespaceExists.String()).To(Equal(`check if network namespace "/some/namespace" exists`))
 		})
 	})
 })

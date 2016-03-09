@@ -19,3 +19,7 @@ func (cb CreateBridge) Execute(context Context) error {
 
 	return nil
 }
+
+func (cb CreateBridge) String() string {
+	return fmt.Sprintf("ip link add dev %s type bridge", cb.Name)
+}

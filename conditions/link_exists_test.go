@@ -45,4 +45,10 @@ var _ = Describe("LinkExists", func() {
 			Expect(linkFinder.ExistsArgsForCall(0)).To(Equal("my-interface"))
 		})
 	})
+
+	Context("String", func() {
+		It("describes itself", func() {
+			Expect(linkExists.String()).To(Equal(`check if link "my-interface" exists`))
+		})
+	})
 })

@@ -24,3 +24,7 @@ func (ad AddRoute) Execute(context Context) error {
 
 	return nil
 }
+
+func (ad AddRoute) String() string {
+	return fmt.Sprintf("ip route add dev %s %s via %s", ad.Interface, ad.Destination.String(), ad.Gateway)
+}

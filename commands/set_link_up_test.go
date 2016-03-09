@@ -42,4 +42,10 @@ var _ = Describe("SetLinkUp", func() {
 			Expect(err).To(MatchError("set link up: welp"))
 		})
 	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(setLinkUp.String()).To(Equal("ip link set link-name up"))
+		})
+	})
 })

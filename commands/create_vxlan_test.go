@@ -47,4 +47,10 @@ var _ = Describe("CreateVxlan", func() {
 			Expect(err).To(MatchError("create vxlan: no vxlan for you"))
 		})
 	})
+
+	Describe("String", func() {
+		It("is self describing", func() {
+			Expect(createVxlan.String()).To(Equal("ip link add my-vxlan type vxlan vni 99"))
+		})
+	})
 })

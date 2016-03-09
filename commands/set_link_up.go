@@ -19,3 +19,7 @@ func (s SetLinkUp) Execute(context Context) error {
 
 	return nil
 }
+
+func (s SetLinkUp) String() string {
+	return fmt.Sprintf("ip link set %s up", s.LinkName)
+}

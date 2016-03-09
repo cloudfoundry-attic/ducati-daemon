@@ -1,5 +1,7 @@
 package conditions
 
+import "fmt"
+
 //go:generate counterfeiter --fake-name LinkFinder . LinkFinder
 type LinkFinder interface {
 	Exists(name string) bool
@@ -12,4 +14,8 @@ type LinkExists struct {
 
 func (l LinkExists) Satisfied(_ interface{}) bool {
 	return l.LinkFinder.Exists(l.Name)
+}
+
+func (l LinkExists) String() string {
+	return fmt.Sprintf(`check if link "%s" exists`, l.Name)
 }

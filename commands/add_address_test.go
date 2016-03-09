@@ -51,4 +51,10 @@ var _ = Describe("AddAddress", func() {
 			Expect(err).To(MatchError("add address: no address for you"))
 		})
 	})
+
+	Describe("String", func() {
+		It("describes itself", func() {
+			Expect(addAddress.String()).To(Equal("ip addr add 192.168.1.1/24 dev my-interface"))
+		})
+	})
 })

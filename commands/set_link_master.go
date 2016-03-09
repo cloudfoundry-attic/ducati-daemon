@@ -20,3 +20,7 @@ func (slm SetLinkMaster) Execute(context Context) error {
 
 	return nil
 }
+
+func (slm SetLinkMaster) String() string {
+	return fmt.Sprintf("ip link set %s master %s", slm.Slave, slm.Master)
+}

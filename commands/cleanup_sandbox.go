@@ -71,3 +71,7 @@ func (c CleanupSandbox) Execute(context Context) error {
 
 	return nil
 }
+
+func (c CleanupSandbox) String() string {
+	return fmt.Sprintf("cleanup-sandbox %s", c.Namespace.Name())
+}

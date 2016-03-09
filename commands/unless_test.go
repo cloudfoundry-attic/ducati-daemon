@@ -19,13 +19,23 @@ var _ = Describe("unless", func() {
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
+
 		condition = &fakes.Condition{}
+		condition.StringReturns("condition")
+
 		command = &fakes.Command{}
+		command.StringReturns("command")
 
 		unless = commands.Unless{
 			Condition: condition,
 			Command:   command,
 		}
+	})
+
+	Describe("String", func() {
+		It("returns a string representation of the command", func() {
+			Expect(unless.String()).To(Equal("condition || command"))
+		})
 	})
 
 	Context("when the condition is satisfied", func() {

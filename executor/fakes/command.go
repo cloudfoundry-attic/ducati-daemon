@@ -17,6 +17,12 @@ type Command struct {
 	executeReturns struct {
 		result1 error
 	}
+	StringStub        func() string
+	stringMutex       sync.RWMutex
+	stringArgsForCall []struct{}
+	stringReturns     struct {
+		result1 string
+	}
 }
 
 func (fake *Command) Execute(context commands.Context) error {
@@ -48,6 +54,30 @@ func (fake *Command) ExecuteReturns(result1 error) {
 	fake.ExecuteStub = nil
 	fake.executeReturns = struct {
 		result1 error
+	}{result1}
+}
+
+func (fake *Command) String() string {
+	fake.stringMutex.Lock()
+	fake.stringArgsForCall = append(fake.stringArgsForCall, struct{}{})
+	fake.stringMutex.Unlock()
+	if fake.StringStub != nil {
+		return fake.StringStub()
+	} else {
+		return fake.stringReturns.result1
+	}
+}
+
+func (fake *Command) StringCallCount() int {
+	fake.stringMutex.RLock()
+	defer fake.stringMutex.RUnlock()
+	return len(fake.stringArgsForCall)
+}
+
+func (fake *Command) StringReturns(result1 string) {
+	fake.StringStub = nil
+	fake.stringReturns = struct {
+		result1 string
 	}{result1}
 }
 
