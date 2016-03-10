@@ -17,7 +17,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
-	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -30,7 +29,6 @@ var _ = Describe("NetworksDeleteContainer", func() {
 	var (
 		logger      *lagertest.TestLogger
 		datastore   *fakes.Store
-		executor    *exec_fakes.Executor
 		deletor     *fakes.Deletor
 		handler     http.Handler
 		request     *http.Request
@@ -56,7 +54,6 @@ var _ = Describe("NetworksDeleteContainer", func() {
 
 		logger = lagertest.NewTestLogger("test")
 		datastore = &fakes.Store{}
-		executor = &exec_fakes.Executor{}
 		deletor = &fakes.Deletor{}
 
 		sandboxRepo = &fakes.Repository{}

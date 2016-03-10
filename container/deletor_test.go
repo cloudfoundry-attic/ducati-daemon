@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
-	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 
@@ -17,13 +16,13 @@ import (
 var _ = Describe("Delete", func() {
 	var (
 		deletor           container.Deletor
-		executor          *exec_fakes.Executor
+		executor          *fakes.Executor
 		sandboxRepoLocker *cmd_fakes.Locker
 		watcher           *fakes.MissWatcher
 	)
 
 	BeforeEach(func() {
-		executor = &exec_fakes.Executor{}
+		executor = &fakes.Executor{}
 		sandboxRepoLocker = &cmd_fakes.Locker{}
 		watcher = &fakes.MissWatcher{}
 		deletor = container.Deletor{

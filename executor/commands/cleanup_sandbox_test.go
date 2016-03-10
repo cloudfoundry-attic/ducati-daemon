@@ -7,7 +7,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
-	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -15,20 +14,20 @@ import (
 
 var _ = Describe("CleanupSandbox", func() {
 	var (
-		context               *exec_fakes.Context
+		context               *fakes.Context
 		sandboxNS             *cmd_fakes.CleanableNamespace
 		locker                *cmd_fakes.Locker
-		linkFactory           *exec_fakes.LinkFactory
+		linkFactory           *fakes.LinkFactory
 		cleanupSandboxCommand commands.CleanupSandbox
 		missWatcher           *fakes.MissWatcher
 	)
 
 	BeforeEach(func() {
-		context = &exec_fakes.Context{}
+		context = &fakes.Context{}
 		sandboxNS = &cmd_fakes.CleanableNamespace{}
 		sandboxNS.NameReturns("some-sandbox-name")
 		locker = &cmd_fakes.Locker{}
-		linkFactory = &exec_fakes.LinkFactory{}
+		linkFactory = &fakes.LinkFactory{}
 		context.LinkFactoryReturns(linkFactory)
 		missWatcher = &fakes.MissWatcher{}
 

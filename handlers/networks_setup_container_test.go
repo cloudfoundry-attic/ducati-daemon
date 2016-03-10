@@ -15,7 +15,6 @@ import (
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
-	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -28,7 +27,6 @@ var _ = Describe("NetworksSetupContainer", func() {
 		unmarshaler *fakes.Unmarshaler
 		logger      *lagertest.TestLogger
 		datastore   *fakes.Store
-		executor    *exec_fakes.Executor
 		ipamResult  types.Result
 		creator     *fakes.Creator
 		handler     http.Handler
@@ -44,7 +42,6 @@ var _ = Describe("NetworksSetupContainer", func() {
 
 		logger = lagertest.NewTestLogger("test")
 		datastore = &fakes.Store{}
-		executor = &exec_fakes.Executor{}
 		creator = &fakes.Creator{}
 
 		setupHandler := &handlers.NetworksSetupContainer{

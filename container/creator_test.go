@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
-	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -22,7 +21,7 @@ import (
 var _ = Describe("Setup", func() {
 	var (
 		creator           container.Creator
-		ex                *exec_fakes.Executor
+		ex                *fakes.Executor
 		containerMAC      net.HardwareAddr
 		ipamResult        types.Result
 		config            container.CreatorConfig
@@ -34,7 +33,7 @@ var _ = Describe("Setup", func() {
 	)
 
 	BeforeEach(func() {
-		ex = &exec_fakes.Executor{}
+		ex = &fakes.Executor{}
 		sandboxRepository = &fakes.Repository{}
 		locker = &comm_fakes.Locker{}
 		missWatcher = &fakes.MissWatcher{}
@@ -122,7 +121,7 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the IdempotentlyCreateSandbox command group", func() {
-		createSandboxResult := &exec_fakes.Command{}
+		createSandboxResult := &fakes.Command{}
 		commandBuilder.IdempotentlyCreateSandboxReturns(createSandboxResult)
 
 		_, err := creator.Setup(config)
@@ -137,7 +136,7 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the IdempotentlyCreateVxlan command group", func() {
-		createVxlanResult := &exec_fakes.Command{}
+		createVxlanResult := &fakes.Command{}
 		commandBuilder.IdempotentlyCreateVxlanReturns(createVxlanResult)
 
 		_, err := creator.Setup(config)
@@ -154,8 +153,8 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the SetupVeth command group, including the route commands", func() {
-		setupContainerResult := &exec_fakes.Command{}
-		fakeRouteCommands := &exec_fakes.Command{}
+		setupContainerResult := &fakes.Command{}
+		fakeRouteCommands := &fakes.Command{}
 
 		commandBuilder.SetupVethReturns(setupContainerResult)
 		commandBuilder.AddRoutesReturns(fakeRouteCommands)
@@ -176,7 +175,7 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the IdempotentlySetupBridge command group", func() {
-		setupBridgeResult := &exec_fakes.Command{}
+		setupBridgeResult := &fakes.Command{}
 
 		commandBuilder.IdempotentlySetupBridgeReturns(setupBridgeResult)
 
@@ -217,7 +216,7 @@ var _ = Describe("Setup", func() {
 
 	Context("when the container ID is very long", func() {
 		It("keeps the sandbox link name short", func() {
-			setupBridgeResult := &exec_fakes.Command{}
+			setupBridgeResult := &fakes.Command{}
 
 			commandBuilder.IdempotentlySetupBridgeReturns(setupBridgeResult)
 			config.ContainerID = "1234567890123456789"

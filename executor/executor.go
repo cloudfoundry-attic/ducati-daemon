@@ -2,17 +2,17 @@ package executor
 
 import "net"
 
-//go:generate counterfeiter --fake-name AddressManager . AddressManager
+//go:generate counterfeiter -o ../fakes/address_manager.go --fake-name AddressManager . AddressManager
 type AddressManager interface {
 	AddAddress(interfaceName string, address *net.IPNet) error
 }
 
-//go:generate counterfeiter --fake-name RouteManager . RouteManager
+//go:generate counterfeiter -o ../fakes/route_manager.go --fake-name RouteManager . RouteManager
 type RouteManager interface {
 	AddRoute(interfaceName string, destination *net.IPNet, gateway net.IP) error
 }
 
-//go:generate counterfeiter --fake-name LinkFactory . LinkFactory
+//go:generate counterfeiter -o ../fakes/link_factory.go --fake-name LinkFactory . LinkFactory
 type LinkFactory interface {
 	CreateBridge(name string) error
 	CreateVeth(name, peerName string, mtu int) error
@@ -26,24 +26,24 @@ type LinkFactory interface {
 	VethDeviceCount() (int, error)
 }
 
-//go:generate counterfeiter --fake-name Command . Command
+//go:generate counterfeiter -o ../fakes/command.go --fake-name Command . Command
 type Command interface {
 	Execute(context Context) error
 	String() string
 }
 
-//go:generate counterfeiter --fake-name Condition . Condition
+//go:generate counterfeiter -o ../fakes/condition.go --fake-name Condition . Condition
 type Condition interface {
 	Satisfied(context Context) bool
 	String() string
 }
 
-//go:generate counterfeiter --fake-name Executor . Executor
+//go:generate counterfeiter -o ../fakes/executor.go --fake-name Executor . Executor
 type Executor interface {
 	Execute(Command) error
 }
 
-//go:generate counterfeiter --fake-name Context . Context
+//go:generate counterfeiter -o ../fakes/context.go --fake-name Context . Context
 type Context interface {
 	AddressManager() AddressManager
 	LinkFactory() LinkFactory
