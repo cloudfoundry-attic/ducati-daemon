@@ -18,14 +18,9 @@ import (
 var _ = Describe("CommandBuilder", func() {
 	Describe("IdempotentlyCreateSandbox", func() {
 		It("should return a command group that idempotently creates the sandbox", func() {
-			sandboxRepository := &fakes.Repository{}
-			fakePath := "/some/repo/path/some-sandbox-name"
-			sandboxRepository.PathOfReturns(fakePath)
-			sandboxNS := namespace.NewNamespace(fakePath)
 			missWatcher := &fakes.MissWatcher{}
 
 			b := container.CommandBuilder{
-				SandboxRepo: sandboxRepository,
 				MissWatcher: missWatcher,
 			}
 
@@ -40,8 +35,8 @@ var _ = Describe("CommandBuilder", func() {
 							Name: "some-sandbox-name",
 						},
 						commands.StartMonitor{
-							Watcher:   missWatcher,
-							Namespace: sandboxNS,
+							Watcher:     missWatcher,
+							SandboxName: "some-sandbox-name",
 						},
 					),
 				}))

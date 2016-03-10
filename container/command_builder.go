@@ -18,9 +18,6 @@ type CommandBuilder struct {
 }
 
 func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.Command {
-	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
-	sandboxNS := namespace.NewNamespace(sandboxNSPath)
-
 	return commands.Unless{
 		Condition: conditions.SandboxNamespaceExists{
 			Name: sandboxName,
@@ -30,8 +27,8 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.
 				Name: sandboxName,
 			},
 			commands.StartMonitor{
-				Watcher:   b.MissWatcher,
-				Namespace: sandboxNS,
+				Watcher:     b.MissWatcher,
+				SandboxName: sandboxName,
 			},
 		),
 	}

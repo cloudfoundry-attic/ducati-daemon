@@ -11,22 +11,27 @@ import (
 
 var _ = Describe("StartMonitor", func() {
 	var (
-		context      *fakes.Context
-		startMonitor commands.StartMonitor
-		fakeWatcher  *fakes.MissWatcher
-		sandboxNS    *fakes.Namespace
+		context           *fakes.Context
+		sandboxRepository *fakes.Repository
+		startMonitor      commands.StartMonitor
+		fakeWatcher       *fakes.MissWatcher
+
+		sandboxNS *fakes.Namespace
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		fakeWatcher = &fakes.MissWatcher{}
-		sandboxNS = &fakes.Namespace{}
+		sandboxRepository = &fakes.Repository{}
+		context.SandboxRepositoryReturns(sandboxRepository)
 
-		sandboxNS.NameReturns("some-namespace")
+		sandboxNS = &fakes.Namespace{}
+		sandboxRepository.GetReturns(sandboxNS, nil)
+
+		fakeWatcher = &fakes.MissWatcher{}
 
 		startMonitor = commands.StartMonitor{
-			Watcher:   fakeWatcher,
-			Namespace: sandboxNS,
+			Watcher:     fakeWatcher,
+			SandboxName: "some-sandbox",
 		}
 	})
 
@@ -35,8 +40,22 @@ var _ = Describe("StartMonitor", func() {
 			err := startMonitor.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 
+			Expect(sandboxRepository.GetCallCount()).To(Equal(1))
+			Expect(sandboxRepository.GetArgsForCall(0)).To(Equal("some-sandbox"))
+
 			Expect(fakeWatcher.StartMonitorCallCount()).To(Equal(1))
 			Expect(fakeWatcher.StartMonitorArgsForCall(0)).To(Equal(sandboxNS))
+		})
+
+		Context("when getting the sandbox namespace fails", func() {
+			BeforeEach(func() {
+				sandboxRepository.GetReturns(nil, errors.New("potato"))
+			})
+
+			It("wraps and propogates the error", func() {
+				err := startMonitor.Execute(context)
+				Expect(err).To(MatchError("getting sandbox namespace: potato"))
+			})
 		})
 
 		Context("when the StartMonitor call fails", func() {
@@ -53,7 +72,7 @@ var _ = Describe("StartMonitor", func() {
 
 	Describe("String", func() {
 		It("describes itself", func() {
-			Expect(startMonitor.String()).To(Equal("ip netns exec some-namespace ip monitor neigh"))
+			Expect(startMonitor.String()).To(Equal("ip netns exec some-sandbox ip monitor neigh"))
 		})
 	})
 })
