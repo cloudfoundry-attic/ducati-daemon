@@ -1,4 +1,4 @@
-package threading_test
+package locks_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestThreading(t *testing.T) {
+func TestLocks(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Threading Suite")
+	RunSpecs(t, "Locks Suite")
 }

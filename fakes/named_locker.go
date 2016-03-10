@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
+	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 )
 
 type NamedLocker struct {
@@ -66,4 +66,4 @@ func (fake *NamedLocker) UnlockArgsForCall(i int) string {
 	return fake.unlockArgsForCall[i].name
 }
 
-var _ threading.NamedLocker = new(NamedLocker)
+var _ locks.NamedLocker = new(NamedLocker)

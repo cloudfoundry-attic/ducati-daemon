@@ -1,4 +1,4 @@
-package threading
+package locks
 
 import "sync"
 
@@ -10,13 +10,13 @@ type NamedLocker interface {
 
 // TODO: this implementation leaks memory like a sieve
 // perhaps we can use the filesystem instead of a map
-type GlobalLocker struct {
+type NamedMutex struct {
 	control sync.Mutex
 
 	namedLocks map[string]*sync.Mutex
 }
 
-func (g *GlobalLocker) getOrCreateNamedLock(name string) *sync.Mutex {
+func (g *NamedMutex) getOrCreateNamedLock(name string) *sync.Mutex {
 	if g.namedLocks == nil {
 		g.namedLocks = make(map[string]*sync.Mutex)
 	}
@@ -28,14 +28,14 @@ func (g *GlobalLocker) getOrCreateNamedLock(name string) *sync.Mutex {
 	return lock
 }
 
-func (g *GlobalLocker) Lock(name string) {
+func (g *NamedMutex) Lock(name string) {
 	g.control.Lock()
 	namedLock := g.getOrCreateNamedLock(name)
 	g.control.Unlock()
 	namedLock.Lock()
 }
 
-func (g *GlobalLocker) Unlock(name string) {
+func (g *NamedMutex) Unlock(name string) {
 	g.control.Lock()
 	namedLock := g.getOrCreateNamedLock(name)
 	g.control.Unlock()

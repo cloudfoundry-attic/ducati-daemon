@@ -6,13 +6,13 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
-	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
+	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type CleanupSandbox struct {
 	Namespace       namespace.Namespace
-	NamedLocker     threading.NamedLocker
+	NamedLocker     locks.NamedLocker
 	Watcher         watcher.MissWatcher
 	VxlanDeviceName string
 }

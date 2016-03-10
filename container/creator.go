@@ -8,8 +8,8 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
-	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
@@ -25,7 +25,7 @@ type commandBuilder interface {
 type Creator struct {
 	Executor       executor.Executor
 	SandboxRepo    namespace.Repository
-	NamedLocker    threading.NamedLocker
+	NamedLocker    locks.NamedLocker
 	Watcher        watcher.MissWatcher
 	CommandBuilder commandBuilder
 }

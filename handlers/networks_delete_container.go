@@ -10,8 +10,8 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
-	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
@@ -30,7 +30,7 @@ type NetworksDeleteContainer struct {
 	Logger         lager.Logger
 	Datastore      store.Store
 	Deletor        deletor
-	OSThreadLocker threading.OSThreadLocker
+	OSThreadLocker ossupport.OSThreadLocker
 	SandboxRepo    repository
 }
 

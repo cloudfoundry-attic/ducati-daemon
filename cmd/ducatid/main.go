@@ -20,9 +20,10 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/subscriber"
+	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
-	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
@@ -137,8 +138,8 @@ func main() {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
 
-	osThreadLocker := &threading.OSLocker{}
-	globalLocker := &threading.GlobalLocker{}
+	osThreadLocker := &ossupport.OSLocker{}
+	namedMutex := &locks.NamedMutex{}
 
 	subscriber := &subscriber.Subscriber{
 		Logger:    logger.Session("subscriber"),
@@ -155,13 +156,13 @@ func main() {
 	creator := &container.Creator{
 		Executor:       executor,
 		SandboxRepo:    sandboxRepo,
-		NamedLocker:    globalLocker,
+		NamedLocker:    namedMutex,
 		Watcher:        missWatcher,
 		CommandBuilder: commandBuilder,
 	}
 	deletor := &container.Deletor{
 		Executor:    executor,
-		NamedLocker: globalLocker,
+		NamedLocker: namedMutex,
 		Watcher:     missWatcher,
 	}
 

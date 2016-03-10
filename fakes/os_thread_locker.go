@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 )
 
 type OSThreadLocker struct {
@@ -46,4 +46,4 @@ func (fake *OSThreadLocker) UnlockOSThreadCallCount() int {
 	return len(fake.unlockOSThreadArgsForCall)
 }
 
-var _ threading.OSThreadLocker = new(OSThreadLocker)
+var _ ossupport.OSThreadLocker = new(OSThreadLocker)

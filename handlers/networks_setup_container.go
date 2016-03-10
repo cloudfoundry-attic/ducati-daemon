@@ -8,8 +8,8 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
-	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
@@ -24,7 +24,7 @@ type NetworksSetupContainer struct {
 	Logger         lager.Logger
 	Datastore      store.Store
 	Creator        creator
-	OSThreadLocker threading.OSThreadLocker
+	OSThreadLocker ossupport.OSThreadLocker
 }
 
 func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
