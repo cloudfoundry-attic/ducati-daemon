@@ -9,20 +9,23 @@ import (
 
 var _ = Describe("Executor", func() {
 	var (
-		addressManager *fakes.AddressManager
-		routeManager   *fakes.RouteManager
-		linkFactory    *fakes.LinkFactory
-		command        *fakes.Command
-		ex             executor.Executor
+		addressManager    *fakes.AddressManager
+		routeManager      *fakes.RouteManager
+		linkFactory       *fakes.LinkFactory
+		sandboxRepository *fakes.Repository
+		command           *fakes.Command
+		ex                executor.Executor
 	)
 
 	BeforeEach(func() {
 		addressManager = &fakes.AddressManager{}
 		routeManager = &fakes.RouteManager{}
 		linkFactory = &fakes.LinkFactory{}
+		sandboxRepository = &fakes.Repository{}
+
 		command = &fakes.Command{}
 
-		ex = executor.New(addressManager, routeManager, linkFactory)
+		ex = executor.New(addressManager, routeManager, linkFactory, sandboxRepository)
 	})
 
 	It("executes a command with a context", func() {
@@ -56,6 +59,12 @@ var _ = Describe("Executor", func() {
 		Describe("RouteManager", func() {
 			It("returns the route manager", func() {
 				Expect(context.RouteManager()).To(Equal(routeManager))
+			})
+		})
+
+		Describe("SandboxRepository", func() {
+			It("returns the SandboxRepository", func() {
+				Expect(context.SandboxRepository()).To(Equal(sandboxRepository))
 			})
 		})
 	})

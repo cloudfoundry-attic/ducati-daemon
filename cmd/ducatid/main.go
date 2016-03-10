@@ -151,7 +151,7 @@ func main() {
 		MissWatcher:   missWatcher,
 		HostNamespace: namespace.NewNamespace("/proc/self/ns/net"),
 	}
-	executor := executor.New(addressManager, routeManager, linkFactory)
+	executor := executor.New(addressManager, routeManager, linkFactory, sandboxRepo)
 	creator := &container.Creator{
 		Executor:       executor,
 		SandboxRepo:    sandboxRepo,

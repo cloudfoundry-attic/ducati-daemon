@@ -22,9 +22,8 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 
 	return commands.Unless{
-		Condition: conditions.NamespaceExists{
-			Name:       sandboxName,
-			Repository: b.SandboxRepo,
+		Condition: conditions.SandboxExists{
+			Name: sandboxName,
 		},
 		Command: commands.All(
 			commands.CreateNamespace{

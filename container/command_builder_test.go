@@ -32,9 +32,8 @@ var _ = Describe("CommandBuilder", func() {
 			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name")
 			Expect(cmd).To(Equal(
 				commands.Unless{
-					Condition: conditions.NamespaceExists{
-						Name:       "some-sandbox-name",
-						Repository: sandboxRepository,
+					Condition: conditions.SandboxExists{
+						Name: "some-sandbox-name",
 					},
 					Command: commands.All(
 						commands.CreateNamespace{
@@ -49,6 +48,7 @@ var _ = Describe("CommandBuilder", func() {
 				}))
 		})
 	})
+
 	Describe("IdempotentlyCreateVxlan", func() {
 		It("should return a command group that idempotently creates the vxlan device", func() {
 			sandboxRepository := &fakes.Repository{}

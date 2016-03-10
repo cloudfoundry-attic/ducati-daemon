@@ -1,6 +1,10 @@
 package executor
 
-import "net"
+import (
+	"net"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+)
 
 //go:generate counterfeiter -o ../fakes/address_manager.go --fake-name AddressManager . AddressManager
 type AddressManager interface {
@@ -48,24 +52,28 @@ type Context interface {
 	AddressManager() AddressManager
 	LinkFactory() LinkFactory
 	RouteManager() RouteManager
+	SandboxRepository() namespace.Repository
 }
 
 func New(
 	addressManager AddressManager,
 	routeManager RouteManager,
 	linkFactory LinkFactory,
+	sandboxRepository namespace.Repository,
 ) Executor {
 	return &executor{
-		addressManager: addressManager,
-		routeManager:   routeManager,
-		linkFactory:    linkFactory,
+		addressManager:    addressManager,
+		routeManager:      routeManager,
+		linkFactory:       linkFactory,
+		sandboxRepository: sandboxRepository,
 	}
 }
 
 type executor struct {
-	addressManager AddressManager
-	routeManager   RouteManager
-	linkFactory    LinkFactory
+	addressManager    AddressManager
+	routeManager      RouteManager
+	linkFactory       LinkFactory
+	sandboxRepository namespace.Repository
 }
 
 func (e *executor) Execute(command Command) error {
@@ -82,4 +90,8 @@ func (e *executor) RouteManager() RouteManager {
 
 func (e *executor) LinkFactory() LinkFactory {
 	return e.linkFactory
+}
+
+func (e *executor) SandboxRepository() namespace.Repository {
+	return e.sandboxRepository
 }

@@ -10,32 +10,33 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("NamespaceExists", func() {
+var _ = Describe("SandboxExists", func() {
 	var (
 		repo            *fakes.Repository
-		namespaceExists conditions.NamespaceExists
+		namespaceExists conditions.SandboxExists
+		context         *fakes.Context
 	)
 
 	BeforeEach(func() {
 		repo = &fakes.Repository{}
-		repo.PathOfReturns("/some/namespace")
+		context = &fakes.Context{}
+		context.SandboxRepositoryReturns(repo)
 
-		namespaceExists = conditions.NamespaceExists{
-			Name:       "namespace",
-			Repository: repo,
+		namespaceExists = conditions.SandboxExists{
+			Name: "some-sandbox",
 		}
 	})
 
 	Context("when the namespace exists", func() {
 		BeforeEach(func() {
-			repo.GetReturns(namespace.NewNamespace("namespace"), nil)
+			repo.GetReturns(namespace.NewNamespace("some-sandbox"), nil)
 		})
 
 		It("returns true", func() {
-			Expect(namespaceExists.Satisfied(nil)).To(BeTrue())
+			Expect(namespaceExists.Satisfied(context)).To(BeTrue())
 
 			Expect(repo.GetCallCount()).To(Equal(1))
-			Expect(repo.GetArgsForCall(0)).To(Equal("namespace"))
+			Expect(repo.GetArgsForCall(0)).To(Equal("some-sandbox"))
 		})
 	})
 
@@ -45,16 +46,16 @@ var _ = Describe("NamespaceExists", func() {
 		})
 
 		It("returns false", func() {
-			Expect(namespaceExists.Satisfied(nil)).To(BeFalse())
+			Expect(namespaceExists.Satisfied(context)).To(BeFalse())
 
 			Expect(repo.GetCallCount()).To(Equal(1))
-			Expect(repo.GetArgsForCall(0)).To(Equal("namespace"))
+			Expect(repo.GetArgsForCall(0)).To(Equal("some-sandbox"))
 		})
 	})
 
 	Context("String", func() {
 		It("describes itself", func() {
-			Expect(namespaceExists.String()).To(Equal(`check if network namespace "/some/namespace" exists`))
+			Expect(namespaceExists.String()).To(Equal(`check if sandbox "some-sandbox" exists`))
 		})
 	})
 })
