@@ -5,6 +5,7 @@ import (
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
 	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions/fakes"
@@ -171,7 +172,7 @@ var _ = Describe("CommandBuilder", func() {
 	Describe("SetupVeth", func() {
 		var (
 			b             container.CommandBuilder
-			routeCommand  commands.Command
+			routeCommand  executor.Command
 			containerNS   namespace.Namespace
 			sandboxNSPath string
 		)
@@ -201,7 +202,7 @@ var _ = Describe("CommandBuilder", func() {
 					Namespace: containerNS,
 					Command: commands.Group(
 						append(
-							[]commands.Command{
+							[]executor.Command{
 								commands.CreateVeth{
 									Name:     "container-veth",
 									PeerName: "sandbox-veth",

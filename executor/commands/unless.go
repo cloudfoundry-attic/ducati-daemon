@@ -3,15 +3,15 @@ package commands
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
 type Unless struct {
-	Condition conditions.Condition
-	Command   Command
+	Condition executor.Condition
+	Command   executor.Command
 }
 
-func (u Unless) Execute(context Context) error {
+func (u Unless) Execute(context executor.Context) error {
 	if u.Condition.Satisfied(context) {
 		return nil
 	}

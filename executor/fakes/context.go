@@ -4,31 +4,31 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
 type Context struct {
-	AddressManagerStub        func() commands.AddressManager
+	AddressManagerStub        func() executor.AddressManager
 	addressManagerMutex       sync.RWMutex
 	addressManagerArgsForCall []struct{}
 	addressManagerReturns     struct {
-		result1 commands.AddressManager
+		result1 executor.AddressManager
 	}
-	LinkFactoryStub        func() commands.LinkFactory
+	LinkFactoryStub        func() executor.LinkFactory
 	linkFactoryMutex       sync.RWMutex
 	linkFactoryArgsForCall []struct{}
 	linkFactoryReturns     struct {
-		result1 commands.LinkFactory
+		result1 executor.LinkFactory
 	}
-	RouteManagerStub        func() commands.RouteManager
+	RouteManagerStub        func() executor.RouteManager
 	routeManagerMutex       sync.RWMutex
 	routeManagerArgsForCall []struct{}
 	routeManagerReturns     struct {
-		result1 commands.RouteManager
+		result1 executor.RouteManager
 	}
 }
 
-func (fake *Context) AddressManager() commands.AddressManager {
+func (fake *Context) AddressManager() executor.AddressManager {
 	fake.addressManagerMutex.Lock()
 	fake.addressManagerArgsForCall = append(fake.addressManagerArgsForCall, struct{}{})
 	fake.addressManagerMutex.Unlock()
@@ -45,14 +45,14 @@ func (fake *Context) AddressManagerCallCount() int {
 	return len(fake.addressManagerArgsForCall)
 }
 
-func (fake *Context) AddressManagerReturns(result1 commands.AddressManager) {
+func (fake *Context) AddressManagerReturns(result1 executor.AddressManager) {
 	fake.AddressManagerStub = nil
 	fake.addressManagerReturns = struct {
-		result1 commands.AddressManager
+		result1 executor.AddressManager
 	}{result1}
 }
 
-func (fake *Context) LinkFactory() commands.LinkFactory {
+func (fake *Context) LinkFactory() executor.LinkFactory {
 	fake.linkFactoryMutex.Lock()
 	fake.linkFactoryArgsForCall = append(fake.linkFactoryArgsForCall, struct{}{})
 	fake.linkFactoryMutex.Unlock()
@@ -69,14 +69,14 @@ func (fake *Context) LinkFactoryCallCount() int {
 	return len(fake.linkFactoryArgsForCall)
 }
 
-func (fake *Context) LinkFactoryReturns(result1 commands.LinkFactory) {
+func (fake *Context) LinkFactoryReturns(result1 executor.LinkFactory) {
 	fake.LinkFactoryStub = nil
 	fake.linkFactoryReturns = struct {
-		result1 commands.LinkFactory
+		result1 executor.LinkFactory
 	}{result1}
 }
 
-func (fake *Context) RouteManager() commands.RouteManager {
+func (fake *Context) RouteManager() executor.RouteManager {
 	fake.routeManagerMutex.Lock()
 	fake.routeManagerArgsForCall = append(fake.routeManagerArgsForCall, struct{}{})
 	fake.routeManagerMutex.Unlock()
@@ -93,11 +93,11 @@ func (fake *Context) RouteManagerCallCount() int {
 	return len(fake.routeManagerArgsForCall)
 }
 
-func (fake *Context) RouteManagerReturns(result1 commands.RouteManager) {
+func (fake *Context) RouteManagerReturns(result1 executor.RouteManager) {
 	fake.RouteManagerStub = nil
 	fake.routeManagerReturns = struct {
-		result1 commands.RouteManager
+		result1 executor.RouteManager
 	}{result1}
 }
 
-var _ commands.Context = new(Context)
+var _ executor.Context = new(Context)

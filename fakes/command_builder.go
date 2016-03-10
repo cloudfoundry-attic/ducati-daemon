@@ -6,20 +6,20 @@ import (
 	"sync"
 
 	"github.com/appc/cni/pkg/types"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
 type CommandBuilder struct {
-	IdempotentlyCreateSandboxStub        func(sandboxName string) commands.Command
+	IdempotentlyCreateSandboxStub        func(sandboxName string) executor.Command
 	idempotentlyCreateSandboxMutex       sync.RWMutex
 	idempotentlyCreateSandboxArgsForCall []struct {
 		sandboxName string
 	}
 	idempotentlyCreateSandboxReturns struct {
-		result1 commands.Command
+		result1 executor.Command
 	}
-	IdempotentlyCreateVxlanStub        func(vxlanName string, vni int, sandboxName string) commands.Command
+	IdempotentlyCreateVxlanStub        func(vxlanName string, vni int, sandboxName string) executor.Command
 	idempotentlyCreateVxlanMutex       sync.RWMutex
 	idempotentlyCreateVxlanArgsForCall []struct {
 		vxlanName   string
@@ -27,18 +27,18 @@ type CommandBuilder struct {
 		sandboxName string
 	}
 	idempotentlyCreateVxlanReturns struct {
-		result1 commands.Command
+		result1 executor.Command
 	}
-	AddRoutesStub        func(interfaceName string, ipConfig *types.IPConfig) commands.Command
+	AddRoutesStub        func(interfaceName string, ipConfig *types.IPConfig) executor.Command
 	addRoutesMutex       sync.RWMutex
 	addRoutesArgsForCall []struct {
 		interfaceName string
 		ipConfig      *types.IPConfig
 	}
 	addRoutesReturns struct {
-		result1 commands.Command
+		result1 executor.Command
 	}
-	SetupVethStub        func(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand commands.Command) commands.Command
+	SetupVethStub        func(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command
 	setupVethMutex       sync.RWMutex
 	setupVethArgsForCall []struct {
 		containerNS       namespace.Namespace
@@ -46,12 +46,12 @@ type CommandBuilder struct {
 		containerLinkName string
 		address           net.IPNet
 		sandboxName       string
-		routeCommand      commands.Command
+		routeCommand      executor.Command
 	}
 	setupVethReturns struct {
-		result1 commands.Command
+		result1 executor.Command
 	}
-	IdempotentlySetupBridgeStub        func(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) commands.Command
+	IdempotentlySetupBridgeStub        func(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command
 	idempotentlySetupBridgeMutex       sync.RWMutex
 	idempotentlySetupBridgeArgsForCall []struct {
 		vxlanName       string
@@ -61,11 +61,11 @@ type CommandBuilder struct {
 		ipamResult      types.Result
 	}
 	idempotentlySetupBridgeReturns struct {
-		result1 commands.Command
+		result1 executor.Command
 	}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) commands.Command {
+func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.Command {
 	fake.idempotentlyCreateSandboxMutex.Lock()
 	fake.idempotentlyCreateSandboxArgsForCall = append(fake.idempotentlyCreateSandboxArgsForCall, struct {
 		sandboxName string
@@ -90,14 +90,14 @@ func (fake *CommandBuilder) IdempotentlyCreateSandboxArgsForCall(i int) string {
 	return fake.idempotentlyCreateSandboxArgsForCall[i].sandboxName
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 commands.Command) {
+func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 executor.Command) {
 	fake.IdempotentlyCreateSandboxStub = nil
 	fake.idempotentlyCreateSandboxReturns = struct {
-		result1 commands.Command
+		result1 executor.Command
 	}{result1}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) commands.Command {
+func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command {
 	fake.idempotentlyCreateVxlanMutex.Lock()
 	fake.idempotentlyCreateVxlanArgsForCall = append(fake.idempotentlyCreateVxlanArgsForCall, struct {
 		vxlanName   string
@@ -124,14 +124,14 @@ func (fake *CommandBuilder) IdempotentlyCreateVxlanArgsForCall(i int) (string, i
 	return fake.idempotentlyCreateVxlanArgsForCall[i].vxlanName, fake.idempotentlyCreateVxlanArgsForCall[i].vni, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxName
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlanReturns(result1 commands.Command) {
+func (fake *CommandBuilder) IdempotentlyCreateVxlanReturns(result1 executor.Command) {
 	fake.IdempotentlyCreateVxlanStub = nil
 	fake.idempotentlyCreateVxlanReturns = struct {
-		result1 commands.Command
+		result1 executor.Command
 	}{result1}
 }
 
-func (fake *CommandBuilder) AddRoutes(interfaceName string, ipConfig *types.IPConfig) commands.Command {
+func (fake *CommandBuilder) AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command {
 	fake.addRoutesMutex.Lock()
 	fake.addRoutesArgsForCall = append(fake.addRoutesArgsForCall, struct {
 		interfaceName string
@@ -157,14 +157,14 @@ func (fake *CommandBuilder) AddRoutesArgsForCall(i int) (string, *types.IPConfig
 	return fake.addRoutesArgsForCall[i].interfaceName, fake.addRoutesArgsForCall[i].ipConfig
 }
 
-func (fake *CommandBuilder) AddRoutesReturns(result1 commands.Command) {
+func (fake *CommandBuilder) AddRoutesReturns(result1 executor.Command) {
 	fake.AddRoutesStub = nil
 	fake.addRoutesReturns = struct {
-		result1 commands.Command
+		result1 executor.Command
 	}{result1}
 }
 
-func (fake *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand commands.Command) commands.Command {
+func (fake *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command {
 	fake.setupVethMutex.Lock()
 	fake.setupVethArgsForCall = append(fake.setupVethArgsForCall, struct {
 		containerNS       namespace.Namespace
@@ -172,7 +172,7 @@ func (fake *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLi
 		containerLinkName string
 		address           net.IPNet
 		sandboxName       string
-		routeCommand      commands.Command
+		routeCommand      executor.Command
 	}{containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommand})
 	fake.setupVethMutex.Unlock()
 	if fake.SetupVethStub != nil {
@@ -188,20 +188,20 @@ func (fake *CommandBuilder) SetupVethCallCount() int {
 	return len(fake.setupVethArgsForCall)
 }
 
-func (fake *CommandBuilder) SetupVethArgsForCall(i int) (namespace.Namespace, string, string, net.IPNet, string, commands.Command) {
+func (fake *CommandBuilder) SetupVethArgsForCall(i int) (namespace.Namespace, string, string, net.IPNet, string, executor.Command) {
 	fake.setupVethMutex.RLock()
 	defer fake.setupVethMutex.RUnlock()
 	return fake.setupVethArgsForCall[i].containerNS, fake.setupVethArgsForCall[i].sandboxLinkName, fake.setupVethArgsForCall[i].containerLinkName, fake.setupVethArgsForCall[i].address, fake.setupVethArgsForCall[i].sandboxName, fake.setupVethArgsForCall[i].routeCommand
 }
 
-func (fake *CommandBuilder) SetupVethReturns(result1 commands.Command) {
+func (fake *CommandBuilder) SetupVethReturns(result1 executor.Command) {
 	fake.SetupVethStub = nil
 	fake.setupVethReturns = struct {
-		result1 commands.Command
+		result1 executor.Command
 	}{result1}
 }
 
-func (fake *CommandBuilder) IdempotentlySetupBridge(vxlanName string, sandboxLinkName string, sandboxName string, bridgeName string, ipamResult types.Result) commands.Command {
+func (fake *CommandBuilder) IdempotentlySetupBridge(vxlanName string, sandboxLinkName string, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command {
 	fake.idempotentlySetupBridgeMutex.Lock()
 	fake.idempotentlySetupBridgeArgsForCall = append(fake.idempotentlySetupBridgeArgsForCall, struct {
 		vxlanName       string
@@ -230,9 +230,9 @@ func (fake *CommandBuilder) IdempotentlySetupBridgeArgsForCall(i int) (string, s
 	return fake.idempotentlySetupBridgeArgsForCall[i].vxlanName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxLinkName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxName, fake.idempotentlySetupBridgeArgsForCall[i].bridgeName, fake.idempotentlySetupBridgeArgsForCall[i].ipamResult
 }
 
-func (fake *CommandBuilder) IdempotentlySetupBridgeReturns(result1 commands.Command) {
+func (fake *CommandBuilder) IdempotentlySetupBridgeReturns(result1 executor.Command) {
 	fake.IdempotentlySetupBridgeStub = nil
 	fake.idempotentlySetupBridgeReturns = struct {
-		result1 commands.Command
+		result1 executor.Command
 	}{result1}
 }

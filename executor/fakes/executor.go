@@ -5,24 +5,23 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 )
 
 type Executor struct {
-	ExecuteStub        func(commands.Command) error
+	ExecuteStub        func(executor.Command) error
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
-		arg1 commands.Command
+		arg1 executor.Command
 	}
 	executeReturns struct {
 		result1 error
 	}
 }
 
-func (fake *Executor) Execute(arg1 commands.Command) error {
+func (fake *Executor) Execute(arg1 executor.Command) error {
 	fake.executeMutex.Lock()
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
-		arg1 commands.Command
+		arg1 executor.Command
 	}{arg1})
 	fake.executeMutex.Unlock()
 	if fake.ExecuteStub != nil {
@@ -38,7 +37,7 @@ func (fake *Executor) ExecuteCallCount() int {
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *Executor) ExecuteArgsForCall(i int) commands.Command {
+func (fake *Executor) ExecuteArgsForCall(i int) executor.Command {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	return fake.executeArgsForCall[i].arg1

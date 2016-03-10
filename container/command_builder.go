@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -17,7 +18,7 @@ type CommandBuilder struct {
 	LinkFinder    conditions.LinkFinder
 }
 
-func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) commands.Command {
+func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.Command {
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 
@@ -39,7 +40,7 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) commands.
 	}
 }
 
-func (b *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) commands.Command {
+func (b *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command {
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 
@@ -75,8 +76,8 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sand
 	}
 }
 
-func (b *CommandBuilder) AddRoutes(interfaceName string, ipConfig *types.IPConfig) commands.Command {
-	var routeCommands []commands.Command
+func (b *CommandBuilder) AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command {
+	var routeCommands []executor.Command
 	for _, route := range ipConfig.Routes {
 		routeCommand := commands.AddRoute{
 			Interface:   interfaceName,
@@ -95,7 +96,7 @@ func (b *CommandBuilder) AddRoutes(interfaceName string, ipConfig *types.IPConfi
 }
 
 func (b *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string,
-	containerLinkName string, address net.IPNet, sandboxName string, routeCommand commands.Command) commands.Command {
+	containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command {
 
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 
@@ -103,7 +104,7 @@ func (b *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkN
 		Namespace: containerNS,
 		Command: commands.Group(
 			append(
-				[]commands.Command{
+				[]executor.Command{
 					commands.CreateVeth{
 						Name:     containerLinkName,
 						PeerName: sandboxLinkName,
@@ -127,7 +128,7 @@ func (b *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkN
 	}
 }
 
-func (b *CommandBuilder) IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) commands.Command {
+func (b *CommandBuilder) IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command {
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 

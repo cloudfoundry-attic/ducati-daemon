@@ -4,14 +4,14 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
 type Condition struct {
-	SatisfiedStub        func(context conditions.Context) bool
+	SatisfiedStub        func(context executor.Context) bool
 	satisfiedMutex       sync.RWMutex
 	satisfiedArgsForCall []struct {
-		context conditions.Context
+		context executor.Context
 	}
 	satisfiedReturns struct {
 		result1 bool
@@ -24,10 +24,10 @@ type Condition struct {
 	}
 }
 
-func (fake *Condition) Satisfied(context conditions.Context) bool {
+func (fake *Condition) Satisfied(context executor.Context) bool {
 	fake.satisfiedMutex.Lock()
 	fake.satisfiedArgsForCall = append(fake.satisfiedArgsForCall, struct {
-		context conditions.Context
+		context executor.Context
 	}{context})
 	fake.satisfiedMutex.Unlock()
 	if fake.SatisfiedStub != nil {
@@ -43,7 +43,7 @@ func (fake *Condition) SatisfiedCallCount() int {
 	return len(fake.satisfiedArgsForCall)
 }
 
-func (fake *Condition) SatisfiedArgsForCall(i int) conditions.Context {
+func (fake *Condition) SatisfiedArgsForCall(i int) executor.Context {
 	fake.satisfiedMutex.RLock()
 	defer fake.satisfiedMutex.RUnlock()
 	return fake.satisfiedArgsForCall[i].context
@@ -80,4 +80,4 @@ func (fake *Condition) StringReturns(result1 string) {
 	}{result1}
 }
 
-var _ conditions.Condition = new(Condition)
+var _ executor.Condition = new(Condition)

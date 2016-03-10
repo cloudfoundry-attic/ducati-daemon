@@ -3,53 +3,18 @@ package commands
 import (
 	"bytes"
 	"fmt"
-	"net"
 	"strings"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
-//go:generate counterfeiter --fake-name AddressManager . AddressManager
-type AddressManager interface {
-	AddAddress(interfaceName string, address *net.IPNet) error
-}
-
-//go:generate counterfeiter --fake-name RouteManager . RouteManager
-type RouteManager interface {
-	AddRoute(interfaceName string, destination *net.IPNet, gateway net.IP) error
-}
-
-//go:generate counterfeiter --fake-name LinkFactory . LinkFactory
-type LinkFactory interface {
-	CreateBridge(name string) error
-	CreateVeth(name, peerName string, mtu int) error
-	CreateVxlan(name string, vni int) error
-	DeleteLinkByName(name string) error
-	HardwareAddress(linkName string) (net.HardwareAddr, error)
-	SetMaster(slave, master string) error
-	SetNamespace(intefaceName, namespace string) error
-	SetUp(name string) error
-	VethDeviceCount() (int, error)
-}
-
-//go:generate counterfeiter --fake-name Context . Context
-type Context interface {
-	AddressManager() AddressManager
-	LinkFactory() LinkFactory
-	RouteManager() RouteManager
-}
-
-//go:generate counterfeiter --fake-name Command . Command
-type Command interface {
-	Execute(context Context) error
-	String() string
-}
-
-func All(commands ...Command) Command {
+func All(commands ...executor.Command) executor.Command {
 	return Group(commands)
 }
 
-type Group []Command
+type Group []executor.Command
 
-func (g Group) Execute(context Context) error {
+func (g Group) Execute(context executor.Context) error {
 	for i, c := range g {
 		err := c.Execute(context)
 		if err != nil {

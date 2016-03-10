@@ -4,7 +4,8 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 
 	. "github.com/onsi/ginkgo"
@@ -14,13 +15,13 @@ import (
 var _ = Describe("CreateNamespace", func() {
 	var (
 		context         *fakes.Context
-		repository      *fakes.Repository
+		repository      *cmd_fakes.Repository
 		createNamespace commands.CreateNamespace
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		repository = &fakes.Repository{}
+		repository = &cmd_fakes.Repository{}
 
 		createNamespace = commands.CreateNamespace{
 			Name:       "my-namespace",

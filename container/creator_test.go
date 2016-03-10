@@ -6,6 +6,7 @@ import (
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions/fakes"
@@ -22,7 +23,7 @@ import (
 var _ = Describe("Setup", func() {
 	var (
 		creator           container.Creator
-		executor          *exec_fakes.Executor
+		ex                *exec_fakes.Executor
 		linkFinder        *cond_fakes.LinkFinder
 		containerMAC      net.HardwareAddr
 		ipamResult        types.Result
@@ -35,14 +36,14 @@ var _ = Describe("Setup", func() {
 	)
 
 	BeforeEach(func() {
-		executor = &exec_fakes.Executor{}
+		ex = &exec_fakes.Executor{}
 		linkFinder = &cond_fakes.LinkFinder{}
 		sandboxRepository = &fakes.Repository{}
 		locker = &comm_fakes.Locker{}
 		missWatcher = &fakes.MissWatcher{}
 		commandBuilder = &fakes.CommandBuilder{}
 		creator = container.Creator{
-			Executor:       executor,
+			Executor:       ex,
 			LinkFinder:     linkFinder,
 			SandboxRepo:    sandboxRepository,
 			Locker:         locker,
@@ -80,8 +81,8 @@ var _ = Describe("Setup", func() {
 
 		sandboxNS = namespace.NewNamespace("/some/sandbox/namespace")
 		sandboxRepository.PathOfReturns("/some/sandbox/namespace")
-		executor.ExecuteStub = func(command commands.Command) error {
-			switch executor.ExecuteCallCount() {
+		ex.ExecuteStub = func(command executor.Command) error {
+			switch ex.ExecuteCallCount() {
 			case 2:
 				nsCommand := command.(commands.InNamespace)
 				getCommand := nsCommand.Command.(*commands.GetHardwareAddress)
@@ -125,14 +126,14 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the IdempotentlyCreateSandbox command group", func() {
-		createSandboxResult := &comm_fakes.Command{}
+		createSandboxResult := &exec_fakes.Command{}
 		commandBuilder.IdempotentlyCreateSandboxReturns(createSandboxResult)
 
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(executor.ExecuteCallCount()).To(Equal(2))
+		Expect(ex.ExecuteCallCount()).To(Equal(2))
 
-		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
 		Expect(commandGroup[0]).To(Equal(createSandboxResult))
 
 		sandboxName := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
@@ -140,14 +141,14 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the IdempotentlyCreateVxlan command group", func() {
-		createVxlanResult := &comm_fakes.Command{}
+		createVxlanResult := &exec_fakes.Command{}
 		commandBuilder.IdempotentlyCreateVxlanReturns(createVxlanResult)
 
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(executor.ExecuteCallCount()).To(Equal(2))
+		Expect(ex.ExecuteCallCount()).To(Equal(2))
 
-		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
 		Expect(commandGroup[1]).To(Equal(createVxlanResult))
 
 		vxlanName, vni, sandboxName := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
@@ -157,8 +158,8 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the SetupVeth command group, including the route commands", func() {
-		setupContainerResult := &comm_fakes.Command{}
-		fakeRouteCommands := &comm_fakes.Command{}
+		setupContainerResult := &exec_fakes.Command{}
+		fakeRouteCommands := &exec_fakes.Command{}
 
 		commandBuilder.SetupVethReturns(setupContainerResult)
 		commandBuilder.AddRoutesReturns(fakeRouteCommands)
@@ -166,7 +167,7 @@ var _ = Describe("Setup", func() {
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 
-		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
 		Expect(commandGroup[2]).To(Equal(setupContainerResult))
 
 		containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommands := commandBuilder.SetupVethArgsForCall(0)
@@ -179,14 +180,14 @@ var _ = Describe("Setup", func() {
 	})
 
 	It("should execute the IdempotentlySetupBridge command group", func() {
-		setupBridgeResult := &comm_fakes.Command{}
+		setupBridgeResult := &exec_fakes.Command{}
 
 		commandBuilder.IdempotentlySetupBridgeReturns(setupBridgeResult)
 
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 
-		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
 		Expect(commandGroup[3]).To(Equal(setupBridgeResult))
 
 		vxlanName, sandboxLinkName, sandboxName, bridgeName, ipamResult := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
@@ -220,7 +221,7 @@ var _ = Describe("Setup", func() {
 
 	Context("when the container ID is very long", func() {
 		It("keeps the sandbox link name short", func() {
-			setupBridgeResult := &comm_fakes.Command{}
+			setupBridgeResult := &exec_fakes.Command{}
 
 			commandBuilder.IdempotentlySetupBridgeReturns(setupBridgeResult)
 			config.ContainerID = "1234567890123456789"
@@ -228,7 +229,7 @@ var _ = Describe("Setup", func() {
 			_, err := creator.Setup(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+			commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
 			Expect(commandGroup[3]).To(Equal(setupBridgeResult))
 
 			_, sandboxLinkName, _, _, _ := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
@@ -242,8 +243,8 @@ var _ = Describe("Setup", func() {
 	Context("when an error occurs", func() {
 		Context("when setting up the container fails", func() {
 			BeforeEach(func() {
-				executor.ExecuteStub = func(command commands.Command) error {
-					switch executor.ExecuteCallCount() {
+				ex.ExecuteStub = func(command executor.Command) error {
+					switch ex.ExecuteCallCount() {
 					case 1:
 						return errors.New("some setup error")
 					}
@@ -260,8 +261,8 @@ var _ = Describe("Setup", func() {
 
 		Context("when setting the hardware address fails", func() {
 			BeforeEach(func() {
-				executor.ExecuteStub = func(command commands.Command) error {
-					switch executor.ExecuteCallCount() {
+				ex.ExecuteStub = func(command executor.Command) error {
+					switch ex.ExecuteCallCount() {
 					case 2:
 						return errors.New("some hardware error")
 					}

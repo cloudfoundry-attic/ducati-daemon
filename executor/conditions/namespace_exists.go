@@ -3,6 +3,7 @@ package conditions
 import (
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
@@ -11,7 +12,7 @@ type NamespaceExists struct {
 	Repository namespace.Repository
 }
 
-func (n NamespaceExists) Satisfied(context Context) bool {
+func (n NamespaceExists) Satisfied(context executor.Context) bool {
 	_, err := n.Repository.Get(n.Name)
 	return err == nil
 }

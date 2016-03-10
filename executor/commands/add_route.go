@@ -3,6 +3,8 @@ package commands
 import (
 	"fmt"
 	"net"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
 type AddRoute struct {
@@ -11,7 +13,7 @@ type AddRoute struct {
 	Gateway     net.IP
 }
 
-func (ad AddRoute) Execute(context Context) error {
+func (ad AddRoute) Execute(context executor.Context) error {
 	err := context.RouteManager().AddRoute(ad.Interface, &ad.Destination, ad.Gateway)
 	if err != nil {
 		return fmt.Errorf("add route: %s", err)

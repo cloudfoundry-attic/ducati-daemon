@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
@@ -27,7 +28,7 @@ type CleanupSandbox struct {
 	VxlanDeviceName string
 }
 
-func (c CleanupSandbox) Execute(context Context) error {
+func (c CleanupSandbox) Execute(context executor.Context) error {
 	sandboxName := c.Namespace.Name()
 
 	c.Locker.Lock(sandboxName)

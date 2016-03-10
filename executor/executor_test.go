@@ -2,8 +2,6 @@ package executor_test
 
 import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,7 +12,7 @@ var _ = Describe("Executor", func() {
 		addressManager *fakes.AddressManager
 		routeManager   *fakes.RouteManager
 		linkFactory    *fakes.LinkFactory
-		command        *cmd_fakes.Command
+		command        *fakes.Command
 		ex             executor.Executor
 	)
 
@@ -22,7 +20,7 @@ var _ = Describe("Executor", func() {
 		addressManager = &fakes.AddressManager{}
 		routeManager = &fakes.RouteManager{}
 		linkFactory = &fakes.LinkFactory{}
-		command = &cmd_fakes.Command{}
+		command = &fakes.Command{}
 
 		ex = executor.New(addressManager, routeManager, linkFactory)
 	})
@@ -35,10 +33,10 @@ var _ = Describe("Executor", func() {
 	})
 
 	Describe("Context", func() {
-		var context commands.Context
+		var context executor.Context
 
 		BeforeEach(func() {
-			c, ok := ex.(commands.Context)
+			c, ok := ex.(executor.Context)
 			Expect(ok).To(BeTrue())
 			context = c
 		})

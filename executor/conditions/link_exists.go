@@ -1,6 +1,10 @@
 package conditions
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+)
 
 //go:generate counterfeiter --fake-name LinkFinder . LinkFinder
 type LinkFinder interface {
@@ -12,7 +16,7 @@ type LinkExists struct {
 	Name       string
 }
 
-func (l LinkExists) Satisfied(context Context) bool {
+func (l LinkExists) Satisfied(context executor.Context) bool {
 	return l.LinkFinder.Exists(l.Name)
 }
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

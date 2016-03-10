@@ -1,6 +1,10 @@
 package commands
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+)
 
 type CreateVeth struct {
 	Name     string
@@ -8,7 +12,7 @@ type CreateVeth struct {
 	MTU      int
 }
 
-func (cv CreateVeth) Execute(context Context) error {
+func (cv CreateVeth) Execute(context executor.Context) error {
 	err := context.LinkFactory().CreateVeth(cv.Name, cv.PeerName, cv.MTU)
 	if err != nil {
 		return fmt.Errorf("create veth: %s", err)

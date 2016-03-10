@@ -3,6 +3,8 @@ package commands
 import (
 	"fmt"
 	"os"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
 //go:generate counterfeiter --fake-name Namespace . Namespace
@@ -13,10 +15,10 @@ type Namespace interface {
 
 type InNamespace struct {
 	Namespace Namespace
-	Command   Command
+	Command   executor.Command
 }
 
-func (i InNamespace) Execute(context Context) error {
+func (i InNamespace) Execute(context executor.Context) error {
 	err := i.Namespace.Execute(func(_ *os.File) error {
 		return i.Command.Execute(context)
 	})

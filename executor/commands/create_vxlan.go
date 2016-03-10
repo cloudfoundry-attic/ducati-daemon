@@ -1,13 +1,17 @@
 package commands
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+)
 
 type CreateVxlan struct {
 	Name string
 	VNI  int
 }
 
-func (cv CreateVxlan) Execute(context Context) error {
+func (cv CreateVxlan) Execute(context executor.Context) error {
 	err := context.LinkFactory().CreateVxlan(cv.Name, cv.VNI)
 	if err != nil {
 		return fmt.Errorf("create vxlan: %s", err)

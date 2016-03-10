@@ -3,8 +3,9 @@ package commands_test
 import (
 	"errors"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,7 +18,7 @@ var _ = Describe("Commands", func() {
 			command1 *fakes.Command
 			command2 *fakes.Command
 			command3 *fakes.Command
-			all      commands.Command
+			all      executor.Command
 		)
 
 		BeforeEach(func() {
@@ -96,7 +97,7 @@ var _ = Describe("Commands", func() {
 
 			Context("when the command group is empty", func() {
 				It("prints as two braces", func() {
-					all = commands.Group([]commands.Command{})
+					all = commands.Group([]executor.Command{})
 					Expect(all.String()).To(Equal("(\n)"))
 				})
 			})

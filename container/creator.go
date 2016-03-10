@@ -15,11 +15,11 @@ import (
 
 //go:generate counterfeiter -o ../fakes/command_builder.go --fake-name CommandBuilder . commandBuilder
 type commandBuilder interface {
-	IdempotentlyCreateSandbox(sandboxName string) commands.Command
-	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) commands.Command
-	AddRoutes(interfaceName string, ipConfig *types.IPConfig) commands.Command
-	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand commands.Command) commands.Command
-	IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) commands.Command
+	IdempotentlyCreateSandbox(sandboxName string) executor.Command
+	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command
+	AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command
+	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command
+	IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command
 }
 
 type Creator struct {

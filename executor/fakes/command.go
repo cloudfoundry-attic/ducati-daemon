@@ -4,14 +4,14 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
 type Command struct {
-	ExecuteStub        func(context commands.Context) error
+	ExecuteStub        func(context executor.Context) error
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
-		context commands.Context
+		context executor.Context
 	}
 	executeReturns struct {
 		result1 error
@@ -24,10 +24,10 @@ type Command struct {
 	}
 }
 
-func (fake *Command) Execute(context commands.Context) error {
+func (fake *Command) Execute(context executor.Context) error {
 	fake.executeMutex.Lock()
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
-		context commands.Context
+		context executor.Context
 	}{context})
 	fake.executeMutex.Unlock()
 	if fake.ExecuteStub != nil {
@@ -43,7 +43,7 @@ func (fake *Command) ExecuteCallCount() int {
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *Command) ExecuteArgsForCall(i int) commands.Context {
+func (fake *Command) ExecuteArgsForCall(i int) executor.Context {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	return fake.executeArgsForCall[i].context
@@ -80,4 +80,4 @@ func (fake *Command) StringReturns(result1 string) {
 	}{result1}
 }
 
-var _ commands.Command = new(Command)
+var _ executor.Command = new(Command)

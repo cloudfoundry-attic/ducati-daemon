@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,14 +12,14 @@ import (
 
 var _ = Describe("StartMonitor", func() {
 	var (
-		context      *comm_fakes.Context
+		context      *exec_fakes.Context
 		startMonitor commands.StartMonitor
 		fakeWatcher  *fakes.MissWatcher
 		sandboxNS    *fakes.Namespace
 	)
 
 	BeforeEach(func() {
-		context = &comm_fakes.Context{}
+		context = &exec_fakes.Context{}
 		fakeWatcher = &fakes.MissWatcher{}
 		sandboxNS = &fakes.Namespace{}
 
