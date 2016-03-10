@@ -13,29 +13,29 @@ var _ = Describe("DeleteLink", func() {
 	var (
 		context           *fakes.Context
 		deleteLinkCommand commands.DeleteLink
-		linkDeletor       *fakes.LinkDeletor
+		linkFactory       *fakes.LinkFactory
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		linkDeletor = &fakes.LinkDeletor{}
+		linkFactory = &fakes.LinkFactory{}
 
-		context.LinkDeletorReturns(linkDeletor)
+		context.LinkFactoryReturns(linkFactory)
 
 		deleteLinkCommand = commands.DeleteLink{LinkName: "some-link-name"}
 	})
 
-	It("calls Delete method on context.LinkDeletor", func() {
+	It("calls Delete method on context.LinkFactory", func() {
 		err := deleteLinkCommand.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(linkDeletor.DeleteLinkByNameCallCount()).To(Equal(1))
-		Expect(linkDeletor.DeleteLinkByNameArgsForCall(0)).To(Equal("some-link-name"))
+		Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(1))
+		Expect(linkFactory.DeleteLinkByNameArgsForCall(0)).To(Equal("some-link-name"))
 	})
 
 	Context("when deleting the link by name fails", func() {
 		BeforeEach(func() {
-			linkDeletor.DeleteLinkByNameReturns(errors.New("whatever"))
+			linkFactory.DeleteLinkByNameReturns(errors.New("whatever"))
 		})
 
 		It("wraps and propogates the error", func() {

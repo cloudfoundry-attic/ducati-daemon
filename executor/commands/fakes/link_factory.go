@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 )
 
 type LinkFactory struct {
@@ -375,4 +375,4 @@ func (fake *LinkFactory) VethDeviceCountReturns(result1 int, result2 error) {
 	}{result1, result2}
 }
 
-var _ executor.LinkFactory = new(LinkFactory)
+var _ commands.LinkFactory = new(LinkFactory)

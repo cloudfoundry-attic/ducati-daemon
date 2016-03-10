@@ -12,14 +12,14 @@ import (
 var _ = Describe("MoveLink", func() {
 	var (
 		context          *fakes.Context
-		setNamespacer    *fakes.SetNamespacer
+		linkFactory      *fakes.LinkFactory
 		setLinkNamespace commands.MoveLink
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		setNamespacer = &fakes.SetNamespacer{}
-		context.SetNamespacerReturns(setNamespacer)
+		linkFactory = &fakes.LinkFactory{}
+		context.LinkFactoryReturns(linkFactory)
 
 		setLinkNamespace = commands.MoveLink{
 			Name:      "link-name",
@@ -31,15 +31,15 @@ var _ = Describe("MoveLink", func() {
 		err := setLinkNamespace.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(setNamespacer.SetNamespaceCallCount()).To(Equal(1))
-		name, ns := setNamespacer.SetNamespaceArgsForCall(0)
+		Expect(linkFactory.SetNamespaceCallCount()).To(Equal(1))
+		name, ns := linkFactory.SetNamespaceArgsForCall(0)
 		Expect(name).To(Equal("link-name"))
 		Expect(ns).To(Equal("some-namespace-path"))
 	})
 
 	Context("when moving the link fails", func() {
 		It("wraps and propagates the error", func() {
-			setNamespacer.SetNamespaceReturns(errors.New("welp"))
+			linkFactory.SetNamespaceReturns(errors.New("welp"))
 
 			err := setLinkNamespace.Execute(context)
 			Expect(err).To(MatchError("move link: welp"))

@@ -12,15 +12,15 @@ import (
 
 var _ = Describe("AddAddress", func() {
 	var (
-		addressAdder *fakes.AddressAdder
-		context      *fakes.Context
-		addAddress   commands.AddAddress
+		addressManager *fakes.AddressManager
+		context        *fakes.Context
+		addAddress     commands.AddAddress
 	)
 
 	BeforeEach(func() {
-		addressAdder = &fakes.AddressAdder{}
+		addressManager = &fakes.AddressManager{}
 		context = &fakes.Context{}
-		context.AddressAdderReturns(addressAdder)
+		context.AddressManagerReturns(addressManager)
 
 		addAddress = commands.AddAddress{
 			InterfaceName: "my-interface",
@@ -35,15 +35,15 @@ var _ = Describe("AddAddress", func() {
 		err := addAddress.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(addressAdder.AddAddressCallCount()).To(Equal(1))
-		interfaceName, address := addressAdder.AddAddressArgsForCall(0)
+		Expect(addressManager.AddAddressCallCount()).To(Equal(1))
+		interfaceName, address := addressManager.AddAddressArgsForCall(0)
 		Expect(interfaceName).To(Equal("my-interface"))
 		Expect(address.String()).To(Equal("192.168.1.1/24"))
 	})
 
-	Context("when the address adder fails", func() {
+	Context("when adding the address fails", func() {
 		BeforeEach(func() {
-			addressAdder.AddAddressReturns(errors.New("no address for you"))
+			addressManager.AddAddressReturns(errors.New("no address for you"))
 		})
 
 		It("wraps and propagates the error", func() {

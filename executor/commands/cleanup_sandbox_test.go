@@ -29,8 +29,7 @@ var _ = Describe("CleanupSandbox", func() {
 		sandboxNS.NameReturns("some-sandbox-name")
 		locker = &cmd_fakes.Locker{}
 		linkFactory = &exec_fakes.LinkFactory{}
-		context.VethDeviceCounterReturns(linkFactory)
-		context.LinkDeletorReturns(linkFactory)
+		context.LinkFactoryReturns(linkFactory)
 		missWatcher = &fakes.MissWatcher{}
 
 		cleanupSandboxCommand = commands.CleanupSandbox{

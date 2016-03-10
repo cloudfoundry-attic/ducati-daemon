@@ -13,14 +13,14 @@ import (
 var _ = Describe("CreateVeth", func() {
 	var (
 		context     *fakes.Context
-		vethFactory *fakes.VethFactory
+		linkFactory *fakes.LinkFactory
 		createVeth  commands.CreateVeth
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		vethFactory = &fakes.VethFactory{}
-		context.VethFactoryReturns(vethFactory)
+		linkFactory = &fakes.LinkFactory{}
+		context.LinkFactoryReturns(linkFactory)
 
 		createVeth = commands.CreateVeth{
 			Name:     "if-name",
@@ -33,7 +33,7 @@ var _ = Describe("CreateVeth", func() {
 		err := createVeth.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		name, peerName, mtu := vethFactory.CreateVethArgsForCall(0)
+		name, peerName, mtu := linkFactory.CreateVethArgsForCall(0)
 		Expect(name).To(Equal("if-name"))
 		Expect(peerName).To(Equal("peer-if-name"))
 		Expect(mtu).To(Equal(99))
@@ -41,7 +41,7 @@ var _ = Describe("CreateVeth", func() {
 
 	Context("when creating the link fails", func() {
 		BeforeEach(func() {
-			vethFactory.CreateVethReturns(errors.New("welp"))
+			linkFactory.CreateVethReturns(errors.New("welp"))
 		})
 
 		It("wraps and propogates the error", func() {

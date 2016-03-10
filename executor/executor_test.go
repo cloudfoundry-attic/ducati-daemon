@@ -43,69 +43,21 @@ var _ = Describe("Executor", func() {
 			context = c
 		})
 
-		Describe("AddressAdder", func() {
+		Describe("AddressManager", func() {
 			It("returns the address manager", func() {
-				Expect(context.AddressAdder()).To(Equal(addressManager))
+				Expect(context.AddressManager()).To(Equal(addressManager))
 			})
 		})
 
-		Describe("RouteAdder", func() {
-			It("returns the address manager", func() {
-				Expect(context.RouteAdder()).To(Equal(routeManager))
-			})
-		})
-
-		Describe("BridgeFactory", func() {
+		Describe("LinkFactory", func() {
 			It("returns the link factory", func() {
-				Expect(context.BridgeFactory()).To(Equal(linkFactory))
+				Expect(context.LinkFactory()).To(Equal(linkFactory))
 			})
 		})
 
-		Describe("HardwareAddresser", func() {
-			It("returns the link factory", func() {
-				Expect(context.HardwareAddresser()).To(Equal(linkFactory))
-			})
-		})
-
-		Describe("MasterSetter", func() {
-			It("returns the link factory", func() {
-				Expect(context.MasterSetter()).To(Equal(linkFactory))
-			})
-		})
-
-		Describe("SetNamespacer", func() {
-			It("returns the link factory", func() {
-				Expect(context.SetNamespacer()).To(Equal(linkFactory))
-			})
-		})
-
-		Describe("SetUpper", func() {
-			It("returns the link factory", func() {
-				Expect(context.SetUpper()).To(Equal(linkFactory))
-			})
-		})
-
-		Describe("VethFactory", func() {
-			It("returns the link factory", func() {
-				Expect(context.VethFactory()).To(Equal(linkFactory))
-			})
-		})
-
-		Describe("VxlanFactory", func() {
-			It("returns the link factory", func() {
-				Expect(context.VxlanFactory()).To(Equal(linkFactory))
-			})
-		})
-
-		Describe("VethDeviceCounter", func() {
-			It("returns the link factory", func() {
-				Expect(context.VethDeviceCounter()).To(Equal(linkFactory))
-			})
-		})
-
-		Describe("LinkDeletor", func() {
-			It("returns the link factory", func() {
-				Expect(context.LinkDeletor()).To(Equal(linkFactory))
+		Describe("RouteManager", func() {
+			It("returns the route manager", func() {
+				Expect(context.RouteManager()).To(Equal(routeManager))
 			})
 		})
 	})

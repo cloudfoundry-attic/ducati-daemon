@@ -20,9 +20,6 @@ type cleanableNamespace interface {
 	Namespace
 }
 
-type VethDeviceCounter interface {
-	VethDeviceCount() (int, error)
-}
 type CleanupSandbox struct {
 	Namespace       cleanableNamespace
 	Locker          Locker
@@ -39,13 +36,13 @@ func (c CleanupSandbox) Execute(context Context) error {
 	var vethLinkCount = 0
 	err := c.Namespace.Execute(func(ns *os.File) error {
 		var err error
-		vethLinkCount, err = context.VethDeviceCounter().VethDeviceCount()
+		vethLinkCount, err = context.LinkFactory().VethDeviceCount()
 		if err != nil {
 			return fmt.Errorf("counting veth devices: %s", err)
 		}
 
 		if vethLinkCount == 0 {
-			err = context.LinkDeletor().DeleteLinkByName(c.VxlanDeviceName)
+			err = context.LinkFactory().DeleteLinkByName(c.VxlanDeviceName)
 			if err != nil {
 				return fmt.Errorf("destroying vxlan %s: %s", c.VxlanDeviceName, err)
 			}

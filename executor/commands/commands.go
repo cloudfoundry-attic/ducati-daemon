@@ -3,22 +3,38 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"strings"
 )
 
+//go:generate counterfeiter --fake-name AddressManager . AddressManager
+type AddressManager interface {
+	AddAddress(interfaceName string, address *net.IPNet) error
+}
+
+//go:generate counterfeiter --fake-name RouteManager . RouteManager
+type RouteManager interface {
+	AddRoute(interfaceName string, destination *net.IPNet, gateway net.IP) error
+}
+
+//go:generate counterfeiter --fake-name LinkFactory . LinkFactory
+type LinkFactory interface {
+	CreateBridge(name string) error
+	CreateVeth(name, peerName string, mtu int) error
+	CreateVxlan(name string, vni int) error
+	DeleteLinkByName(name string) error
+	HardwareAddress(linkName string) (net.HardwareAddr, error)
+	SetMaster(slave, master string) error
+	SetNamespace(intefaceName, namespace string) error
+	SetUp(name string) error
+	VethDeviceCount() (int, error)
+}
+
 //go:generate counterfeiter --fake-name Context . Context
 type Context interface {
-	AddressAdder() AddressAdder
-	BridgeFactory() BridgeFactory
-	HardwareAddresser() HardwareAddresser
-	MasterSetter() MasterSetter
-	RouteAdder() RouteAdder
-	SetNamespacer() SetNamespacer
-	SetUpper() SetUpper
-	VethFactory() VethFactory
-	VxlanFactory() VxlanFactory
-	LinkDeletor() LinkDeletor
-	VethDeviceCounter() VethDeviceCounter
+	AddressManager() AddressManager
+	LinkFactory() LinkFactory
+	RouteManager() RouteManager
 }
 
 //go:generate counterfeiter --fake-name Command . Command

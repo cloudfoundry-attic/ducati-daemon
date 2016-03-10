@@ -12,15 +12,15 @@ import (
 
 var _ = Describe("AddRoute", func() {
 	var (
-		routeAdder *fakes.RouteAdder
-		context    *fakes.Context
-		addRoute   commands.AddRoute
+		routeManager *fakes.RouteManager
+		context      *fakes.Context
+		addRoute     commands.AddRoute
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		routeAdder = &fakes.RouteAdder{}
-		context.RouteAdderReturns(routeAdder)
+		routeManager = &fakes.RouteManager{}
+		context.RouteManagerReturns(routeManager)
 
 		addRoute = commands.AddRoute{
 			Interface: "my-interface",
@@ -36,16 +36,16 @@ var _ = Describe("AddRoute", func() {
 		err := addRoute.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(routeAdder.AddRouteCallCount()).To(Equal(1))
-		ifName, dest, gw := routeAdder.AddRouteArgsForCall(0)
+		Expect(routeManager.AddRouteCallCount()).To(Equal(1))
+		ifName, dest, gw := routeManager.AddRouteArgsForCall(0)
 		Expect(ifName).To(Equal("my-interface"))
 		Expect(dest.String()).To(Equal("192.168.1.1/24"))
 		Expect(gw.String()).To(Equal("192.168.1.4"))
 	})
 
-	Context("when the route adder fails", func() {
+	Context("when adding the route fails", func() {
 		BeforeEach(func() {
-			routeAdder.AddRouteReturns(errors.New("no route for you"))
+			routeManager.AddRouteReturns(errors.New("no route for you"))
 		})
 
 		It("wraps and propogates the error", func() {

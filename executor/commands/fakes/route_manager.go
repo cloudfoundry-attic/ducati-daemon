@@ -8,7 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 )
 
-type RouteAdder struct {
+type RouteManager struct {
 	AddRouteStub        func(interfaceName string, destination *net.IPNet, gateway net.IP) error
 	addRouteMutex       sync.RWMutex
 	addRouteArgsForCall []struct {
@@ -21,7 +21,7 @@ type RouteAdder struct {
 	}
 }
 
-func (fake *RouteAdder) AddRoute(interfaceName string, destination *net.IPNet, gateway net.IP) error {
+func (fake *RouteManager) AddRoute(interfaceName string, destination *net.IPNet, gateway net.IP) error {
 	fake.addRouteMutex.Lock()
 	fake.addRouteArgsForCall = append(fake.addRouteArgsForCall, struct {
 		interfaceName string
@@ -36,23 +36,23 @@ func (fake *RouteAdder) AddRoute(interfaceName string, destination *net.IPNet, g
 	}
 }
 
-func (fake *RouteAdder) AddRouteCallCount() int {
+func (fake *RouteManager) AddRouteCallCount() int {
 	fake.addRouteMutex.RLock()
 	defer fake.addRouteMutex.RUnlock()
 	return len(fake.addRouteArgsForCall)
 }
 
-func (fake *RouteAdder) AddRouteArgsForCall(i int) (string, *net.IPNet, net.IP) {
+func (fake *RouteManager) AddRouteArgsForCall(i int) (string, *net.IPNet, net.IP) {
 	fake.addRouteMutex.RLock()
 	defer fake.addRouteMutex.RUnlock()
 	return fake.addRouteArgsForCall[i].interfaceName, fake.addRouteArgsForCall[i].destination, fake.addRouteArgsForCall[i].gateway
 }
 
-func (fake *RouteAdder) AddRouteReturns(result1 error) {
+func (fake *RouteManager) AddRouteReturns(result1 error) {
 	fake.AddRouteStub = nil
 	fake.addRouteReturns = struct {
 		result1 error
 	}{result1}
 }
 
-var _ commands.RouteAdder = new(RouteAdder)
+var _ commands.RouteManager = new(RouteManager)

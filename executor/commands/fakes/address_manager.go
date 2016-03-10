@@ -8,7 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 )
 
-type AddressAdder struct {
+type AddressManager struct {
 	AddAddressStub        func(interfaceName string, address *net.IPNet) error
 	addAddressMutex       sync.RWMutex
 	addAddressArgsForCall []struct {
@@ -20,7 +20,7 @@ type AddressAdder struct {
 	}
 }
 
-func (fake *AddressAdder) AddAddress(interfaceName string, address *net.IPNet) error {
+func (fake *AddressManager) AddAddress(interfaceName string, address *net.IPNet) error {
 	fake.addAddressMutex.Lock()
 	fake.addAddressArgsForCall = append(fake.addAddressArgsForCall, struct {
 		interfaceName string
@@ -34,23 +34,23 @@ func (fake *AddressAdder) AddAddress(interfaceName string, address *net.IPNet) e
 	}
 }
 
-func (fake *AddressAdder) AddAddressCallCount() int {
+func (fake *AddressManager) AddAddressCallCount() int {
 	fake.addAddressMutex.RLock()
 	defer fake.addAddressMutex.RUnlock()
 	return len(fake.addAddressArgsForCall)
 }
 
-func (fake *AddressAdder) AddAddressArgsForCall(i int) (string, *net.IPNet) {
+func (fake *AddressManager) AddAddressArgsForCall(i int) (string, *net.IPNet) {
 	fake.addAddressMutex.RLock()
 	defer fake.addAddressMutex.RUnlock()
 	return fake.addAddressArgsForCall[i].interfaceName, fake.addAddressArgsForCall[i].address
 }
 
-func (fake *AddressAdder) AddAddressReturns(result1 error) {
+func (fake *AddressManager) AddAddressReturns(result1 error) {
 	fake.AddAddressStub = nil
 	fake.addAddressReturns = struct {
 		result1 error
 	}{result1}
 }
 
-var _ commands.AddressAdder = new(AddressAdder)
+var _ commands.AddressManager = new(AddressManager)

@@ -12,14 +12,14 @@ import (
 var _ = Describe("SetLinkMaster", func() {
 	var (
 		context       *fakes.Context
-		masterSetter  *fakes.MasterSetter
+		linkFactory   *fakes.LinkFactory
 		setLinkMaster commands.SetLinkMaster
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		masterSetter = &fakes.MasterSetter{}
-		context.MasterSetterReturns(masterSetter)
+		linkFactory = &fakes.LinkFactory{}
+		context.LinkFactoryReturns(linkFactory)
 
 		setLinkMaster = commands.SetLinkMaster{
 			Master: "master-dev",
@@ -31,15 +31,15 @@ var _ = Describe("SetLinkMaster", func() {
 		err := setLinkMaster.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(masterSetter.SetMasterCallCount()).To(Equal(1))
-		slave, master := masterSetter.SetMasterArgsForCall(0)
+		Expect(linkFactory.SetMasterCallCount()).To(Equal(1))
+		slave, master := linkFactory.SetMasterArgsForCall(0)
 		Expect(slave).To(Equal("slave-dev"))
 		Expect(master).To(Equal("master-dev"))
 	})
 
 	Context("when the master setter fails", func() {
 		BeforeEach(func() {
-			masterSetter.SetMasterReturns(errors.New("you're not a slave"))
+			linkFactory.SetMasterReturns(errors.New("you're not a slave"))
 		})
 
 		It("wraps and propogates the error", func() {

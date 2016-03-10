@@ -12,9 +12,9 @@ import (
 
 var _ = Describe("GetHardwareAddress", func() {
 	var (
-		context           *fakes.Context
-		hardwareAddresser *fakes.HardwareAddresser
-		hwAddr            net.HardwareAddr
+		context     *fakes.Context
+		linkFactory *fakes.LinkFactory
+		hwAddr      net.HardwareAddr
 
 		getHWAddress *commands.GetHardwareAddress
 	)
@@ -24,11 +24,11 @@ var _ = Describe("GetHardwareAddress", func() {
 		hwAddr, err = net.ParseMAC("FF:FF:FF:FF:FF:FF")
 		Expect(err).NotTo(HaveOccurred())
 
-		hardwareAddresser = &fakes.HardwareAddresser{}
-		hardwareAddresser.HardwareAddressReturns(hwAddr, nil)
+		linkFactory = &fakes.LinkFactory{}
+		linkFactory.HardwareAddressReturns(hwAddr, nil)
 
 		context = &fakes.Context{}
-		context.HardwareAddresserReturns(hardwareAddresser)
+		context.LinkFactoryReturns(linkFactory)
 
 		getHWAddress = &commands.GetHardwareAddress{
 			LinkName: "some-link-name",
@@ -39,15 +39,15 @@ var _ = Describe("GetHardwareAddress", func() {
 		err := getHWAddress.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(hardwareAddresser.HardwareAddressCallCount()).To(Equal(1))
-		Expect(hardwareAddresser.HardwareAddressArgsForCall(0)).To(Equal("some-link-name"))
+		Expect(linkFactory.HardwareAddressCallCount()).To(Equal(1))
+		Expect(linkFactory.HardwareAddressArgsForCall(0)).To(Equal("some-link-name"))
 
 		Expect(getHWAddress.Result).To(Equal(hwAddr))
 	})
 
 	Context("when getting the hardware address fails", func() {
 		BeforeEach(func() {
-			hardwareAddresser.HardwareAddressReturns(nil, errors.New("boom"))
+			linkFactory.HardwareAddressReturns(nil, errors.New("boom"))
 		})
 
 		It("wraps and propogates the error", func() {

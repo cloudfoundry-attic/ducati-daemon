@@ -11,15 +11,15 @@ import (
 
 var _ = Describe("CreateBridge", func() {
 	var (
-		bridgeFactory *fakes.BridgeFactory
-		context       *fakes.Context
-		createBridge  commands.CreateBridge
+		linkFactory  *fakes.LinkFactory
+		context      *fakes.Context
+		createBridge commands.CreateBridge
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		bridgeFactory = &fakes.BridgeFactory{}
-		context.BridgeFactoryReturns(bridgeFactory)
+		linkFactory = &fakes.LinkFactory{}
+		context.LinkFactoryReturns(linkFactory)
 
 		createBridge = commands.CreateBridge{
 			Name: "my-bridge",
@@ -30,13 +30,13 @@ var _ = Describe("CreateBridge", func() {
 		err := createBridge.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(bridgeFactory.CreateBridgeCallCount()).To(Equal(1))
-		Expect(bridgeFactory.CreateBridgeArgsForCall(0)).To(Equal("my-bridge"))
+		Expect(linkFactory.CreateBridgeCallCount()).To(Equal(1))
+		Expect(linkFactory.CreateBridgeArgsForCall(0)).To(Equal("my-bridge"))
 	})
 
-	Context("when the bridge factory fails", func() {
+	Context("when creating the bridge fails", func() {
 		BeforeEach(func() {
-			bridgeFactory.CreateBridgeReturns(errors.New("no bridge for sale"))
+			linkFactory.CreateBridgeReturns(errors.New("no bridge for sale"))
 		})
 
 		It("wraps and propagates the error", func() {

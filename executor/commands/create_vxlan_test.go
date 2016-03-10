@@ -11,15 +11,15 @@ import (
 
 var _ = Describe("CreateVxlan", func() {
 	var (
-		context      *fakes.Context
-		vxlanFactory *fakes.VxlanFactory
-		createVxlan  commands.CreateVxlan
+		context     *fakes.Context
+		linkFactory *fakes.LinkFactory
+		createVxlan commands.CreateVxlan
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		vxlanFactory = &fakes.VxlanFactory{}
-		context.VxlanFactoryReturns(vxlanFactory)
+		linkFactory = &fakes.LinkFactory{}
+		context.LinkFactoryReturns(linkFactory)
 
 		createVxlan = commands.CreateVxlan{
 			Name: "my-vxlan",
@@ -31,15 +31,15 @@ var _ = Describe("CreateVxlan", func() {
 		err := createVxlan.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(vxlanFactory.CreateVxlanCallCount()).To(Equal(1))
-		name, vni := vxlanFactory.CreateVxlanArgsForCall(0)
+		Expect(linkFactory.CreateVxlanCallCount()).To(Equal(1))
+		name, vni := linkFactory.CreateVxlanArgsForCall(0)
 		Expect(name).To(Equal("my-vxlan"))
 		Expect(vni).To(Equal(99))
 	})
 
-	Context("when the factory fails", func() {
+	Context("when creating the vxlan link fails", func() {
 		BeforeEach(func() {
-			vxlanFactory.CreateVxlanReturns(errors.New("no vxlan for you"))
+			linkFactory.CreateVxlanReturns(errors.New("no vxlan for you"))
 		})
 
 		It("wraps and propagates the error", func() {

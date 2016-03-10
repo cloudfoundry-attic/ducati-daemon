@@ -4,6 +4,7 @@ package fakes
 import (
 	"sync"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 )
 
@@ -100,4 +101,4 @@ func (fake *Context) RouteManagerReturns(result1 commands.RouteManager) {
 	}{result1}
 }
 
-var _ commands.Context = new(Context)
+var _ executor.Context = new(Context)

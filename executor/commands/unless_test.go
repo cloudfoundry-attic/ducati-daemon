@@ -4,9 +4,8 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -15,7 +14,7 @@ var _ = Describe("unless", func() {
 	var (
 		context   *fakes.Context
 		condition *cond_fakes.Condition
-		command   *cmd_fakes.Command
+		command   *fakes.Command
 		unless    commands.Unless
 	)
 
@@ -25,7 +24,7 @@ var _ = Describe("unless", func() {
 		condition = &cond_fakes.Condition{}
 		condition.StringReturns("condition")
 
-		command = &cmd_fakes.Command{}
+		command = &fakes.Command{}
 		command.StringReturns("command")
 
 		unless = commands.Unless{
