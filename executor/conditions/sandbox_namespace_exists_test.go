@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SandboxExists", func() {
+var _ = Describe("SandboxNamespaceExists", func() {
 	var (
 		repo            *fakes.Repository
-		namespaceExists conditions.SandboxExists
+		namespaceExists conditions.SandboxNamespaceExists
 		context         *fakes.Context
 	)
 
@@ -22,7 +22,7 @@ var _ = Describe("SandboxExists", func() {
 		context = &fakes.Context{}
 		context.SandboxRepositoryReturns(repo)
 
-		namespaceExists = conditions.SandboxExists{
+		namespaceExists = conditions.SandboxNamespaceExists{
 			Name: "some-sandbox",
 		}
 	})

@@ -6,15 +6,15 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
-type SandboxExists struct {
+type SandboxNamespaceExists struct {
 	Name string
 }
 
-func (n SandboxExists) Satisfied(context executor.Context) bool {
+func (n SandboxNamespaceExists) Satisfied(context executor.Context) bool {
 	_, err := context.SandboxRepository().Get(n.Name)
 	return err == nil
 }
 
-func (n SandboxExists) String() string {
+func (n SandboxNamespaceExists) String() string {
 	return fmt.Sprintf(`check if sandbox "%s" exists`, n.Name)
 }

@@ -11,27 +11,27 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("CreateNamespace", func() {
+var _ = Describe("CreateSandboxNamespace", func() {
 	var (
-		context         *fakes.Context
-		repository      *fakes.Repository
-		createNamespace commands.CreateNamespace
+		context                *fakes.Context
+		repository             *fakes.Repository
+		createSandboxNamespace commands.CreateSandboxNamespace
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
 		repository = &fakes.Repository{}
+		context.SandboxRepositoryReturns(repository)
 
-		createNamespace = commands.CreateNamespace{
-			Name:       "my-namespace",
-			Repository: repository,
+		createSandboxNamespace = commands.CreateSandboxNamespace{
+			Name: "my-namespace",
 		}
 
 		repository.CreateReturns(namespace.NewNamespace("/some/path"), nil)
 	})
 
 	It("creates the namespace in the repository", func() {
-		err := createNamespace.Execute(context)
+		err := createSandboxNamespace.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(repository.CreateCallCount()).To(Equal(1))
@@ -44,14 +44,14 @@ var _ = Describe("CreateNamespace", func() {
 		})
 
 		It("wraps and propogates the error", func() {
-			err := createNamespace.Execute(context)
+			err := createSandboxNamespace.Execute(context)
 			Expect(err).To(MatchError("create namespace: welp"))
 		})
 	})
 
 	Describe("String", func() {
 		It("is self describing", func() {
-			Expect(createNamespace.String()).To(Equal("ip netns add my-namespace"))
+			Expect(createSandboxNamespace.String()).To(Equal("ip netns add my-namespace"))
 		})
 	})
 })

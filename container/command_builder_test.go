@@ -32,13 +32,12 @@ var _ = Describe("CommandBuilder", func() {
 			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name")
 			Expect(cmd).To(Equal(
 				commands.Unless{
-					Condition: conditions.SandboxExists{
+					Condition: conditions.SandboxNamespaceExists{
 						Name: "some-sandbox-name",
 					},
 					Command: commands.All(
-						commands.CreateNamespace{
-							Name:       "some-sandbox-name",
-							Repository: sandboxRepository,
+						commands.CreateSandboxNamespace{
+							Name: "some-sandbox-name",
 						},
 						commands.StartMonitor{
 							Watcher:   missWatcher,
