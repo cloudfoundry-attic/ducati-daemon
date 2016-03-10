@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,7 +15,7 @@ var _ = Describe("CleanupSandbox", func() {
 	var (
 		context               *fakes.Context
 		sandboxNS             *fakes.Namespace
-		locker                *cmd_fakes.Locker
+		namedLocker           *fakes.NamedLocker
 		linkFactory           *fakes.LinkFactory
 		cleanupSandboxCommand commands.CleanupSandbox
 		missWatcher           *fakes.MissWatcher
@@ -26,14 +25,14 @@ var _ = Describe("CleanupSandbox", func() {
 		context = &fakes.Context{}
 		sandboxNS = &fakes.Namespace{}
 		sandboxNS.NameReturns("some-sandbox-name")
-		locker = &cmd_fakes.Locker{}
+		namedLocker = &fakes.NamedLocker{}
 		linkFactory = &fakes.LinkFactory{}
 		context.LinkFactoryReturns(linkFactory)
 		missWatcher = &fakes.MissWatcher{}
 
 		cleanupSandboxCommand = commands.CleanupSandbox{
 			Namespace:       sandboxNS,
-			Locker:          locker,
+			NamedLocker:     namedLocker,
 			Watcher:         missWatcher,
 			VxlanDeviceName: "some-vxlan",
 		}
@@ -51,10 +50,10 @@ var _ = Describe("CleanupSandbox", func() {
 		err := cleanupSandboxCommand.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(locker.LockCallCount()).To(Equal(1))
-		Expect(locker.UnlockCallCount()).To(Equal(1))
-		Expect(locker.LockArgsForCall(0)).To(Equal("some-sandbox-name"))
-		Expect(locker.UnlockArgsForCall(0)).To(Equal("some-sandbox-name"))
+		Expect(namedLocker.LockCallCount()).To(Equal(1))
+		Expect(namedLocker.UnlockCallCount()).To(Equal(1))
+		Expect(namedLocker.LockArgsForCall(0)).To(Equal("some-sandbox-name"))
+		Expect(namedLocker.UnlockArgsForCall(0)).To(Equal("some-sandbox-name"))
 	})
 
 	It("counts the veth devices inside the sandbox", func() {

@@ -2,6 +2,12 @@ package threading
 
 import "sync"
 
+//go:generate counterfeiter -o ../fakes/named_locker.go --fake-name NamedLocker . NamedLocker
+type NamedLocker interface {
+	Lock(name string)
+	Unlock(name string)
+}
+
 // TODO: this implementation leaks memory like a sieve
 // perhaps we can use the filesystem instead of a map
 type GlobalLocker struct {

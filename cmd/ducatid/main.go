@@ -155,14 +155,14 @@ func main() {
 	creator := &container.Creator{
 		Executor:       executor,
 		SandboxRepo:    sandboxRepo,
-		Locker:         globalLocker,
+		NamedLocker:    globalLocker,
 		Watcher:        missWatcher,
 		CommandBuilder: commandBuilder,
 	}
 	deletor := &container.Deletor{
-		Executor: executor,
-		Locker:   globalLocker,
-		Watcher:  missWatcher,
+		Executor:    executor,
+		NamedLocker: globalLocker,
+		Watcher:     missWatcher,
 	}
 
 	marshaler := marshal.MarshalFunc(json.Marshal)

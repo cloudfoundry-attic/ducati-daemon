@@ -4,66 +4,66 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 )
 
-type Locker struct {
-	LockStub        func(string)
+type NamedLocker struct {
+	LockStub        func(name string)
 	lockMutex       sync.RWMutex
 	lockArgsForCall []struct {
-		arg1 string
+		name string
 	}
-	UnlockStub        func(string)
+	UnlockStub        func(name string)
 	unlockMutex       sync.RWMutex
 	unlockArgsForCall []struct {
-		arg1 string
+		name string
 	}
 }
 
-func (fake *Locker) Lock(arg1 string) {
+func (fake *NamedLocker) Lock(name string) {
 	fake.lockMutex.Lock()
 	fake.lockArgsForCall = append(fake.lockArgsForCall, struct {
-		arg1 string
-	}{arg1})
+		name string
+	}{name})
 	fake.lockMutex.Unlock()
 	if fake.LockStub != nil {
-		fake.LockStub(arg1)
+		fake.LockStub(name)
 	}
 }
 
-func (fake *Locker) LockCallCount() int {
+func (fake *NamedLocker) LockCallCount() int {
 	fake.lockMutex.RLock()
 	defer fake.lockMutex.RUnlock()
 	return len(fake.lockArgsForCall)
 }
 
-func (fake *Locker) LockArgsForCall(i int) string {
+func (fake *NamedLocker) LockArgsForCall(i int) string {
 	fake.lockMutex.RLock()
 	defer fake.lockMutex.RUnlock()
-	return fake.lockArgsForCall[i].arg1
+	return fake.lockArgsForCall[i].name
 }
 
-func (fake *Locker) Unlock(arg1 string) {
+func (fake *NamedLocker) Unlock(name string) {
 	fake.unlockMutex.Lock()
 	fake.unlockArgsForCall = append(fake.unlockArgsForCall, struct {
-		arg1 string
-	}{arg1})
+		name string
+	}{name})
 	fake.unlockMutex.Unlock()
 	if fake.UnlockStub != nil {
-		fake.UnlockStub(arg1)
+		fake.UnlockStub(name)
 	}
 }
 
-func (fake *Locker) UnlockCallCount() int {
+func (fake *NamedLocker) UnlockCallCount() int {
 	fake.unlockMutex.RLock()
 	defer fake.unlockMutex.RUnlock()
 	return len(fake.unlockArgsForCall)
 }
 
-func (fake *Locker) UnlockArgsForCall(i int) string {
+func (fake *NamedLocker) UnlockArgsForCall(i int) string {
 	fake.unlockMutex.RLock()
 	defer fake.unlockMutex.RUnlock()
-	return fake.unlockArgsForCall[i].arg1
+	return fake.unlockArgsForCall[i].name
 }
 
-var _ commands.Locker = new(Locker)
+var _ threading.NamedLocker = new(NamedLocker)

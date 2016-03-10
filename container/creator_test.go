@@ -8,7 +8,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -27,7 +26,7 @@ var _ = Describe("Setup", func() {
 		config            container.CreatorConfig
 		sandboxRepository *fakes.Repository
 		sandboxNS         namespace.Namespace
-		locker            *comm_fakes.Locker
+		namedLocker       *fakes.NamedLocker
 		missWatcher       watcher.MissWatcher
 		commandBuilder    *fakes.CommandBuilder
 	)
@@ -35,13 +34,13 @@ var _ = Describe("Setup", func() {
 	BeforeEach(func() {
 		ex = &fakes.Executor{}
 		sandboxRepository = &fakes.Repository{}
-		locker = &comm_fakes.Locker{}
+		namedLocker = &fakes.NamedLocker{}
 		missWatcher = &fakes.MissWatcher{}
 		commandBuilder = &fakes.CommandBuilder{}
 		creator = container.Creator{
 			Executor:       ex,
 			SandboxRepo:    sandboxRepository,
-			Locker:         locker,
+			NamedLocker:    namedLocker,
 			Watcher:        missWatcher,
 			CommandBuilder: commandBuilder,
 		}
@@ -114,10 +113,10 @@ var _ = Describe("Setup", func() {
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(locker.LockCallCount()).To(Equal(1))
-		Expect(locker.UnlockCallCount()).To(Equal(1))
-		Expect(locker.LockArgsForCall(0)).To(Equal("vni-99"))
-		Expect(locker.UnlockArgsForCall(0)).To(Equal("vni-99"))
+		Expect(namedLocker.LockCallCount()).To(Equal(1))
+		Expect(namedLocker.UnlockCallCount()).To(Equal(1))
+		Expect(namedLocker.LockArgsForCall(0)).To(Equal("vni-99"))
+		Expect(namedLocker.UnlockArgsForCall(0)).To(Equal("vni-99"))
 	})
 
 	It("should execute the IdempotentlyCreateSandbox command group", func() {

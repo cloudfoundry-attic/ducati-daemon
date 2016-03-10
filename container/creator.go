@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
@@ -24,7 +25,7 @@ type commandBuilder interface {
 type Creator struct {
 	Executor       executor.Executor
 	SandboxRepo    namespace.Repository
-	Locker         commands.Locker
+	NamedLocker    threading.NamedLocker
 	Watcher        watcher.MissWatcher
 	CommandBuilder commandBuilder
 }
@@ -51,8 +52,8 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 
 	var routeCommands = c.CommandBuilder.AddRoutes(config.InterfaceName, config.IPAMResult.IP4)
 
-	c.Locker.Lock(sandboxName)
-	defer c.Locker.Unlock(sandboxName)
+	c.NamedLocker.Lock(sandboxName)
+	defer c.NamedLocker.Unlock(sandboxName)
 
 	err := c.Executor.Execute(
 		commands.All(

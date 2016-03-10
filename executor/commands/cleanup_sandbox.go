@@ -6,18 +6,13 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/threading"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
-//go:generate counterfeiter --fake-name Locker . Locker
-type Locker interface {
-	Lock(string)
-	Unlock(string)
-}
-
 type CleanupSandbox struct {
 	Namespace       namespace.Namespace
-	Locker          Locker
+	NamedLocker     threading.NamedLocker
 	Watcher         watcher.MissWatcher
 	VxlanDeviceName string
 }
@@ -25,8 +20,8 @@ type CleanupSandbox struct {
 func (c CleanupSandbox) Execute(context executor.Context) error {
 	sandboxName := c.Namespace.Name()
 
-	c.Locker.Lock(sandboxName)
-	defer c.Locker.Unlock(sandboxName)
+	c.NamedLocker.Lock(sandboxName)
+	defer c.NamedLocker.Unlock(sandboxName)
 
 	var vethLinkCount = 0
 	err := c.Namespace.Execute(func(ns *os.File) error {

@@ -5,7 +5,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 
@@ -17,18 +16,18 @@ var _ = Describe("Delete", func() {
 	var (
 		deletor           container.Deletor
 		executor          *fakes.Executor
-		sandboxRepoLocker *cmd_fakes.Locker
+		sandboxRepoLocker *fakes.NamedLocker
 		watcher           *fakes.MissWatcher
 	)
 
 	BeforeEach(func() {
 		executor = &fakes.Executor{}
-		sandboxRepoLocker = &cmd_fakes.Locker{}
+		sandboxRepoLocker = &fakes.NamedLocker{}
 		watcher = &fakes.MissWatcher{}
 		deletor = container.Deletor{
-			Executor: executor,
-			Locker:   sandboxRepoLocker,
-			Watcher:  watcher,
+			Executor:    executor,
+			NamedLocker: sandboxRepoLocker,
+			Watcher:     watcher,
 		}
 	})
 
@@ -56,7 +55,7 @@ var _ = Describe("Delete", func() {
 
 				commands.CleanupSandbox{
 					Namespace:       namespace.NewNamespace("/some/sandbox/namespace/path"),
-					Locker:          sandboxRepoLocker,
+					NamedLocker:     sandboxRepoLocker,
 					Watcher:         watcher,
 					VxlanDeviceName: "some-vxlan",
 				},
@@ -78,5 +77,4 @@ var _ = Describe("Delete", func() {
 			Expect(err).To(MatchError("boom"))
 		})
 	})
-
 })
