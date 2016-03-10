@@ -3,9 +3,9 @@ package container_test
 import (
 	"errors"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
-	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"

@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/appc/cni/pkg/types"
-	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 

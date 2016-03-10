@@ -1,6 +1,6 @@
 package executor
 
-import "github.com/cloudfoundry-incubator/ducati-daemon/commands"
+import "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 
 //go:generate counterfeiter --fake-name AddressManager . AddressManager
 type AddressManager interface {

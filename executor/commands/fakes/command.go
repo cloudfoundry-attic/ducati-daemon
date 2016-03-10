@@ -4,7 +4,6 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 )
 
@@ -81,4 +80,4 @@ func (fake *Command) StringReturns(result1 string) {
 	}{result1}
 }
 
-var _ executor.Command = new(Command)
+var _ commands.Command = new(Command)

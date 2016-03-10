@@ -1,8 +1,8 @@
 package container
 
 import (
-	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )

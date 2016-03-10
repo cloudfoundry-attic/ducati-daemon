@@ -5,10 +5,10 @@ import (
 	"net"
 
 	"github.com/appc/cni/pkg/types"
-	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
-	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/commands/fakes"
-	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/conditions/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions/fakes"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
