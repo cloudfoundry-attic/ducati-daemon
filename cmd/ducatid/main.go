@@ -146,13 +146,20 @@ func main() {
 	}
 	missWatcher := watcher.New(logger, subscriber, &sync.Mutex{})
 
+	commandBuilder := &container.CommandBuilder{
+		SandboxRepo:   sandboxRepo,
+		MissWatcher:   missWatcher,
+		LinkFinder:    linkFactory,
+		HostNamespace: namespace.NewNamespace("/proc/self/ns/net"),
+	}
 	executor := executor.New(addressManager, routeManager, linkFactory)
 	creator := &container.Creator{
-		LinkFinder:  linkFactory,
-		Executor:    executor,
-		SandboxRepo: sandboxRepo,
-		Locker:      globalLocker,
-		Watcher:     missWatcher,
+		LinkFinder:     linkFactory,
+		Executor:       executor,
+		SandboxRepo:    sandboxRepo,
+		Locker:         globalLocker,
+		Watcher:        missWatcher,
+		CommandBuilder: commandBuilder,
 	}
 	deletor := &container.Deletor{
 		Executor: executor,

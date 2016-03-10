@@ -13,12 +13,22 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
+//go:generate counterfeiter -o ../fakes/command_builder.go --fake-name CommandBuilder . commandBuilder
+type commandBuilder interface {
+	IdempotentlyCreateSandbox(sandboxName string) commands.Command
+	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) commands.Command
+	AddRoutes(interfaceName string, ipConfig *types.IPConfig) commands.Command
+	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand commands.Command) commands.Command
+	IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) commands.Command
+}
+
 type Creator struct {
-	LinkFinder  conditions.LinkFinder
-	Executor    executor.Executor
-	SandboxRepo namespace.Repository
-	Locker      commands.Locker
-	Watcher     watcher.MissWatcher
+	LinkFinder     conditions.LinkFinder
+	Executor       executor.Executor
+	SandboxRepo    namespace.Repository
+	Locker         commands.Locker
+	Watcher        watcher.MissWatcher
+	CommandBuilder commandBuilder
 }
 
 type CreatorConfig struct {
@@ -33,148 +43,25 @@ type CreatorConfig struct {
 }
 
 func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
-	hostNamespace := namespace.NewNamespace(fmt.Sprintf("/proc/self/ns/net"))
 	vxlanName := fmt.Sprintf("vxlan%d", config.VNI)
 	sandboxName := fmt.Sprintf("vni-%d", config.VNI)
 	containerNS := namespace.NewNamespace(config.ContainerNsPath)
-
-	sandboxNSPath := c.SandboxRepo.PathOf(sandboxName)
-	sandboxNS := namespace.NewNamespace(sandboxNSPath)
-
 	sandboxLinkName := config.ContainerID
 	if len(sandboxLinkName) > 15 {
 		sandboxLinkName = sandboxLinkName[:15]
 	}
 
-	var routeCommands []commands.Command
-	for _, route := range config.IPAMResult.IP4.Routes {
-		routeCommand := commands.AddRoute{
-			Interface:   config.InterfaceName,
-			Destination: route.Dst,
-			Gateway:     route.GW,
-		}
-
-		if routeCommand.Gateway == nil {
-			routeCommand.Gateway = config.IPAMResult.IP4.Gateway
-		}
-
-		routeCommands = append(routeCommands, routeCommand)
-	}
+	var routeCommands = c.CommandBuilder.AddRoutes(config.InterfaceName, config.IPAMResult.IP4)
 
 	c.Locker.Lock(sandboxName)
 	defer c.Locker.Unlock(sandboxName)
 
 	err := c.Executor.Execute(
 		commands.All(
-			commands.Unless{
-				Condition: conditions.NamespaceExists{
-					Name:       sandboxName,
-					Repository: c.SandboxRepo,
-				},
-				Command: commands.All(
-					commands.CreateNamespace{
-						Name:       sandboxName,
-						Repository: c.SandboxRepo,
-					},
-					commands.StartMonitor{
-						Watcher:   c.Watcher,
-						Namespace: sandboxNS,
-					},
-				),
-			},
-			commands.InNamespace{
-				Namespace: sandboxNS,
-				Command: commands.Unless{
-					Condition: conditions.LinkExists{
-						LinkFinder: c.LinkFinder,
-						Name:       vxlanName,
-					},
-					Command: commands.All(
-						commands.InNamespace{
-							Namespace: hostNamespace,
-							Command: commands.All(
-								commands.CreateVxlan{
-									Name: vxlanName,
-									VNI:  config.VNI,
-								},
-								commands.MoveLink{
-									Namespace: sandboxNSPath,
-									Name:      vxlanName,
-								},
-							),
-						},
-						commands.InNamespace{
-							Namespace: sandboxNS,
-							Command: commands.SetLinkUp{
-								LinkName: vxlanName,
-							},
-						},
-					),
-				},
-			},
-			commands.InNamespace{
-				Namespace: containerNS,
-				Command: commands.Group(
-					append(
-						[]commands.Command{
-							commands.CreateVeth{
-								Name:     config.InterfaceName,
-								PeerName: sandboxLinkName,
-								MTU:      1450,
-							},
-							commands.MoveLink{
-								Name:      sandboxLinkName,
-								Namespace: sandboxNSPath,
-							},
-							commands.AddAddress{
-								InterfaceName: config.InterfaceName,
-								Address:       config.IPAMResult.IP4.IP,
-							},
-							commands.SetLinkUp{
-								LinkName: config.InterfaceName,
-							},
-						},
-						routeCommands...,
-					),
-				),
-			},
-			commands.InNamespace{
-				Namespace: sandboxNS,
-				Command: commands.All(
-					commands.SetLinkUp{
-						LinkName: sandboxLinkName,
-					},
-					commands.Unless{
-						Condition: conditions.LinkExists{
-							LinkFinder: c.LinkFinder,
-							Name:       config.BridgeName,
-						},
-						Command: commands.All(
-							commands.CreateBridge{
-								Name: config.BridgeName,
-							},
-							commands.AddAddress{
-								InterfaceName: config.BridgeName,
-								Address: net.IPNet{
-									IP:   config.IPAMResult.IP4.Gateway,
-									Mask: config.IPAMResult.IP4.IP.Mask,
-								},
-							},
-							commands.SetLinkUp{
-								LinkName: config.BridgeName,
-							},
-						),
-					},
-					commands.SetLinkMaster{
-						Master: config.BridgeName,
-						Slave:  vxlanName,
-					},
-					commands.SetLinkMaster{
-						Master: config.BridgeName,
-						Slave:  sandboxLinkName,
-					},
-				),
-			},
+			c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName),
+			c.CommandBuilder.IdempotentlyCreateVxlan(vxlanName, config.VNI, sandboxName),
+			c.CommandBuilder.SetupVeth(containerNS, sandboxLinkName, config.InterfaceName, config.IPAMResult.IP4.IP, sandboxName, routeCommands),
+			c.CommandBuilder.IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName, config.BridgeName, config.IPAMResult),
 		),
 	)
 	if err != nil {

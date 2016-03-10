@@ -2,13 +2,11 @@ package container_test
 
 import (
 	"errors"
-	"fmt"
 	"net"
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/commands"
 	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/commands/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/conditions"
 	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/conditions/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
@@ -33,6 +31,7 @@ var _ = Describe("Setup", func() {
 		sandboxNS         namespace.Namespace
 		locker            *comm_fakes.Locker
 		missWatcher       watcher.MissWatcher
+		commandBuilder    *fakes.CommandBuilder
 	)
 
 	BeforeEach(func() {
@@ -41,12 +40,14 @@ var _ = Describe("Setup", func() {
 		sandboxRepository = &fakes.Repository{}
 		locker = &comm_fakes.Locker{}
 		missWatcher = &fakes.MissWatcher{}
+		commandBuilder = &fakes.CommandBuilder{}
 		creator = container.Creator{
-			Executor:    executor,
-			LinkFinder:  linkFinder,
-			SandboxRepo: sandboxRepository,
-			Locker:      locker,
-			Watcher:     missWatcher,
+			Executor:       executor,
+			LinkFinder:     linkFinder,
+			SandboxRepo:    sandboxRepository,
+			Locker:         locker,
+			Watcher:        missWatcher,
+			CommandBuilder: commandBuilder,
 		}
 
 		var err error
@@ -92,13 +93,25 @@ var _ = Describe("Setup", func() {
 		config = container.CreatorConfig{
 			NetworkID:       "some-crazy-network-id",
 			ContainerNsPath: "/some/container/namespace",
-			ContainerID:     "sandbox-link",
+			ContainerID:     "123456789012345",
 			InterfaceName:   "container-link",
 			BridgeName:      "vxlan-br0",
 			VNI:             99,
 			HostIP:          "10.11.12.13",
 			IPAMResult:      ipamResult,
 		}
+	})
+
+	It("should return the info about the container", func() {
+		container, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(container).To(Equal(models.Container{
+			NetworkID: "some-crazy-network-id",
+			ID:        "123456789012345",
+			MAC:       "01:02:03:04:05:06",
+			IP:        "192.168.100.2",
+			HostIP:    "10.11.12.13",
+		}))
 	})
 
 	It("should synchronize all operations by locking on the sandbox", func() {
@@ -111,294 +124,118 @@ var _ = Describe("Setup", func() {
 		Expect(locker.UnlockArgsForCall(0)).To(Equal("vni-99"))
 	})
 
-	It("should return a container that has been setup", func() {
-		container, err := creator.Setup(config)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(container).To(Equal(models.Container{
-			NetworkID: "some-crazy-network-id",
-			ID:        "sandbox-link",
-			MAC:       "01:02:03:04:05:06",
-			IP:        "192.168.100.2",
-			HostIP:    "10.11.12.13",
-		}))
+	It("should execute the IdempotentlyCreateSandbox command group", func() {
+		createSandboxResult := &comm_fakes.Command{}
+		commandBuilder.IdempotentlyCreateSandboxReturns(createSandboxResult)
 
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
 		Expect(executor.ExecuteCallCount()).To(Equal(2))
 
-		Expect(executor.ExecuteArgsForCall(0)).To(BeEquivalentTo(
-			commands.All(
-				commands.Unless{
-					Condition: conditions.NamespaceExists{
-						Name:       fmt.Sprintf("vni-%d", config.VNI),
-						Repository: sandboxRepository,
-					},
-					Command: commands.All(
-						commands.CreateNamespace{
-							Name:       fmt.Sprintf("vni-%d", config.VNI),
-							Repository: sandboxRepository,
-						},
-						commands.StartMonitor{
-							Watcher:   missWatcher,
-							Namespace: sandboxNS,
-						},
-					),
-				},
-				commands.InNamespace{
-					Namespace: sandboxNS,
-					Command: commands.Unless{
-						Condition: conditions.LinkExists{
-							LinkFinder: linkFinder,
-							Name:       "vxlan99",
-						},
-						Command: commands.All(
-							commands.InNamespace{
-								Namespace: namespace.NewNamespace("/proc/self/ns/net"),
-								Command: commands.All(
-									commands.CreateVxlan{
-										Name: "vxlan99",
-										VNI:  99,
-									},
-									commands.MoveLink{
-										Namespace: "/some/sandbox/namespace",
-										Name:      "vxlan99",
-									},
-								),
-							},
-							commands.InNamespace{
-								Namespace: namespace.NewNamespace("/some/sandbox/namespace"),
-								Command: commands.SetLinkUp{
-									LinkName: "vxlan99",
-								},
-							},
-						),
-					},
-				},
-				commands.InNamespace{
-					Namespace: namespace.NewNamespace("/some/container/namespace"),
-					Command: commands.Group{
-						commands.CreateVeth{
-							Name:     "container-link",
-							PeerName: "sandbox-link",
-							MTU:      1450,
-						},
-						commands.MoveLink{
-							Name:      "sandbox-link",
-							Namespace: "/some/sandbox/namespace",
-						},
-						commands.AddAddress{
-							InterfaceName: "container-link",
-							Address: net.IPNet{
-								IP:   net.ParseIP("192.168.100.2"),
-								Mask: net.CIDRMask(24, 32),
-							},
-						},
-						commands.SetLinkUp{
-							LinkName: "container-link",
-						},
-						commands.AddRoute{
-							Interface: "container-link",
-							Destination: net.IPNet{
-								IP:   net.ParseIP("192.168.1.5"),
-								Mask: net.CIDRMask(24, 32),
-							},
-							Gateway: net.ParseIP("192.168.1.1"),
-						},
-						commands.AddRoute{
-							Interface: "container-link",
-							Destination: net.IPNet{
-								IP:   net.ParseIP("192.168.2.5"),
-								Mask: net.CIDRMask(24, 32),
-							},
-							Gateway: net.ParseIP("192.168.1.99"),
-						},
-					},
-				},
-				commands.InNamespace{
-					Namespace: namespace.NewNamespace("/some/sandbox/namespace"),
-					Command: commands.All(
-						commands.SetLinkUp{
-							LinkName: "sandbox-link",
-						},
-						commands.Unless{
-							Condition: conditions.LinkExists{
-								LinkFinder: linkFinder,
-								Name:       "vxlan-br0",
-							},
-							Command: commands.All(
-								commands.CreateBridge{
-									Name: "vxlan-br0",
-								},
-								commands.AddAddress{
-									InterfaceName: "vxlan-br0",
-									Address: net.IPNet{
-										IP:   net.ParseIP("192.168.100.1"),
-										Mask: net.CIDRMask(24, 32),
-									},
-								},
-								commands.SetLinkUp{
-									LinkName: "vxlan-br0",
-								},
-							),
-						},
-						commands.SetLinkMaster{
-							Master: "vxlan-br0",
-							Slave:  "vxlan99",
-						},
-						commands.SetLinkMaster{
-							Master: "vxlan-br0",
-							Slave:  "sandbox-link",
-						},
-					),
-				},
-			),
-		))
+		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		Expect(commandGroup[0]).To(Equal(createSandboxResult))
+
+		sandboxName := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
+		Expect(sandboxName).To(Equal("vni-99"))
 	})
 
-	Context("when the container ID is longer than 15 characters", func() {
-		BeforeEach(func() {
-			config = container.CreatorConfig{
-				NetworkID:       "some-other-network-id",
-				ContainerNsPath: "/some/container/namespace",
-				ContainerID:     "1234567890123456",
-				InterfaceName:   "container-link",
-				BridgeName:      "vxlan-br0",
-				VNI:             99,
-				HostIP:          "10.11.12.13",
-				IPAMResult:      ipamResult,
-			}
-		})
+	It("should execute the IdempotentlyCreateVxlan command group", func() {
+		createVxlanResult := &comm_fakes.Command{}
+		commandBuilder.IdempotentlyCreateVxlanReturns(createVxlanResult)
 
-		It("truncates the sandbox link name", func() {
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(executor.ExecuteCallCount()).To(Equal(2))
+
+		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		Expect(commandGroup[1]).To(Equal(createVxlanResult))
+
+		vxlanName, vni, sandboxName := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
+		Expect(vxlanName).To(Equal("vxlan99"))
+		Expect(vni).To(Equal(99))
+		Expect(sandboxName).To(Equal("vni-99"))
+	})
+
+	It("should execute the SetupVeth command group, including the route commands", func() {
+		setupContainerResult := &comm_fakes.Command{}
+		fakeRouteCommands := &comm_fakes.Command{}
+
+		commandBuilder.SetupVethReturns(setupContainerResult)
+		commandBuilder.AddRoutesReturns(fakeRouteCommands)
+
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+
+		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		Expect(commandGroup[2]).To(Equal(setupContainerResult))
+
+		containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommands := commandBuilder.SetupVethArgsForCall(0)
+		Expect(containerNS).To(Equal(namespace.NewNamespace("/some/container/namespace")))
+		Expect(sandboxLinkName).To(Equal("123456789012345"))
+		Expect(containerLinkName).To(Equal("container-link"))
+		Expect(address).To(Equal(ipamResult.IP4.IP))
+		Expect(sandboxName).To(Equal("vni-99"))
+		Expect(routeCommands).To(BeIdenticalTo(fakeRouteCommands))
+	})
+
+	It("should execute the IdempotentlySetupBridge command group", func() {
+		setupBridgeResult := &comm_fakes.Command{}
+
+		commandBuilder.IdempotentlySetupBridgeReturns(setupBridgeResult)
+
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+
+		commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+		Expect(commandGroup[3]).To(Equal(setupBridgeResult))
+
+		vxlanName, sandboxLinkName, sandboxName, bridgeName, ipamResult := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
+		Expect(vxlanName).To(Equal("vxlan99"))
+		Expect(sandboxLinkName).To(Equal("123456789012345"))
+		Expect(sandboxName).To(Equal("vni-99"))
+		Expect(bridgeName).To(Equal("vxlan-br0"))
+		Expect(ipamResult).To(Equal(types.Result{
+			IP4: &types.IPConfig{
+				IP: net.IPNet{
+					IP:   net.ParseIP("192.168.100.2"),
+					Mask: net.CIDRMask(24, 32),
+				},
+				Gateway: net.ParseIP("192.168.100.1"),
+				Routes: []types.Route{{
+					Dst: net.IPNet{
+						IP:   net.ParseIP("192.168.1.5"),
+						Mask: net.CIDRMask(24, 32),
+					},
+					GW: net.ParseIP("192.168.1.1"),
+				}, {
+					Dst: net.IPNet{
+						IP:   net.ParseIP("192.168.2.5"),
+						Mask: net.CIDRMask(24, 32),
+					},
+					GW: net.ParseIP("192.168.1.99"),
+				}},
+			},
+		}))
+	})
+
+	Context("when the container ID is very long", func() {
+		It("keeps the sandbox link name short", func() {
+			setupBridgeResult := &comm_fakes.Command{}
+
+			commandBuilder.IdempotentlySetupBridgeReturns(setupBridgeResult)
+			config.ContainerID = "1234567890123456789"
+
 			_, err := creator.Setup(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(executor.ExecuteCallCount()).To(Equal(2))
-			Expect(executor.ExecuteArgsForCall(0)).To(BeEquivalentTo(
-				commands.All(
-					commands.Unless{
-						Condition: conditions.NamespaceExists{
-							Name:       fmt.Sprintf("vni-%d", config.VNI),
-							Repository: sandboxRepository,
-						},
-						Command: commands.All(
-							commands.CreateNamespace{
-								Name:       fmt.Sprintf("vni-%d", config.VNI),
-								Repository: sandboxRepository,
-							},
-							commands.StartMonitor{
-								Watcher:   missWatcher,
-								Namespace: sandboxNS,
-							},
-						),
-					},
-					commands.InNamespace{
-						Namespace: sandboxNS,
-						Command: commands.Unless{
-							Condition: conditions.LinkExists{
-								LinkFinder: linkFinder,
-								Name:       "vxlan99",
-							},
-							Command: commands.All(
-								commands.InNamespace{
-									Namespace: namespace.NewNamespace("/proc/self/ns/net"),
-									Command: commands.All(
-										commands.CreateVxlan{
-											Name: "vxlan99",
-											VNI:  99,
-										},
-										commands.MoveLink{
-											Namespace: "/some/sandbox/namespace",
-											Name:      "vxlan99",
-										},
-									),
-								},
-								commands.InNamespace{
-									Namespace: namespace.NewNamespace("/some/sandbox/namespace"),
-									Command: commands.SetLinkUp{
-										LinkName: "vxlan99",
-									},
-								},
-							),
-						},
-					},
-					commands.InNamespace{
-						Namespace: namespace.NewNamespace("/some/container/namespace"),
-						Command: commands.Group{
-							commands.CreateVeth{
-								Name:     "container-link",
-								PeerName: "123456789012345",
-								MTU:      1450,
-							},
-							commands.MoveLink{
-								Name:      "123456789012345",
-								Namespace: "/some/sandbox/namespace",
-							},
-							commands.AddAddress{
-								InterfaceName: "container-link",
-								Address: net.IPNet{
-									IP:   net.ParseIP("192.168.100.2"),
-									Mask: net.CIDRMask(24, 32),
-								},
-							},
-							commands.SetLinkUp{
-								LinkName: "container-link",
-							},
-							commands.AddRoute{
-								Interface: "container-link",
-								Destination: net.IPNet{
-									IP:   net.ParseIP("192.168.1.5"),
-									Mask: net.CIDRMask(24, 32),
-								},
-								Gateway: net.ParseIP("192.168.1.1"),
-							},
-							commands.AddRoute{
-								Interface: "container-link",
-								Destination: net.IPNet{
-									IP:   net.ParseIP("192.168.2.5"),
-									Mask: net.CIDRMask(24, 32),
-								},
-								Gateway: net.ParseIP("192.168.1.99"),
-							},
-						},
-					},
-					commands.InNamespace{
-						Namespace: sandboxNS,
-						Command: commands.All(
-							commands.SetLinkUp{
-								LinkName: "123456789012345",
-							},
-							commands.Unless{
-								Condition: conditions.LinkExists{
-									LinkFinder: linkFinder,
-									Name:       "vxlan-br0",
-								},
-								Command: commands.All(
-									commands.CreateBridge{
-										Name: "vxlan-br0",
-									},
-									commands.AddAddress{
-										InterfaceName: "vxlan-br0",
-										Address: net.IPNet{
-											IP:   net.ParseIP("192.168.100.1"),
-											Mask: net.CIDRMask(24, 32),
-										},
-									},
-									commands.SetLinkUp{
-										LinkName: "vxlan-br0",
-									},
-								),
-							},
-							commands.SetLinkMaster{
-								Master: "vxlan-br0",
-								Slave:  "vxlan99",
-							},
-							commands.SetLinkMaster{
-								Master: "vxlan-br0",
-								Slave:  "123456789012345",
-							},
-						),
-					},
-				),
-			))
+			commandGroup := (executor.ExecuteArgsForCall(0)).(commands.Group)
+			Expect(commandGroup[3]).To(Equal(setupBridgeResult))
+
+			_, sandboxLinkName, _, _, _ := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
+			Expect(sandboxLinkName).To(Equal("123456789012345"))
+
+			_, sandboxLinkName, _, _, _, _ = commandBuilder.SetupVethArgsForCall(0)
+			Expect(sandboxLinkName).To(Equal("123456789012345"))
 		})
 	})
 
