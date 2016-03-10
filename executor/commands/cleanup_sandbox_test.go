@@ -15,7 +15,7 @@ import (
 var _ = Describe("CleanupSandbox", func() {
 	var (
 		context               *fakes.Context
-		sandboxNS             *cmd_fakes.CleanableNamespace
+		sandboxNS             *fakes.Namespace
 		locker                *cmd_fakes.Locker
 		linkFactory           *fakes.LinkFactory
 		cleanupSandboxCommand commands.CleanupSandbox
@@ -24,7 +24,7 @@ var _ = Describe("CleanupSandbox", func() {
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
-		sandboxNS = &cmd_fakes.CleanableNamespace{}
+		sandboxNS = &fakes.Namespace{}
 		sandboxNS.NameReturns("some-sandbox-name")
 		locker = &cmd_fakes.Locker{}
 		linkFactory = &fakes.LinkFactory{}

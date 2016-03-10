@@ -5,16 +5,11 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
-//go:generate counterfeiter --fake-name Namespace . Namespace
-type Namespace interface {
-	Execute(func(*os.File) error) error
-	Path() string
-}
-
 type InNamespace struct {
-	Namespace Namespace
+	Namespace namespace.Namespace
 	Command   executor.Command
 }
 

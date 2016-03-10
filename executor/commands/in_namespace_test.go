@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,7 +13,7 @@ import (
 var _ = Describe("ExecuteInNamespace", func() {
 	var (
 		context   *fakes.Context
-		namespace *cmd_fakes.Namespace
+		namespace *fakes.Namespace
 		command   *fakes.Command
 
 		inNamespace commands.InNamespace
@@ -25,7 +24,7 @@ var _ = Describe("ExecuteInNamespace", func() {
 		command = &fakes.Command{}
 		command.StringReturns("some-command")
 
-		namespace = &cmd_fakes.Namespace{}
+		namespace = &fakes.Namespace{}
 		namespace.PathReturns("/some/namespace")
 
 		namespace.ExecuteStub = func(callback func(*os.File) error) error {

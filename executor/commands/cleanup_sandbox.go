@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
@@ -14,15 +15,8 @@ type Locker interface {
 	Unlock(string)
 }
 
-//go:generate counterfeiter --fake-name CleanableNamespace . cleanableNamespace
-type cleanableNamespace interface {
-	Destroy() error
-	Name() string
-	Namespace
-}
-
 type CleanupSandbox struct {
-	Namespace       cleanableNamespace
+	Namespace       namespace.Namespace
 	Locker          Locker
 	Watcher         watcher.MissWatcher
 	VxlanDeviceName string
