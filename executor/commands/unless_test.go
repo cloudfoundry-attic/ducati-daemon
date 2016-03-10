@@ -4,7 +4,9 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
+	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -12,18 +14,18 @@ import (
 var _ = Describe("unless", func() {
 	var (
 		context   *fakes.Context
-		condition *fakes.Condition
-		command   *fakes.Command
+		condition *cond_fakes.Condition
+		command   *cmd_fakes.Command
 		unless    commands.Unless
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
 
-		condition = &fakes.Condition{}
+		condition = &cond_fakes.Condition{}
 		condition.StringReturns("condition")
 
-		command = &fakes.Command{}
+		command = &cmd_fakes.Command{}
 		command.StringReturns("command")
 
 		unless = commands.Unless{

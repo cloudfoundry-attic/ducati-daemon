@@ -3,6 +3,7 @@ package executor_test
 import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	cmd_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,7 +14,7 @@ var _ = Describe("Executor", func() {
 		addressManager *fakes.AddressManager
 		routeManager   *fakes.RouteManager
 		linkFactory    *fakes.LinkFactory
-		command        *fakes.Command
+		command        *cmd_fakes.Command
 		ex             executor.Executor
 	)
 
@@ -21,7 +22,7 @@ var _ = Describe("Executor", func() {
 		addressManager = &fakes.AddressManager{}
 		routeManager = &fakes.RouteManager{}
 		linkFactory = &fakes.LinkFactory{}
-		command = &fakes.Command{}
+		command = &cmd_fakes.Command{}
 
 		ex = executor.New(addressManager, routeManager, linkFactory)
 	})

@@ -11,7 +11,7 @@ type NamespaceExists struct {
 	Repository namespace.Repository
 }
 
-func (n NamespaceExists) Satisfied(_ interface{}) bool {
+func (n NamespaceExists) Satisfied(context Context) bool {
 	_, err := n.Repository.Get(n.Name)
 	return err == nil
 }

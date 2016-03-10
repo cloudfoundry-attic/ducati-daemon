@@ -12,7 +12,7 @@ type LinkExists struct {
 	Name       string
 }
 
-func (l LinkExists) Satisfied(_ interface{}) bool {
+func (l LinkExists) Satisfied(context Context) bool {
 	return l.LinkFinder.Exists(l.Name)
 }
 

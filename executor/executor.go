@@ -1,6 +1,9 @@
 package executor
 
-import "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+import (
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
+)
 
 //go:generate counterfeiter --fake-name AddressManager . AddressManager
 type AddressManager interface {
@@ -25,14 +28,15 @@ type LinkFactory interface {
 	commands.VethDeviceCounter
 }
 
-//go:generate counterfeiter --fake-name Command . Command
-type Command interface {
-	commands.Command
-}
-
 //go:generate counterfeiter --fake-name Executor . Executor
 type Executor interface {
 	Execute(commands.Command) error
+}
+
+//go:generate counterfeiter --fake-name Context . Context
+type Context interface {
+	conditions.Context
+	commands.Context
 }
 
 func New(

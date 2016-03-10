@@ -27,12 +27,6 @@ type Command interface {
 	String() string
 }
 
-//go:generate counterfeiter --fake-name Condition . Condition
-type Condition interface {
-	Satisfied(interface{}) bool
-	String() string
-}
-
 func All(commands ...Command) Command {
 	return Group(commands)
 }

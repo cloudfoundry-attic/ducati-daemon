@@ -1,9 +1,13 @@
 package commands
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
+)
 
 type Unless struct {
-	Condition Condition
+	Condition conditions.Condition
 	Command   Command
 }
 
