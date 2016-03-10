@@ -149,12 +149,10 @@ func main() {
 	commandBuilder := &container.CommandBuilder{
 		SandboxRepo:   sandboxRepo,
 		MissWatcher:   missWatcher,
-		LinkFinder:    linkFactory,
 		HostNamespace: namespace.NewNamespace("/proc/self/ns/net"),
 	}
 	executor := executor.New(addressManager, routeManager, linkFactory)
 	creator := &container.Creator{
-		LinkFinder:     linkFactory,
 		Executor:       executor,
 		SandboxRepo:    sandboxRepo,
 		Locker:         globalLocker,

@@ -7,7 +7,6 @@ import (
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
-	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
@@ -23,7 +22,6 @@ type commandBuilder interface {
 }
 
 type Creator struct {
-	LinkFinder     conditions.LinkFinder
 	Executor       executor.Executor
 	SandboxRepo    namespace.Repository
 	Locker         commands.Locker

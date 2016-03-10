@@ -15,7 +15,6 @@ type CommandBuilder struct {
 	SandboxRepo   namespace.Repository
 	MissWatcher   watcher.MissWatcher
 	HostNamespace namespace.Namespace
-	LinkFinder    conditions.LinkFinder
 }
 
 func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.Command {
@@ -48,8 +47,7 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sand
 		Namespace: sandboxNS,
 		Command: commands.Unless{
 			Condition: conditions.LinkExists{
-				LinkFinder: b.LinkFinder,
-				Name:       vxlanName,
+				Name: vxlanName,
 			},
 			Command: commands.All(
 				commands.InNamespace{
@@ -140,8 +138,7 @@ func (b *CommandBuilder) IdempotentlySetupBridge(vxlanName, sandboxLinkName, san
 			},
 			commands.Unless{
 				Condition: conditions.LinkExists{
-					LinkFinder: b.LinkFinder,
-					Name:       bridgeName,
+					Name: bridgeName,
 				},
 				Command: commands.All(
 					commands.CreateBridge{

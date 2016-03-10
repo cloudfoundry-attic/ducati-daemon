@@ -8,7 +8,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
-	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 
@@ -57,12 +56,10 @@ var _ = Describe("CommandBuilder", func() {
 			sandboxRepository.PathOfReturns(fakePath)
 			sandboxNS := namespace.NewNamespace(fakePath)
 			hostNamespace := namespace.NewNamespace("/proc/self/ns/net")
-			linkFinder := &cond_fakes.LinkFinder{}
 
 			b := container.CommandBuilder{
 				SandboxRepo:   sandboxRepository,
 				HostNamespace: hostNamespace,
-				LinkFinder:    linkFinder,
 			}
 
 			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name")
@@ -71,8 +68,7 @@ var _ = Describe("CommandBuilder", func() {
 					Namespace: sandboxNS,
 					Command: commands.Unless{
 						Condition: conditions.LinkExists{
-							LinkFinder: linkFinder,
-							Name:       "some-vxlan-name",
+							Name: "some-vxlan-name",
 						},
 						Command: commands.All(
 							commands.InNamespace{
@@ -230,7 +226,6 @@ var _ = Describe("CommandBuilder", func() {
 
 	Describe("IdempotentlySetupBridge", func() {
 		It("returns a command group that sets up the bridge", func() {
-			linkFinder := &cond_fakes.LinkFinder{}
 			sandboxRepository := &fakes.Repository{}
 
 			sandboxNSPath := "/some/repo/path/some-sandbox-name"
@@ -238,7 +233,6 @@ var _ = Describe("CommandBuilder", func() {
 
 			b := container.CommandBuilder{
 				SandboxRepo: sandboxRepository,
-				LinkFinder:  linkFinder,
 			}
 
 			ipamResult := types.Result{
@@ -271,8 +265,7 @@ var _ = Describe("CommandBuilder", func() {
 						},
 						commands.Unless{
 							Condition: conditions.LinkExists{
-								LinkFinder: linkFinder,
-								Name:       "some-bridge-name",
+								Name: "some-bridge-name",
 							},
 							Command: commands.All(
 								commands.CreateBridge{

@@ -44,6 +44,14 @@ type LinkFactory struct {
 	deleteLinkByNameReturns struct {
 		result1 error
 	}
+	ExistsStub        func(name string) bool
+	existsMutex       sync.RWMutex
+	existsArgsForCall []struct {
+		name string
+	}
+	existsReturns struct {
+		result1 bool
+	}
 	HardwareAddressStub        func(linkName string) (net.HardwareAddr, error)
 	hardwareAddressMutex       sync.RWMutex
 	hardwareAddressArgsForCall []struct {
@@ -216,6 +224,38 @@ func (fake *LinkFactory) DeleteLinkByNameReturns(result1 error) {
 	fake.DeleteLinkByNameStub = nil
 	fake.deleteLinkByNameReturns = struct {
 		result1 error
+	}{result1}
+}
+
+func (fake *LinkFactory) Exists(name string) bool {
+	fake.existsMutex.Lock()
+	fake.existsArgsForCall = append(fake.existsArgsForCall, struct {
+		name string
+	}{name})
+	fake.existsMutex.Unlock()
+	if fake.ExistsStub != nil {
+		return fake.ExistsStub(name)
+	} else {
+		return fake.existsReturns.result1
+	}
+}
+
+func (fake *LinkFactory) ExistsCallCount() int {
+	fake.existsMutex.RLock()
+	defer fake.existsMutex.RUnlock()
+	return len(fake.existsArgsForCall)
+}
+
+func (fake *LinkFactory) ExistsArgsForCall(i int) string {
+	fake.existsMutex.RLock()
+	defer fake.existsMutex.RUnlock()
+	return fake.existsArgsForCall[i].name
+}
+
+func (fake *LinkFactory) ExistsReturns(result1 bool) {
+	fake.ExistsStub = nil
+	fake.existsReturns = struct {
+		result1 bool
 	}{result1}
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	comm_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/commands/fakes"
-	cond_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions/fakes"
 	exec_fakes "github.com/cloudfoundry-incubator/ducati-daemon/executor/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -24,7 +23,6 @@ var _ = Describe("Setup", func() {
 	var (
 		creator           container.Creator
 		ex                *exec_fakes.Executor
-		linkFinder        *cond_fakes.LinkFinder
 		containerMAC      net.HardwareAddr
 		ipamResult        types.Result
 		config            container.CreatorConfig
@@ -37,14 +35,12 @@ var _ = Describe("Setup", func() {
 
 	BeforeEach(func() {
 		ex = &exec_fakes.Executor{}
-		linkFinder = &cond_fakes.LinkFinder{}
 		sandboxRepository = &fakes.Repository{}
 		locker = &comm_fakes.Locker{}
 		missWatcher = &fakes.MissWatcher{}
 		commandBuilder = &fakes.CommandBuilder{}
 		creator = container.Creator{
 			Executor:       ex,
-			LinkFinder:     linkFinder,
 			SandboxRepo:    sandboxRepository,
 			Locker:         locker,
 			Watcher:        missWatcher,

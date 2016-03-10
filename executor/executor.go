@@ -18,6 +18,7 @@ type LinkFactory interface {
 	CreateVeth(name, peerName string, mtu int) error
 	CreateVxlan(name string, vni int) error
 	DeleteLinkByName(name string) error
+	Exists(name string) bool
 	HardwareAddress(linkName string) (net.HardwareAddr, error)
 	SetMaster(slave, master string) error
 	SetNamespace(intefaceName, namespace string) error
