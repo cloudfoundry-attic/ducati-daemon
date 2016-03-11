@@ -19,7 +19,7 @@ type commandBuilder interface {
 	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command
 	AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command
 	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command
-	IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command
+	IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command
 }
 
 type Creator struct {
@@ -38,7 +38,7 @@ type CreatorConfig struct {
 	InterfaceName   string
 	HostIP          string
 	VNI             int
-	IPAMResult      types.Result
+	IPAMResult      *types.Result
 }
 
 func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {

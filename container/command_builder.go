@@ -121,7 +121,7 @@ func (b *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkN
 	}
 }
 
-func (b *CommandBuilder) IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command {
+func (b *CommandBuilder) IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command {
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 

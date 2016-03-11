@@ -33,23 +33,40 @@ type DaemonClient struct {
 	HttpClient  *http.Client
 }
 
-func (d *DaemonClient) ContainerUp(networkID, containerID string, payload models.NetworksSetupContainerPayload) error {
+func (d *DaemonClient) ContainerUp(networkID, containerID string, payload models.NetworksSetupContainerPayload) (types.Result, error) {
 	postData, err := d.Marshaler.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal cni payload: %s", err)
+		return types.Result{}, fmt.Errorf("failed to marshal cni payload: %s", err)
 	}
 
 	url := d.buildURL("networks", networkID, containerID)
 	resp, err := d.HttpClient.Post(url, "application/json", bytes.NewReader(postData))
 	if err != nil {
-		return fmt.Errorf("failed to perform request: %s", err)
+		return types.Result{}, fmt.Errorf("failed to perform request: %s", err)
 	}
 	defer resp.Body.Close()
 
-	if statusError := checkStatus("ContainerUp", resp.StatusCode, http.StatusCreated); statusError != nil {
-		return statusError
+	switch resp.StatusCode {
+	case http.StatusConflict:
+		return types.Result{}, ipam.NoMoreAddressesError
+	default:
+		if statusError := checkStatus("ContainerUp", resp.StatusCode, http.StatusCreated); statusError != nil {
+			return types.Result{}, statusError
+		}
 	}
-	return nil
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return types.Result{}, fmt.Errorf("reading response body: %s", err)
+	}
+
+	var ipamResult types.Result
+	err = d.Unmarshaler.Unmarshal(respBytes, &ipamResult)
+	if err != nil {
+		return types.Result{}, fmt.Errorf("failed to unmarshal IPAM result: %s", err)
+	}
+
+	return ipamResult, nil
 }
 
 func (d *DaemonClient) ContainerDown(networkID, containerID string, payload models.NetworksDeleteContainerPayload) error {
@@ -166,57 +183,6 @@ func (d *DaemonClient) RemoveContainer(containerID string) error {
 	}
 
 	if statusError := checkStatus("RemoveContainer", resp.StatusCode, http.StatusNoContent); statusError != nil {
-		return statusError
-	}
-
-	return nil
-}
-
-func (d *DaemonClient) AllocateIP(networkID, containerID string) (types.Result, error) {
-	url := d.buildURL("ipam", networkID, containerID)
-	resp, err := d.HttpClient.Post(url, "application/json", nil)
-	if err != nil {
-		return types.Result{}, fmt.Errorf("failed to perform request: %s", err)
-	}
-	defer resp.Body.Close()
-
-	respBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return types.Result{}, nil // not tested
-	}
-
-	switch resp.StatusCode {
-	case http.StatusCreated:
-	case http.StatusConflict:
-		return types.Result{}, ipam.NoMoreAddressesError
-	default:
-		if statusError := checkStatus("AllocateIP", resp.StatusCode, http.StatusCreated); statusError != nil {
-			return types.Result{}, statusError
-		}
-	}
-
-	var ipamResult types.Result
-	err = d.Unmarshaler.Unmarshal(respBytes, &ipamResult)
-	if err != nil {
-		return types.Result{}, fmt.Errorf("failed to unmarshal IPAM result: %s", err)
-	}
-
-	return ipamResult, nil
-}
-
-func (d *DaemonClient) ReleaseIP(networkID, containerID string) error {
-	url := d.buildURL("ipam", networkID, containerID)
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to construct request: %s", err)
-	}
-
-	resp, err := d.HttpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if statusError := checkStatus("ReleaseIP", resp.StatusCode, http.StatusNoContent); statusError != nil {
 		return statusError
 	}
 

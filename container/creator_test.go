@@ -22,7 +22,7 @@ var _ = Describe("Setup", func() {
 		creator           container.Creator
 		ex                *fakes.Executor
 		containerMAC      net.HardwareAddr
-		ipamResult        types.Result
+		ipamResult        *types.Result
 		config            container.CreatorConfig
 		sandboxRepository *fakes.Repository
 		sandboxNS         namespace.Namespace
@@ -50,7 +50,7 @@ var _ = Describe("Setup", func() {
 		containerMAC, err = net.ParseMAC(macAddress)
 		Expect(err).NotTo(HaveOccurred())
 
-		ipamResult = types.Result{
+		ipamResult = &types.Result{
 			IP4: &types.IPConfig{
 				IP: net.IPNet{
 					IP:   net.ParseIP("192.168.100.2"),
@@ -189,7 +189,7 @@ var _ = Describe("Setup", func() {
 		Expect(sandboxLinkName).To(Equal("123456789012345"))
 		Expect(sandboxName).To(Equal("vni-99"))
 		Expect(bridgeName).To(Equal("vxlan-br0"))
-		Expect(ipamResult).To(Equal(types.Result{
+		Expect(ipamResult).To(Equal(&types.Result{
 			IP4: &types.IPConfig{
 				IP: net.IPNet{
 					IP:   net.ParseIP("192.168.100.2"),

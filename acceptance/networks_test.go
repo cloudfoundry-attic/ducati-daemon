@@ -60,7 +60,7 @@ var _ = Describe("Networks", func() {
 			ducatidPath,
 			"-listenAddr", address,
 			"-overlayNetwork", "192.168.0.0/16",
-			"-localSubnet", "192.168.99.0/24",
+			"-localSubnet", "192.168.1.0/24",
 			"-databaseURL", testDatabase.URL(),
 			"-sandboxRepoDir", sandboxRepoDir,
 		)
@@ -106,34 +106,11 @@ var _ = Describe("Networks", func() {
 			daemonClient = client.New("http://"+address, http.DefaultClient)
 
 			By("generating config and creating the request")
-			ipamResult = types.Result{
-				IP4: &types.IPConfig{
-					IP: net.IPNet{
-						IP:   net.ParseIP("192.168.1.2"),
-						Mask: net.CIDRMask(24, 32),
-					},
-					Gateway: net.ParseIP("192.168.1.1"),
-					Routes: []types.Route{{
-						Dst: net.IPNet{
-							IP:   net.ParseIP("192.168.0.0"),
-							Mask: net.CIDRMask(16, 32),
-						},
-						GW: net.ParseIP("192.168.1.1"),
-					}},
-				},
-			}
-
-			_, destination, err := net.ParseCIDR("10.10.10.0/24")
-			Expect(err).NotTo(HaveOccurred())
-
-			ipamResult.IP4.Routes = append(ipamResult.IP4.Routes, types.Route{Dst: *destination})
-
 			upSpec = models.NetworksSetupContainerPayload{
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Path(),
 				InterfaceName:      "vx-eth0",
 				VNI:                vni,
-				IPAM:               ipamResult,
 			}
 
 			downSpec = models.NetworksDeleteContainerPayload{
@@ -143,7 +120,9 @@ var _ = Describe("Networks", func() {
 			}
 
 			By("adding the container to a network")
-			Expect(daemonClient.ContainerUp(networkID, containerID, upSpec)).To(Succeed())
+			var err error
+			ipamResult, err = daemonClient.ContainerUp(networkID, containerID, upSpec)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -268,7 +247,7 @@ var _ = Describe("Networks", func() {
 
 				routes, err := netlink.RouteList(l, netlink.FAMILY_V4)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(routes).To(HaveLen(3))
+				Expect(routes).To(HaveLen(2))
 
 				var sanitizedRoutes []netlink.Route
 				for _, route := range routes {
@@ -290,12 +269,6 @@ var _ = Describe("Networks", func() {
 				Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
 					Dst: linkLocal,
 					Src: ipamResult.IP4.IP.IP.To4(),
-				}))
-
-				_, dest, err := net.ParseCIDR("10.10.10.0/24")
-				Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
-					Dst: dest,
-					Gw:  ipamResult.IP4.Gateway.To4(),
 				}))
 
 				return nil

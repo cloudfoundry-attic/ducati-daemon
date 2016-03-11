@@ -17,21 +17,26 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/rata"
 )
 
 var _ = Describe("NetworksSetupContainer", func() {
 	var (
-		unmarshaler *fakes.Unmarshaler
-		logger      *lagertest.TestLogger
-		datastore   *fakes.Store
-		ipamResult  types.Result
-		creator     *fakes.Creator
-		handler     http.Handler
-		request     *http.Request
-		osLocker    *fakes.OSThreadLocker
+		unmarshaler         *fakes.Unmarshaler
+		logger              *lagertest.TestLogger
+		datastore           *fakes.Store
+		ipamResult          *types.Result
+		creator             *fakes.Creator
+		handler             http.Handler
+		request             *http.Request
+		osLocker            *fakes.OSThreadLocker
+		marshaler           *fakes.Marshaler
+		ipAllocator         *fakes.IPAllocator
+		expectedResultBytes []byte
 	)
 
 	BeforeEach(func() {
@@ -44,15 +49,22 @@ var _ = Describe("NetworksSetupContainer", func() {
 		datastore = &fakes.Store{}
 		creator = &fakes.Creator{}
 
+		marshaler = &fakes.Marshaler{}
+		marshaler.MarshalStub = json.Marshal
+
+		ipAllocator = &fakes.IPAllocator{}
+
 		setupHandler := &handlers.NetworksSetupContainer{
 			Unmarshaler:    unmarshaler,
 			Logger:         logger,
 			Datastore:      datastore,
 			Creator:        creator,
 			OSThreadLocker: osLocker,
+			Marshaler:      marshaler,
+			IPAllocator:    ipAllocator,
 		}
 
-		ipamResult = types.Result{
+		ipamResult = &types.Result{
 			IP4: &types.IPConfig{
 				IP: net.IPNet{
 					IP:   net.ParseIP("192.168.100.2"),
@@ -74,6 +86,12 @@ var _ = Describe("NetworksSetupContainer", func() {
 				}},
 			},
 		}
+
+		var err error
+		expectedResultBytes, err = json.Marshal(ipamResult)
+		Expect(err).NotTo(HaveOccurred())
+
+		ipAllocator.AllocateIPReturns(ipamResult, nil)
 
 		creator.SetupReturns(models.Container{
 			ID:        "container-id",
@@ -97,7 +115,6 @@ var _ = Describe("NetworksSetupContainer", func() {
 			InterfaceName:      "interface-name",
 			VNI:                99,
 			HostIP:             "10.12.100.4",
-			IPAM:               ipamResult,
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -139,7 +156,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 	Context("when there are errors", func() {
 		Context("when the request body cannot be read", func() {
 			BeforeEach(func() {
-				request.Body = ioutil.NopCloser(&badReader{})
+				request.Body = ioutil.NopCloser(&testsupport.BadReader{})
 			})
 
 			It("should log and respond with status 400", func() {
@@ -155,6 +172,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 			BeforeEach(func() {
 				request.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(`{}`)))
 			})
+
 			It("logs an error and responds with code 400", func() {
 				unmarshaler.UnmarshalReturns(errors.New("some-unmarshal-error"))
 				resp := httptest.NewRecorder()
@@ -188,6 +206,87 @@ var _ = Describe("NetworksSetupContainer", func() {
 
 				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 				Expect(logger).To(gbytes.Say("networks-setup-containers.datastore-create-failed.*some-datastore-create-error"))
+			})
+		})
+	})
+
+	Describe("IP allocation", func() {
+		It("allocates an IP and returns the json ipamResult", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(ipAllocator.AllocateIPCallCount()).To(Equal(1))
+			Expect(resp.Body.String()).To(MatchJSON(expectedResultBytes))
+
+			Expect(marshaler.MarshalCallCount()).To(Equal(1))
+			Expect(resp.Code).To(Equal(http.StatusCreated))
+
+			networkID, containerID := ipAllocator.AllocateIPArgsForCall(0)
+			Expect(networkID).To(Equal("network-id-1"))
+			Expect(containerID).To(Equal("container-id"))
+		})
+
+		Context("when things go wrong", func() {
+			Context("when the allocator returns a NoMoreAddressesError", func() {
+				It("should log and return a 409 status with JSON body encoding the error message", func() {
+					ipAllocator.AllocateIPReturns(nil, ipam.NoMoreAddressesError)
+					resp := httptest.NewRecorder()
+					handler.ServeHTTP(resp, request)
+
+					Expect(resp.Body.String()).To(MatchJSON(`{ "error": "no addresses available" }`))
+					Expect(logger).To(gbytes.Say(`networks-setup-containers.allocate-ip.*no addresses available`))
+					Expect(resp.Code).To(Equal(http.StatusConflict))
+				})
+
+				Context("when marshaling the error fails", func() {
+					BeforeEach(func() {
+						ipAllocator.AllocateIPReturns(nil, ipam.NoMoreAddressesError)
+						marshaler.MarshalReturns([]byte(`bad`), errors.New("banana"))
+					})
+
+					It("should log the error", func() {
+						resp := httptest.NewRecorder()
+						handler.ServeHTTP(resp, request)
+
+						Expect(resp.Body.String()).To(BeEmpty())
+						Expect(logger).To(gbytes.Say("allocate-ip-error-marshaling.*banana"))
+						Expect(resp.Code).To(Equal(http.StatusConflict))
+					})
+				})
+			})
+
+			Context("when the allocator errors in some other fashion", func() {
+				It("should return 500 and log the error", func() {
+					ipAllocator.AllocateIPReturns(nil, errors.New("tomato"))
+					resp := httptest.NewRecorder()
+					handler.ServeHTTP(resp, request)
+
+					Expect(logger).To(gbytes.Say("networks-setup-containers.allocate-ip.*tomato"))
+					Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+				})
+			})
+
+		})
+
+		Context("when marshaling the result fails", func() {
+			It("should return 500 and log the error", func() {
+				marshaler.MarshalReturns([]byte(`bad`), errors.New("banana"))
+
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(logger).To(gbytes.Say("networks-setup-containers.allocate-ip.*banana"))
+				Expect(resp.Body.String()).To(BeEmpty())
+				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			})
+		})
+
+		Context("when writing the response body fails", func() {
+			It("should log the error", func() {
+				badResponseWriter := &badResponseWriter{}
+				handler.ServeHTTP(badResponseWriter, request)
+
+				Expect(logger).To(gbytes.Say("networks-setup-containers.allocate-ip.*failed writing body: some bad writer"))
 			})
 		})
 	})

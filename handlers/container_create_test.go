@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
+	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -104,7 +105,7 @@ var _ = Describe("Post", func() {
 
 	Context("when the request body reader fails", func() {
 		It("should log the error and not attempt to respond", func() {
-			aBadReader := &badReader{}
+			aBadReader := &testsupport.BadReader{}
 			request, err := http.NewRequest("POST", "/containers", aBadReader)
 			Expect(err).NotTo(HaveOccurred())
 

@@ -51,14 +51,14 @@ type CommandBuilder struct {
 	setupVethReturns struct {
 		result1 executor.Command
 	}
-	IdempotentlySetupBridgeStub        func(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command
+	IdempotentlySetupBridgeStub        func(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command
 	idempotentlySetupBridgeMutex       sync.RWMutex
 	idempotentlySetupBridgeArgsForCall []struct {
 		vxlanName       string
 		sandboxLinkName string
 		sandboxName     string
 		bridgeName      string
-		ipamResult      types.Result
+		ipamResult      *types.Result
 	}
 	idempotentlySetupBridgeReturns struct {
 		result1 executor.Command
@@ -201,14 +201,14 @@ func (fake *CommandBuilder) SetupVethReturns(result1 executor.Command) {
 	}{result1}
 }
 
-func (fake *CommandBuilder) IdempotentlySetupBridge(vxlanName string, sandboxLinkName string, sandboxName string, bridgeName string, ipamResult types.Result) executor.Command {
+func (fake *CommandBuilder) IdempotentlySetupBridge(vxlanName string, sandboxLinkName string, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command {
 	fake.idempotentlySetupBridgeMutex.Lock()
 	fake.idempotentlySetupBridgeArgsForCall = append(fake.idempotentlySetupBridgeArgsForCall, struct {
 		vxlanName       string
 		sandboxLinkName string
 		sandboxName     string
 		bridgeName      string
-		ipamResult      types.Result
+		ipamResult      *types.Result
 	}{vxlanName, sandboxLinkName, sandboxName, bridgeName, ipamResult})
 	fake.idempotentlySetupBridgeMutex.Unlock()
 	if fake.IdempotentlySetupBridgeStub != nil {
@@ -224,7 +224,7 @@ func (fake *CommandBuilder) IdempotentlySetupBridgeCallCount() int {
 	return len(fake.idempotentlySetupBridgeArgsForCall)
 }
 
-func (fake *CommandBuilder) IdempotentlySetupBridgeArgsForCall(i int) (string, string, string, string, types.Result) {
+func (fake *CommandBuilder) IdempotentlySetupBridgeArgsForCall(i int) (string, string, string, string, *types.Result) {
 	fake.idempotentlySetupBridgeMutex.RLock()
 	defer fake.idempotentlySetupBridgeMutex.RUnlock()
 	return fake.idempotentlySetupBridgeArgsForCall[i].vxlanName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxLinkName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxName, fake.idempotentlySetupBridgeArgsForCall[i].bridgeName, fake.idempotentlySetupBridgeArgsForCall[i].ipamResult

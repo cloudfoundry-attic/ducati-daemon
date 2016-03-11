@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -36,7 +35,6 @@ var _ = Describe("Networks", func() {
 		upSpec       models.NetworksSetupContainerPayload
 		downSpec     models.NetworksDeleteContainerPayload
 		daemonClient *client.DaemonClient
-		ipamResult   types.Result
 	)
 
 	BeforeEach(func() {
@@ -85,29 +83,11 @@ var _ = Describe("Networks", func() {
 		daemonClient = client.New("http://"+address, http.DefaultClient)
 
 		By("generating config and creating the request")
-		ipamResult = types.Result{
-			IP4: &types.IPConfig{
-				IP: net.IPNet{
-					IP:   net.ParseIP("192.168.1.2"),
-					Mask: net.CIDRMask(24, 32),
-				},
-				Gateway: net.ParseIP("192.168.1.1"),
-				Routes: []types.Route{{
-					Dst: net.IPNet{
-						IP:   net.ParseIP("192.168.0.0"),
-						Mask: net.CIDRMask(16, 32),
-					},
-					GW: net.ParseIP("192.168.1.1"),
-				}},
-			},
-		}
-
 		upSpec = models.NetworksSetupContainerPayload{
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: containerNamespace.Path(),
 			InterfaceName:      "vx-eth0",
 			VNI:                vni,
-			IPAM:               ipamResult,
 		}
 
 		downSpec = models.NetworksDeleteContainerPayload{
@@ -117,7 +97,8 @@ var _ = Describe("Networks", func() {
 		}
 
 		By("adding the container to a network")
-		Expect(daemonClient.ContainerUp(networkID, containerID, upSpec)).To(Succeed())
+		_, err = daemonClient.ContainerUp(networkID, containerID, upSpec)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {

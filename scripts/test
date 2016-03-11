@@ -1,3 +1,3 @@
 #! /bin/bash
 
-ginkgo -r -randomizeSuites -randomizeAllSpecs -p --skipPackage=acceptance,ip,links,namespace,ns,subscriber
+ginkgo -r -randomizeSuites -randomizeAllSpecs -p --skipPackage=acceptance,ip,links,namespace,ns,subscriber "$@"

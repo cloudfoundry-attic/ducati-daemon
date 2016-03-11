@@ -229,7 +229,7 @@ var _ = Describe("CommandBuilder", func() {
 				SandboxRepo: sandboxRepository,
 			}
 
-			ipamResult := types.Result{
+			ipamResult := &types.Result{
 				IP4: &types.IPConfig{
 					IP: net.IPNet{
 						IP:   net.ParseIP("192.168.100.2"),

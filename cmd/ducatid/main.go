@@ -191,18 +191,6 @@ func main() {
 		Logger: logger,
 	}
 
-	rataHandlers["ipam_allocate"] = &handlers.IPAMAllocate{
-		IPAllocator: ipAllocator,
-		Marshaler:   marshaler,
-		Logger:      logger,
-	}
-
-	rataHandlers["ipam_release"] = &handlers.IPAMRelease{
-		IPAllocator: ipAllocator,
-		Marshaler:   marshaler,
-		Logger:      logger,
-	}
-
 	rataHandlers["networks_list_containers"] = &handlers.NetworksListContainers{
 		Marshaler: marshaler,
 		Logger:    logger,
@@ -215,6 +203,8 @@ func main() {
 		Datastore:      dataStore,
 		Creator:        creator,
 		OSThreadLocker: osThreadLocker,
+		IPAllocator:    ipAllocator,
+		Marshaler:      marshaler,
 	}
 
 	rataHandlers["networks_delete_container"] = &handlers.NetworksDeleteContainer{
@@ -231,8 +221,6 @@ func main() {
 		{Name: "container_get", Method: "GET", Path: "/containers/:container_id"},
 		{Name: "container_create", Method: "POST", Path: "/containers"},
 		{Name: "container_delete", Method: "DELETE", Path: "/containers/:container_id"},
-		{Name: "ipam_allocate", Method: "POST", Path: "/ipam/:network_id/:container_id"},
-		{Name: "ipam_release", Method: "DELETE", Path: "/ipam/:network_id/:container_id"},
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
 		{Name: "networks_setup_container", Method: "POST", Path: "/networks/:network_id/:container_id"},
 		{Name: "networks_delete_container", Method: "DELETE", Path: "/networks/:network_id/:container_id"},

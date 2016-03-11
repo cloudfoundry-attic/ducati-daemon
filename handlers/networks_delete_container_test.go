@@ -21,6 +21,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/rata"
 )
@@ -128,7 +129,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 
 	Context("when the request body cannot be read", func() {
 		BeforeEach(func() {
-			request.Body = ioutil.NopCloser(&badReader{})
+			request.Body = ioutil.NopCloser(&testsupport.BadReader{})
 		})
 
 		It("should log and respond with status 400", func() {

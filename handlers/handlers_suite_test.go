@@ -2,10 +2,12 @@ package handlers_test
 
 import (
 	"errors"
+	"net/http"
 	"net/http/httptest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/tedsuo/rata"
 
 	"testing"
 )
@@ -23,8 +25,20 @@ func (w *badResponseWriter) Write([]byte) (int, error) {
 	return 42, errors.New("some bad writer")
 }
 
-type badReader struct{}
+func rataWrap(handler http.Handler, method, path string, params rata.Params) (http.Handler, *http.Request) {
+	testRoutes := rata.Routes{
+		{Name: "wicked_smat", Method: method, Path: path},
+	}
+	requestGenerator := rata.NewRequestGenerator("", testRoutes)
+	testHandlers := rata.Handlers{
+		"wicked_smat": handler,
+	}
 
-func (r *badReader) Read(buffer []byte) (int, error) {
-	return 0, errors.New("bad")
+	router, err := rata.NewRouter(testRoutes, testHandlers)
+	Expect(err).NotTo(HaveOccurred())
+
+	request, err := requestGenerator.CreateRequest("wicked_smat", params, nil)
+	Expect(err).NotTo(HaveOccurred())
+
+	return router, request
 }
