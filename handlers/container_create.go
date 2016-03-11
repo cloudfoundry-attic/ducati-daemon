@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
@@ -12,13 +13,9 @@ type storeCreator interface {
 	Create(container models.Container) error
 }
 
-type unmarshaler interface {
-	Unmarshal(input []byte, output interface{}) error
-}
-
 type ContainerCreate struct {
 	Store       storeCreator
-	Unmarshaler unmarshaler
+	Unmarshaler marshal.Unmarshaler
 	Logger      Logger
 }
 

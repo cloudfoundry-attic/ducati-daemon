@@ -3,12 +3,13 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/tedsuo/rata"
 )
 
 type IPAMRelease struct {
 	Logger      Logger
-	Marshaler   marshaler
+	Marshaler   marshal.Marshaler
 	IPAllocator ipAllocator
 }
 

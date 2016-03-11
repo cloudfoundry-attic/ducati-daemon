@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/tedsuo/rata"
 )
 
 type ContainerGet struct {
 	Store     store.Store
-	Marshaler marshaler
+	Marshaler marshal.Marshaler
 	Logger    Logger
 }
 

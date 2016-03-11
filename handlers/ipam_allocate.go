@@ -6,6 +6,7 @@ import (
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
+	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/tedsuo/rata"
 )
 
@@ -16,7 +17,7 @@ type ipAllocator interface {
 }
 
 type IPAMAllocate struct {
-	Marshaler   marshaler
+	Marshaler   marshal.Marshaler
 	Logger      Logger
 	IPAllocator ipAllocator
 }

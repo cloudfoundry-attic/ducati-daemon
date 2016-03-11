@@ -3,16 +3,13 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
 
-type marshaler interface {
-	Marshal(input interface{}) ([]byte, error)
-}
-
 type ContainersList struct {
 	Store     store.Store
-	Marshaler marshaler
+	Marshaler marshal.Marshaler
 	Logger    Logger
 }
 
