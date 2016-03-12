@@ -90,7 +90,6 @@ var _ = Describe("Setup", func() {
 			ContainerNsPath: "/some/container/namespace",
 			ContainerID:     "123456789012345",
 			InterfaceName:   "container-link",
-			BridgeName:      "vxlan-br0",
 			VNI:             99,
 			HostIP:          "10.11.12.13",
 			IPAMResult:      ipamResult,
@@ -188,7 +187,7 @@ var _ = Describe("Setup", func() {
 		Expect(vxlanName).To(Equal("vxlan99"))
 		Expect(sandboxLinkName).To(Equal("123456789012345"))
 		Expect(sandboxName).To(Equal("vni-99"))
-		Expect(bridgeName).To(Equal("vxlan-br0"))
+		Expect(bridgeName).To(Equal("vxlanbr99"))
 		Expect(ipamResult).To(Equal(&types.Result{
 			IP4: &types.IPConfig{
 				IP: net.IPNet{

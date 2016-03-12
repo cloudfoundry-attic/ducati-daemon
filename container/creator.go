@@ -32,7 +32,6 @@ type Creator struct {
 
 type CreatorConfig struct {
 	NetworkID       string
-	BridgeName      string
 	ContainerNsPath string
 	ContainerID     string
 	InterfaceName   string
@@ -44,6 +43,7 @@ type CreatorConfig struct {
 func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	vxlanName := fmt.Sprintf("vxlan%d", config.VNI)
 	sandboxName := fmt.Sprintf("vni-%d", config.VNI)
+	bridgeName := fmt.Sprintf("vxlanbr%d", config.VNI)
 	containerNS := namespace.NewNamespace(config.ContainerNsPath)
 	sandboxLinkName := config.ContainerID
 	if len(sandboxLinkName) > 15 {
@@ -60,7 +60,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 			c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName),
 			c.CommandBuilder.IdempotentlyCreateVxlan(vxlanName, config.VNI, sandboxName),
 			c.CommandBuilder.SetupVeth(containerNS, sandboxLinkName, config.InterfaceName, config.IPAMResult.IP4.IP, sandboxName, routeCommands),
-			c.CommandBuilder.IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName, config.BridgeName, config.IPAMResult),
+			c.CommandBuilder.IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName, bridgeName, config.IPAMResult),
 		),
 	)
 	if err != nil {

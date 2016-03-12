@@ -126,7 +126,6 @@ var _ = Describe("NetworksSetupContainer", func() {
 		Expect(creator.SetupCallCount()).To(Equal(1))
 		Expect(creator.SetupArgsForCall(0)).To(Equal(container.CreatorConfig{
 			NetworkID:       "network-id-1",
-			BridgeName:      "vxlanbr99",
 			ContainerNsPath: "/some/namespace/path",
 			ContainerID:     "container-id",
 			InterfaceName:   "interface-name",
