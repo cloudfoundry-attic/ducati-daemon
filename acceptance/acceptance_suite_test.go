@@ -16,6 +16,8 @@ import (
 	"testing"
 )
 
+const DEFAULT_TIMEOUT = "5s"
+
 var ducatidPath string
 var dbConnInfo *testsupport.DBConnectionInfo
 

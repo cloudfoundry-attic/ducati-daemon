@@ -128,28 +128,6 @@ func main() {
 
 	marshaler := marshal.MarshalFunc(json.Marshal)
 	unmarshaler := marshal.UnmarshalFunc(json.Unmarshal)
-	rataHandlers["containers_list"] = &handlers.ContainersList{
-		Store:     dataStore,
-		Marshaler: marshaler,
-		Logger:    logger,
-	}
-
-	rataHandlers["container_create"] = &handlers.ContainerCreate{
-		Store:       dataStore,
-		Unmarshaler: unmarshaler,
-		Logger:      logger,
-	}
-
-	rataHandlers["container_get"] = &handlers.ContainerGet{
-		Store:     dataStore,
-		Marshaler: marshaler,
-		Logger:    logger,
-	}
-
-	rataHandlers["container_delete"] = &handlers.ContainerDelete{
-		Store:  dataStore,
-		Logger: logger,
-	}
 
 	rataHandlers["networks_list_containers"] = &handlers.NetworksListContainers{
 		Marshaler: marshaler,
@@ -177,10 +155,6 @@ func main() {
 	}
 
 	routes := rata.Routes{
-		{Name: "containers_list", Method: "GET", Path: "/containers"},
-		{Name: "container_get", Method: "GET", Path: "/containers/:container_id"},
-		{Name: "container_create", Method: "POST", Path: "/containers"},
-		{Name: "container_delete", Method: "DELETE", Path: "/containers/:container_id"},
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
 		{Name: "networks_setup_container", Method: "POST", Path: "/networks/:network_id/:container_id"},
 		{Name: "networks_delete_container", Method: "DELETE", Path: "/networks/:network_id/:container_id"},
