@@ -33,7 +33,7 @@ type locker interface {
 	sync.Locker
 }
 
-type Allocator struct {
+type allocator struct {
 	storeFactory storeFactory
 	storeLocker  locker
 	stores       map[string]AllocatorStore
@@ -43,8 +43,14 @@ type Allocator struct {
 	configs       map[string]*types.IPConfig
 }
 
-func New(storeFactory storeFactory, storeLocker locker, configFactory configFactory, configLocker sync.Locker) *Allocator {
-	return &Allocator{
+//go:generate counterfeiter -o ../fakes/ip_allocator.go --fake-name IPAllocator . ipAllocator
+type IPAllocator interface {
+	AllocateIP(networkID, containerID string) (*types.Result, error)
+	ReleaseIP(networkID, containerID string) error
+}
+
+func New(storeFactory storeFactory, storeLocker locker, configFactory configFactory, configLocker sync.Locker) IPAllocator {
+	return &allocator{
 		storeFactory: storeFactory,
 		storeLocker:  storeLocker,
 		stores:       map[string]AllocatorStore{},
@@ -55,7 +61,7 @@ func New(storeFactory storeFactory, storeLocker locker, configFactory configFact
 	}
 }
 
-func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, error) {
+func (a *allocator) AllocateIP(networkID, containerID string) (*types.Result, error) {
 	config, err := a.getConfig(networkID)
 	if err != nil {
 		return nil, err
@@ -106,7 +112,7 @@ func (a *Allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 	return &types.Result{IP4: result}, nil
 }
 
-func (a *Allocator) ReleaseIP(networkID, containerID string) error {
+func (a *allocator) ReleaseIP(networkID, containerID string) error {
 	store, err := a.getStore(networkID)
 	if err != nil {
 		return err
@@ -120,7 +126,7 @@ func (a *Allocator) ReleaseIP(networkID, containerID string) error {
 	return nil
 }
 
-func (a *Allocator) getConfig(networkID string) (*types.IPConfig, error) {
+func (a *allocator) getConfig(networkID string) (*types.IPConfig, error) {
 	a.configLocker.Lock()
 	defer a.configLocker.Unlock()
 
@@ -137,7 +143,7 @@ func (a *Allocator) getConfig(networkID string) (*types.IPConfig, error) {
 	return &config, err
 }
 
-func (a *Allocator) getStore(networkID string) (AllocatorStore, error) {
+func (a *allocator) getStore(networkID string) (AllocatorStore, error) {
 	a.storeLocker.Lock()
 	defer a.storeLocker.Unlock()
 

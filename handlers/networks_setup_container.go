@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
@@ -21,12 +20,6 @@ type creator interface {
 	Setup(container.CreatorConfig) (models.Container, error)
 }
 
-//go:generate counterfeiter -o ../fakes/ip_allocator.go --fake-name IPAllocator . ipAllocator
-type ipAllocator interface {
-	AllocateIP(networkID, containerID string) (*types.Result, error)
-	ReleaseIP(networkID, containerID string) error
-}
-
 type NetworksSetupContainer struct {
 	Unmarshaler    marshal.Unmarshaler
 	Logger         lager.Logger
@@ -34,7 +27,7 @@ type NetworksSetupContainer struct {
 	Creator        creator
 	OSThreadLocker ossupport.OSThreadLocker
 	Marshaler      marshal.Marshaler
-	IPAllocator    ipAllocator
+	IPAllocator    ipam.IPAllocator
 }
 
 func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {

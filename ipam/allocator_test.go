@@ -18,7 +18,7 @@ var _ = Describe("IP Address Management", func() {
 		storeLocker   *fakes.Locker
 		configFactory *fakes.ConfigFactory
 		configLocker  *fakes.Locker
-		allocator     *ipam.Allocator
+		allocator     ipam.IPAllocator
 		allocated     map[string]struct{}
 		config        types.IPConfig
 	)
