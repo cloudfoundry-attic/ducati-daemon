@@ -130,12 +130,17 @@ var _ = Describe("Daemon config", func() {
 			Entry("missing Database Host", `missing required config "database.host"`, func() { conf.Database.Host = "" }),
 			Entry("missing Database Port", `missing required config "database.port"`, func() { conf.Database.Port = 0 }),
 			Entry("missing Database Username", `missing required config "database.username"`, func() { conf.Database.Username = "" }),
-			Entry("missing Database Password", `missing required config "database.password"`, func() { conf.Database.Password = "" }),
 			Entry("missing Database Name", `missing required config "database.name"`, func() { conf.Database.Name = "" }),
 			Entry("missing Database SslMode", `missing required config "database.ssl_mode"`, func() { conf.Database.SslMode = "" }),
 			Entry("unparsable LocalSubnet", `bad config "local_subnet": invalid CIDR address: foo`, func() { conf.LocalSubnet = "foo" }),
 			Entry("unparsable OverlayNetwork", `bad config "overlay_network": invalid CIDR address: bar`, func() { conf.OverlayNetwork = "bar" }),
 		)
+
+		It("does not complain when the database password is empty", func() {
+			conf.Database.Password = ""
+			_, err := conf.ParseAndValidate()
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Describe("loading config from a file", func() {

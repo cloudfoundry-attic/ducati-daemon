@@ -97,10 +97,6 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		return nil, errors.New(`missing required config "database.username"`)
 	}
 
-	if d.Database.Password == "" {
-		return nil, errors.New(`missing required config "database.password"`)
-	}
-
 	if d.Database.Name == "" {
 		return nil, errors.New(`missing required config "database.name"`)
 	}
