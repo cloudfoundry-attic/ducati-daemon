@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Ipam", func() {
+var _ = Describe("IP Address Management", func() {
 	var (
 		store         *fakes.AllocatorStore
 		storeFactory  *fakes.StoreFactory
