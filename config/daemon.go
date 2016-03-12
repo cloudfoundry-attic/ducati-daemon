@@ -27,6 +27,7 @@ type Daemon struct {
 	SandboxDir     string   `json:"sandbox_dir"`
 	Database       Database `json:"database"`
 	Index          int      `json:"index"`
+	HostAddress    string   `json:"host_address"`
 }
 
 func Unmarshal(input io.Reader) (Daemon, error) {
@@ -58,6 +59,7 @@ type ValidatedConfig struct {
 	LocalSubnet    *net.IPNet
 	DatabaseURL    string
 	SandboxRepoDir string
+	HostAddress    net.IP
 }
 
 func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
@@ -105,6 +107,10 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		return nil, errors.New(`missing required config "database.ssl_mode"`)
 	}
 
+	if d.HostAddress == "" {
+		return nil, errors.New(`missing required config "host_address"`)
+	}
+
 	interpolatedSubnet := strings.Replace(d.LocalSubnet, "${index}", fmt.Sprintf("%d", d.Index), -1)
 	_, subnet, err := net.ParseCIDR(interpolatedSubnet)
 	if err != nil {
@@ -116,12 +122,21 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		return nil, fmt.Errorf(`bad config "overlay_network": %s`, err)
 	}
 
+	hostAddress := net.ParseIP(d.HostAddress)
+	if hostAddress == nil {
+		return nil, fmt.Errorf(`bad config "host_address": %s`, err)
+	}
+	if hostAddress.IsUnspecified() {
+		return nil, fmt.Errorf(`bad config "host_address": must be nonzero`)
+	}
+
 	return &ValidatedConfig{
 		ListenAddress:  fmt.Sprintf("%s:%d", d.ListenHost, d.ListenPort),
 		OverlayNetwork: overlay,
 		LocalSubnet:    subnet,
 		DatabaseURL:    dbURL,
 		SandboxRepoDir: d.SandboxDir,
+		HostAddress:    hostAddress,
 	}, nil
 }
 

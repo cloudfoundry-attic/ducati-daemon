@@ -35,6 +35,7 @@ var _ = Describe("DB Connection Retry", func() {
 			OverlayNetwork: "192.168.0.0/16",
 			SandboxDir:     sandboxRepoDir,
 			Database:       testDatabase.AsDaemonConfig(),
+			HostAddress:    "10.11.12.13",
 		}
 
 		databaseURL, err := url.Parse(testDatabase.URL())

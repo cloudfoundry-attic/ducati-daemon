@@ -43,6 +43,7 @@ var _ = Describe("Setup", func() {
 			NamedLocker:    namedLocker,
 			Watcher:        missWatcher,
 			CommandBuilder: commandBuilder,
+			HostIP:         net.ParseIP("10.11.12.13"),
 		}
 
 		var err error
@@ -91,7 +92,6 @@ var _ = Describe("Setup", func() {
 			ContainerID:     "123456789012345",
 			InterfaceName:   "container-link",
 			VNI:             99,
-			HostIP:          "10.11.12.13",
 			IPAMResult:      ipamResult,
 		}
 	})

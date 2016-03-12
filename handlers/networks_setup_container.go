@@ -80,7 +80,6 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 		NetworkID:       rata.Param(req, "network_id"),
 		ContainerNsPath: containerPayload.ContainerNamespace,
 		ContainerID:     rata.Param(req, "container_id"),
-		HostIP:          containerPayload.HostIP,
 		InterfaceName:   containerPayload.InterfaceName,
 		VNI:             containerPayload.VNI,
 		IPAMResult:      ipamResult,

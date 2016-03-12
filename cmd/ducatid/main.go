@@ -119,6 +119,7 @@ func main() {
 		NamedLocker:    namedMutex,
 		Watcher:        missWatcher,
 		CommandBuilder: commandBuilder,
+		HostIP:         conf.HostAddress,
 	}
 	deletor := &container.Deletor{
 		Executor:    executor,

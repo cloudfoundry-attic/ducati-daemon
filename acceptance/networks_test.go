@@ -40,6 +40,7 @@ var _ = Describe("Networks", func() {
 		containerID string
 		vni         int
 		sandboxName string
+		hostAddress string
 
 		sandboxRepo        namespace.Repository
 		containerNamespace namespace.Namespace
@@ -65,6 +66,8 @@ var _ = Describe("Networks", func() {
 		containerNamespace, err = containerRepo.Create(guid.String())
 		Expect(err).NotTo(HaveOccurred())
 
+		hostAddress = "10.11.12.13"
+
 		configFilePath := writeConfigFile(config.Daemon{
 			ListenHost:     "127.0.0.1",
 			ListenPort:     4001 + GinkgoParallelNode(),
@@ -72,6 +75,7 @@ var _ = Describe("Networks", func() {
 			OverlayNetwork: "192.168.0.0/16",
 			SandboxDir:     sandboxRepoDir,
 			Database:       testDatabase.AsDaemonConfig(),
+			HostAddress:    hostAddress,
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
@@ -158,6 +162,7 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(containers).To(HaveLen(1))
+			Expect(containers[0].HostIP).To(Equal(hostAddress))
 		})
 
 		It("moves a vxlan adapter into the sandbox", func() {

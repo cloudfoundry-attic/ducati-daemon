@@ -65,6 +65,7 @@ var _ = Describe("Networks", func() {
 			ListenPort:     4001 + GinkgoParallelNode(),
 			LocalSubnet:    "192.168.1.0/24",
 			OverlayNetwork: "192.168.0.0/16",
+			HostAddress:    "10.11.12.13",
 			SandboxDir:     sandboxRepoDir,
 			Database:       testDatabase.AsDaemonConfig(),
 		})

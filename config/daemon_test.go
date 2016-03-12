@@ -27,6 +27,7 @@ const fixtureJSON = `
 	  "name": "ducati",
 	  "ssl_mode": "disable"
 	},
+	"host_address": "10.244.16.3",
 	"index": 9
 }
 `
@@ -48,7 +49,8 @@ var _ = Describe("Daemon config", func() {
 				Name:     "ducati",
 				SslMode:  "disable",
 			},
-			Index: 9,
+			HostAddress: "10.244.16.3",
+			Index:       9,
 		}
 	})
 
@@ -92,16 +94,19 @@ var _ = Describe("Daemon config", func() {
 				LocalSubnet:    expectedLocalSubnet,
 				DatabaseURL:    dbURL,
 				SandboxRepoDir: "/var/vcap/data/ducati/sandbox",
+				HostAddress:    net.ParseIP("10.244.16.3"),
 			}))
 		})
+	})
 
+	Describe("error cases", func() {
 		var conf config.Daemon
 
 		BeforeEach(func() {
 			conf = config.Daemon{
 				ListenHost:     "127.0.0.1",
 				ListenPort:     4001,
-				LocalSubnet:    "192.168.1.0/24",
+				LocalSubnet:    "192.168.${index}.0/24",
 				OverlayNetwork: "192.168.0.0/16",
 				SandboxDir:     "/some/sandbox/repo/path",
 				Database: config.Database{
@@ -112,6 +117,8 @@ var _ = Describe("Daemon config", func() {
 					Name:     "some-database-name",
 					SslMode:  "some-ssl-mode",
 				},
+				Index:       9,
+				HostAddress: "10.244.16.3",
 			}
 		})
 
@@ -134,6 +141,9 @@ var _ = Describe("Daemon config", func() {
 			Entry("missing Database SslMode", `missing required config "database.ssl_mode"`, func() { conf.Database.SslMode = "" }),
 			Entry("unparsable LocalSubnet", `bad config "local_subnet": invalid CIDR address: foo`, func() { conf.LocalSubnet = "foo" }),
 			Entry("unparsable OverlayNetwork", `bad config "overlay_network": invalid CIDR address: bar`, func() { conf.OverlayNetwork = "bar" }),
+			Entry("missing HostAddress", `missing required config "host_address"`, func() { conf.HostAddress = "" }),
+			Entry("unparsable HostAddress", `bad config "host_address": invalid CIDR address: bar`, func() { conf.HostAddress = "bar" }),
+			Entry("zero HostAddress", `bad config "host_address": must be nonzero`, func() { conf.HostAddress = "0.0.0.0" }),
 		)
 
 		It("does not complain when the database password is empty", func() {
@@ -148,7 +158,7 @@ var _ = Describe("Daemon config", func() {
 			configSource := config.Daemon{
 				ListenHost:     "127.0.0.1",
 				ListenPort:     4001,
-				LocalSubnet:    "192.168.1.0/24",
+				LocalSubnet:    "192.168.${index}.0/24",
 				OverlayNetwork: "192.168.0.0/16",
 				SandboxDir:     "/some/sandbox/repo/path",
 				Database: config.Database{
@@ -159,6 +169,8 @@ var _ = Describe("Daemon config", func() {
 					Name:     "some-database-name",
 					SslMode:  "some-ssl-mode",
 				},
+				Index:       9,
+				HostAddress: "10.244.16.3",
 			}
 
 			configFile, err := ioutil.TempFile("", "config")
@@ -171,13 +183,14 @@ var _ = Describe("Daemon config", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, overlay, _ := net.ParseCIDR("192.168.0.0/16")
-			_, subnet, _ := net.ParseCIDR("192.168.1.0/24")
+			_, subnet, _ := net.ParseCIDR("192.168.9.0/24")
 			Expect(conf).To(Equal(&config.ValidatedConfig{
 				ListenAddress:  "127.0.0.1:4001",
 				OverlayNetwork: overlay,
 				LocalSubnet:    subnet,
 				DatabaseURL:    "postgres://some-username:some-password@some-host:1234/some-database-name?sslmode=some-ssl-mode",
 				SandboxRepoDir: "/some/sandbox/repo/path",
+				HostAddress:    net.ParseIP("10.244.16.3"),
 			}))
 		})
 

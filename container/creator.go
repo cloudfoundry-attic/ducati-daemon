@@ -28,6 +28,7 @@ type Creator struct {
 	NamedLocker    locks.NamedLocker
 	Watcher        watcher.MissWatcher
 	CommandBuilder commandBuilder
+	HostIP         net.IP
 }
 
 type CreatorConfig struct {
@@ -35,7 +36,6 @@ type CreatorConfig struct {
 	ContainerNsPath string
 	ContainerID     string
 	InterfaceName   string
-	HostIP          string
 	VNI             int
 	IPAMResult      *types.Result
 }
@@ -85,6 +85,6 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 		MAC:       getHardwareAddressCommand.Result.String(),
 		IP:        config.IPAMResult.IP4.IP.IP.String(),
 		NetworkID: config.NetworkID,
-		HostIP:    config.HostIP,
+		HostIP:    c.HostIP.String(),
 	}, nil
 }
