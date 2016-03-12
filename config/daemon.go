@@ -2,9 +2,11 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 )
 
@@ -58,27 +60,90 @@ type ValidatedConfig struct {
 	SandboxRepoDir string
 }
 
-func (d Daemon) ParseAndValidate() (ValidatedConfig, error) {
+func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 	db := d.Database
 	dbURL := fmt.Sprintf("%s://%s:%s@%s:%d/%s?sslmode=%s",
 		"postgres", db.Username, db.Password, db.Host, db.Port, db.Name, db.SslMode)
 
-	_, overlay, err := net.ParseCIDR(d.OverlayNetwork)
-	if err != nil {
-		panic(err)
+	if d.ListenHost == "" {
+		return nil, errors.New(`missing required config "listen_host"`)
+	}
+
+	if d.ListenPort == 0 {
+		return nil, errors.New(`missing required config "listen_port"`)
+	}
+
+	if d.LocalSubnet == "" {
+		return nil, errors.New(`missing required config "local_subnet"`)
+	}
+
+	if d.OverlayNetwork == "" {
+		return nil, errors.New(`missing required config "overlay_network"`)
+	}
+
+	if d.SandboxDir == "" {
+		return nil, errors.New(`missing required config "sandbox_dir"`)
+	}
+
+	if d.Database.Host == "" {
+		return nil, errors.New(`missing required config "database.host"`)
+	}
+
+	if d.Database.Port == 0 {
+		return nil, errors.New(`missing required config "database.port"`)
+	}
+
+	if d.Database.Username == "" {
+		return nil, errors.New(`missing required config "database.username"`)
+	}
+
+	if d.Database.Password == "" {
+		return nil, errors.New(`missing required config "database.password"`)
+	}
+
+	if d.Database.Name == "" {
+		return nil, errors.New(`missing required config "database.name"`)
+	}
+
+	if d.Database.SslMode == "" {
+		return nil, errors.New(`missing required config "database.ssl_mode"`)
 	}
 
 	interpolatedSubnet := strings.Replace(d.LocalSubnet, "${index}", fmt.Sprintf("%d", d.Index), -1)
 	_, subnet, err := net.ParseCIDR(interpolatedSubnet)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf(`bad config "local_subnet": %s`, err)
 	}
 
-	return ValidatedConfig{
+	_, overlay, err := net.ParseCIDR(d.OverlayNetwork)
+	if err != nil {
+		return nil, fmt.Errorf(`bad config "overlay_network": %s`, err)
+	}
+
+	return &ValidatedConfig{
 		ListenAddress:  fmt.Sprintf("%s:%d", d.ListenHost, d.ListenPort),
 		OverlayNetwork: overlay,
 		LocalSubnet:    subnet,
 		DatabaseURL:    dbURL,
-		SandboxRepoDir: "/var/vcap/data/ducati/sandbox",
+		SandboxRepoDir: d.SandboxDir,
 	}, nil
+}
+
+func ParseConfigFile(configFilePath string) (*ValidatedConfig, error) {
+	if configFilePath == "" {
+		return nil, fmt.Errorf("missing config file path")
+	}
+
+	configFile, err := os.Open(configFilePath)
+	if err != nil {
+		return nil, err
+	}
+	defer configFile.Close()
+
+	daemonConfig, err := Unmarshal(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("parsing config: %s", err)
+	}
+
+	return daemonConfig.ParseAndValidate()
 }

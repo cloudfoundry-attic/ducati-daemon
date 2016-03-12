@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,15 +28,16 @@ var _ = Describe("Main", func() {
 		sandboxRepoDir, err := ioutil.TempDir("", "sandbox")
 		Expect(err).NotTo(HaveOccurred())
 
-		ducatiCmd := exec.Command(
-			ducatidPath,
-			"-listenAddr", address,
-			"-overlayNetwork", "192.168.0.0/16",
-			"-localSubnet", "192.168.99.0/24",
-			"-databaseURL", testDatabase.URL(),
-			"-sandboxRepoDir", sandboxRepoDir,
-		)
+		configFilePath := writeConfigFile(config.Daemon{
+			ListenHost:     "127.0.0.1",
+			ListenPort:     4001 + GinkgoParallelNode(),
+			LocalSubnet:    "192.168.1.0/24",
+			OverlayNetwork: "192.168.0.0/16",
+			SandboxDir:     sandboxRepoDir,
+			Database:       testDatabase.AsDaemonConfig(),
+		})
 
+		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 	})

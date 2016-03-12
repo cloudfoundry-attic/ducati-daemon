@@ -2,11 +2,13 @@ package config_test
 
 import (
 	"bytes"
+	"io/ioutil"
 	"net"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
@@ -84,13 +86,115 @@ var _ = Describe("Daemon config", func() {
 
 			dbURL := "postgres://ducati_daemon:some-password@10.244.16.9:5432/ducati?sslmode=disable"
 
-			Expect(validated).To(Equal(config.ValidatedConfig{
+			Expect(validated).To(Equal(&config.ValidatedConfig{
 				ListenAddress:  "0.0.0.0:4001",
 				OverlayNetwork: expectedOverlay,
 				LocalSubnet:    expectedLocalSubnet,
 				DatabaseURL:    dbURL,
 				SandboxRepoDir: "/var/vcap/data/ducati/sandbox",
 			}))
+		})
+
+		var conf config.Daemon
+
+		BeforeEach(func() {
+			conf = config.Daemon{
+				ListenHost:     "127.0.0.1",
+				ListenPort:     4001,
+				LocalSubnet:    "192.168.1.0/24",
+				OverlayNetwork: "192.168.0.0/16",
+				SandboxDir:     "/some/sandbox/repo/path",
+				Database: config.Database{
+					Host:     "some-host",
+					Port:     1234,
+					Username: "some-username",
+					Password: "some-password",
+					Name:     "some-database-name",
+					SslMode:  "some-ssl-mode",
+				},
+			}
+		})
+
+		DescribeTable("missing or invalid config",
+			func(expectedError string, corrupter func()) {
+				corrupter()
+				_, err := conf.ParseAndValidate()
+				Expect(err).To(MatchError(err))
+			},
+
+			Entry("missing ListenHost", `missing required config "listen_host"`, func() { conf.ListenHost = "" }),
+			Entry("missing ListenPort", `missing required config "listen_port"`, func() { conf.ListenPort = 0 }),
+			Entry("missing LocalSubnet", `missing required config "local_subnet"`, func() { conf.LocalSubnet = "" }),
+			Entry("missing OverlayNetwork", `missing required config "overlay_network"`, func() { conf.OverlayNetwork = "" }),
+			Entry("missing SandboxDir", `missing required config "sandbox_dir"`, func() { conf.SandboxDir = "" }),
+			Entry("missing Database Host", `missing required config "database.host"`, func() { conf.Database.Host = "" }),
+			Entry("missing Database Port", `missing required config "database.port"`, func() { conf.Database.Port = 0 }),
+			Entry("missing Database Username", `missing required config "database.username"`, func() { conf.Database.Username = "" }),
+			Entry("missing Database Password", `missing required config "database.password"`, func() { conf.Database.Password = "" }),
+			Entry("missing Database Name", `missing required config "database.name"`, func() { conf.Database.Name = "" }),
+			Entry("missing Database SslMode", `missing required config "database.ssl_mode"`, func() { conf.Database.SslMode = "" }),
+			Entry("unparsable LocalSubnet", `bad config "local_subnet": invalid CIDR address: foo`, func() { conf.LocalSubnet = "foo" }),
+			Entry("unparsable OverlayNetwork", `bad config "overlay_network": invalid CIDR address: bar`, func() { conf.OverlayNetwork = "bar" }),
+		)
+	})
+
+	Describe("loading config from a file", func() {
+		It("returns the parsed and validated config", func() {
+			configSource := config.Daemon{
+				ListenHost:     "127.0.0.1",
+				ListenPort:     4001,
+				LocalSubnet:    "192.168.1.0/24",
+				OverlayNetwork: "192.168.0.0/16",
+				SandboxDir:     "/some/sandbox/repo/path",
+				Database: config.Database{
+					Host:     "some-host",
+					Port:     1234,
+					Username: "some-username",
+					Password: "some-password",
+					Name:     "some-database-name",
+					SslMode:  "some-ssl-mode",
+				},
+			}
+
+			configFile, err := ioutil.TempFile("", "config")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(configSource.Marshal(configFile)).To(Succeed())
+			configFile.Close()
+
+			conf, err := config.ParseConfigFile(configFile.Name())
+			Expect(err).NotTo(HaveOccurred())
+
+			_, overlay, _ := net.ParseCIDR("192.168.0.0/16")
+			_, subnet, _ := net.ParseCIDR("192.168.1.0/24")
+			Expect(conf).To(Equal(&config.ValidatedConfig{
+				ListenAddress:  "127.0.0.1:4001",
+				OverlayNetwork: overlay,
+				LocalSubnet:    subnet,
+				DatabaseURL:    "postgres://some-username:some-password@some-host:1234/some-database-name?sslmode=some-ssl-mode",
+				SandboxRepoDir: "/some/sandbox/repo/path",
+			}))
+		})
+
+		Context("when configFilePath is not present", func() {
+			It("returns an error", func() {
+				_, err := config.ParseConfigFile("")
+				Expect(err).To(MatchError("missing config file path"))
+			})
+		})
+
+		Context("when the config file cannot be opened", func() {
+			It("returns an error", func() {
+				_, err := config.ParseConfigFile("some-path")
+				Expect(err).To(MatchError("open some-path: no such file or directory"))
+			})
+		})
+
+		Context("when config file contents cannot be unmarshaled", func() {
+			It("returns an error", func() {
+				_, err := config.ParseConfigFile("/dev/null")
+				Expect(err).To(MatchError("parsing config: json decode: EOF"))
+			})
 		})
 	})
 })

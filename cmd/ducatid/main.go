@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
-	"net"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/db"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
@@ -33,60 +33,19 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-var address string
-var overlayNetwork string
-var localSubnet string
-var databaseURL string
-var sandboxRepoDir string
-
-const addressFlag = "listenAddr"
-const overlayNetworkFlag = "overlayNetwork"
-const localSubnetFlag = "localSubnet"
-const databaseURLFlag = "databaseURL"
-const sandboxRepoDirFlag = "sandboxRepoDir"
-
-func parseFlags() {
-	flag.StringVar(&address, addressFlag, "", "")
-	flag.StringVar(&overlayNetwork, overlayNetworkFlag, "", "")
-	flag.StringVar(&localSubnet, localSubnetFlag, "", "")
-	flag.StringVar(&databaseURL, databaseURLFlag, "", "")
-	flag.StringVar(&sandboxRepoDir, sandboxRepoDirFlag, "", "")
-
+func main() {
+	var configFilePath string
+	const configFileFlag = "configFile"
+	flag.StringVar(&configFilePath, configFileFlag, "", "")
 	flag.Parse()
 
-	if address == "" {
-		log.Fatalf("missing required flag %q", addressFlag)
-	}
-
-	if overlayNetwork == "" {
-		log.Fatalf("missing required flag %q", overlayNetworkFlag)
-	}
-
-	if localSubnet == "" {
-		log.Fatalf("missing required flag %q", localSubnetFlag)
-	}
-
-	if databaseURL == "" {
-		log.Fatalf("missing required flag %q", databaseURLFlag)
-	}
-
-	if sandboxRepoDir == "" {
-		log.Fatalf("missing required flag %q", sandboxRepoDirFlag)
-	}
-}
-
-func main() {
-	parseFlags()
-
-	_, subnet, err := net.ParseCIDR(localSubnet)
+	conf, err := config.ParseConfigFile(configFilePath)
 	if err != nil {
-		log.Fatalf("invalid CIDR provided for %q: %s", localSubnetFlag, localSubnet)
+		log.Fatalf("parsing config: %s", err)
 	}
 
-	_, overlay, err := net.ParseCIDR(overlayNetwork)
-	if err != nil {
-		log.Fatalf("invalid CIDR provided for %q: %s", overlayNetworkFlag, overlayNetwork)
-	}
+	subnet := conf.LocalSubnet
+	overlay := conf.OverlayNetwork
 
 	if !overlay.Contains(subnet.IP) {
 		log.Fatalf("overlay network does not contain local subnet")
@@ -99,6 +58,7 @@ func main() {
 		MaxRetries:    10,
 	}
 
+	databaseURL := conf.DatabaseURL
 	dbConnectionPool, err := retriableConnector.GetConnectionPool(databaseURL)
 	if err != nil {
 		log.Fatalf("db connect: %s", err)
@@ -133,7 +93,7 @@ func main() {
 	addressManager := &ip.AddressManager{Netlinker: nl.Netlink}
 	routeManager := &ip.RouteManager{Netlinker: nl.Netlink}
 	linkFactory := &links.Factory{Netlinker: nl.Netlink}
-	sandboxRepo, err := namespace.NewRepository(sandboxRepoDir)
+	sandboxRepo, err := namespace.NewRepository(conf.SandboxRepoDir)
 	if err != nil {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
@@ -231,7 +191,7 @@ func main() {
 		log.Fatalf("unable to create rata Router: %s", err) // not tested
 	}
 
-	httpServer := http_server.New(address, rataRouter)
+	httpServer := http_server.New(conf.ListenAddress, rataRouter)
 
 	members := grouper.Members{
 		{"http_server", httpServer},

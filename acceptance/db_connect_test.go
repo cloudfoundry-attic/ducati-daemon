@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -24,13 +25,26 @@ var _ = Describe("DB Connection Retry", func() {
 	)
 
 	BeforeEach(func() {
+		sandboxRepoDir, err := ioutil.TempDir("", "sandbox")
+		Expect(err).NotTo(HaveOccurred())
+
+		basicConfig := config.Daemon{
+			ListenHost:     "127.0.0.1",
+			ListenPort:     4001 + GinkgoParallelNode(),
+			LocalSubnet:    "192.168.1.0/24",
+			OverlayNetwork: "192.168.0.0/16",
+			SandboxDir:     sandboxRepoDir,
+			Database:       testDatabase.AsDaemonConfig(),
+		}
+
 		databaseURL, err := url.Parse(testDatabase.URL())
 		Expect(err).NotTo(HaveOccurred())
 
 		databaseHost = databaseURL.Host
 
 		proxyURL := databaseURL
-		proxyURL.Host = fmt.Sprintf("127.0.0.1:%d", 14001+GinkgoParallelNode())
+		proxyPort := 14001 + GinkgoParallelNode()
+		proxyURL.Host = fmt.Sprintf("127.0.0.1:%d", proxyPort)
 
 		proxy = &Proxy{
 			Host: proxyURL.Host,
@@ -38,17 +52,9 @@ var _ = Describe("DB Connection Retry", func() {
 
 		address = fmt.Sprintf("127.0.0.1:%d", 4001+GinkgoParallelNode())
 
-		sandboxRepoDir, err := ioutil.TempDir("", "sandbox")
-		Expect(err).NotTo(HaveOccurred())
-
-		ducatiCmd := exec.Command(
-			ducatidPath,
-			"-listenAddr", address,
-			"-overlayNetwork", "192.168.0.0/16",
-			"-localSubnet", "192.168.99.0/24",
-			"-databaseURL", proxyURL.String(),
-			"-sandboxRepoDir", sandboxRepoDir,
-		)
+		basicConfig.Database.Port = proxyPort
+		configFilePath := writeConfigFile(basicConfig)
+		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 	})

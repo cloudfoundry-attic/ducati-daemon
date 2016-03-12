@@ -11,6 +11,7 @@ import (
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
+	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/nu7hatch/gouuid"
@@ -20,6 +21,16 @@ import (
 	"github.com/vishvananda/netlink"    //only linux
 	"github.com/vishvananda/netlink/nl" //only linux
 )
+
+func writeConfigFile(daemonConfig config.Daemon) string {
+	configFile, err := ioutil.TempFile("", "test-config")
+	Expect(err).NotTo(HaveOccurred())
+
+	daemonConfig.Marshal(configFile)
+	Expect(configFile.Close()).To(Succeed())
+
+	return configFile.Name()
+}
 
 var _ = Describe("Networks", func() {
 	var (
@@ -54,16 +65,16 @@ var _ = Describe("Networks", func() {
 		containerNamespace, err = containerRepo.Create(guid.String())
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(err).NotTo(HaveOccurred())
+		configFilePath := writeConfigFile(config.Daemon{
+			ListenHost:     "127.0.0.1",
+			ListenPort:     4001 + GinkgoParallelNode(),
+			LocalSubnet:    "192.168.1.0/24",
+			OverlayNetwork: "192.168.0.0/16",
+			SandboxDir:     sandboxRepoDir,
+			Database:       testDatabase.AsDaemonConfig(),
+		})
 
-		ducatiCmd := exec.Command(
-			ducatidPath,
-			"-listenAddr", address,
-			"-overlayNetwork", "192.168.0.0/16",
-			"-localSubnet", "192.168.1.0/24",
-			"-databaseURL", testDatabase.URL(),
-			"-sandboxRepoDir", sandboxRepoDir,
-		)
+		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 

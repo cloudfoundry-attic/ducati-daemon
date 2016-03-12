@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -29,6 +31,21 @@ func (d *TestDatabase) URL() string {
 
 func (d *TestDatabase) Destroy() {
 	d.connInfo.RemoveDatabase(d)
+}
+
+func (d *TestDatabase) AsDaemonConfig() config.Database {
+	port, err := strconv.Atoi(d.connInfo.Port)
+	if err != nil {
+		panic(err)
+	}
+	return config.Database{
+		Host:     d.connInfo.Hostname,
+		Port:     port,
+		Username: d.connInfo.Username,
+		Password: d.connInfo.Password,
+		Name:     d.name,
+		SslMode:  "disable",
+	}
 }
 
 func (c *DBConnectionInfo) CreateDatabase(dbName string) *TestDatabase {
