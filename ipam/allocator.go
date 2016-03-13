@@ -43,7 +43,7 @@ type allocator struct {
 	configs       map[string]*types.IPConfig
 }
 
-//go:generate counterfeiter -o ../fakes/ip_allocator.go --fake-name IPAllocator . ipAllocator
+//go:generate counterfeiter -o ../fakes/ip_allocator.go --fake-name IPAllocator . IPAllocator
 type IPAllocator interface {
 	AllocateIP(networkID, containerID string) (*types.Result, error)
 	ReleaseIP(networkID, containerID string) error

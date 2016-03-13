@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 )
 
 type IPAllocator struct {
@@ -95,3 +96,5 @@ func (fake *IPAllocator) ReleaseIPReturns(result1 error) {
 		result1 error
 	}{result1}
 }
+
+var _ ipam.IPAllocator = new(IPAllocator)
