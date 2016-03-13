@@ -58,8 +58,7 @@ var _ = Describe("Networks", func() {
 		containerNamespace, err = containerRepo.Create(guid.String())
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(err).NotTo(HaveOccurred())
-
+		vni = GinkgoParallelNode() // necessary to avoid test pollution in parallel
 		configFilePath := writeConfigFile(config.Daemon{
 			ListenHost:     "127.0.0.1",
 			ListenPort:     4001 + GinkgoParallelNode(),
@@ -68,6 +67,7 @@ var _ = Describe("Networks", func() {
 			HostAddress:    "10.11.12.13",
 			SandboxDir:     sandboxRepoDir,
 			Database:       testDatabase.AsDaemonConfig(),
+			VNI:            vni,
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
@@ -76,7 +76,6 @@ var _ = Describe("Networks", func() {
 
 		networkID = fmt.Sprintf("some-network-id-%x", rand.Int())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
-		vni = GinkgoParallelNode() // necessary to avoid test pollution in parallel
 		sandboxName = fmt.Sprintf("vni-%d", vni)
 
 		var serverIsAvailable = func() error {
@@ -91,13 +90,11 @@ var _ = Describe("Networks", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: containerNamespace.Path(),
 			InterfaceName:      "vx-eth0",
-			VNI:                vni,
 		}
 
 		downSpec = models.NetworksDeleteContainerPayload{
 			InterfaceName:      "vx-eth0",
 			ContainerNamespace: containerNamespace.Path(),
-			VNI:                vni,
 		}
 
 		By("adding the container to a network")

@@ -28,13 +28,14 @@ import (
 
 var _ = Describe("NetworksDeleteContainer", func() {
 	var (
-		logger      *lagertest.TestLogger
-		datastore   *fakes.Store
-		deletor     *fakes.Deletor
-		handler     http.Handler
-		request     *http.Request
-		osLocker    *fakes.OSThreadLocker
-		unmarshaler *fakes.Unmarshaler
+		logger        *lagertest.TestLogger
+		datastore     *fakes.Store
+		deletor       *fakes.Deletor
+		handler       http.Handler
+		request       *http.Request
+		osLocker      *fakes.OSThreadLocker
+		unmarshaler   *fakes.Unmarshaler
+		networkMapper *fakes.NetworkMapper
 
 		sandboxRepo *fakes.Repository
 
@@ -56,6 +57,8 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		logger = lagertest.NewTestLogger("test")
 		datastore = &fakes.Store{}
 		deletor = &fakes.Deletor{}
+		networkMapper = &fakes.NetworkMapper{}
+		networkMapper.GetVNIReturns(42, nil)
 
 		sandboxRepo = &fakes.Repository{}
 
@@ -66,6 +69,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 			Deletor:        deletor,
 			OSThreadLocker: osLocker,
 			SandboxRepo:    sandboxRepo,
+			NetworkMapper:  networkMapper,
 		}
 
 		sandboxRepo.GetReturns(namespace.NewNamespace("/some/sandbox/repo/path"), nil)
@@ -77,9 +81,35 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		payload = models.NetworksDeleteContainerPayload{
 			InterfaceName:      "some-interface-name",
 			ContainerNamespace: "/some/container/namespace/path",
-			VNI:                42,
 		}
 		setPayload()
+	})
+
+	It("uses the network id to get the VNI", func() {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
+
+		Expect(networkMapper.GetVNICallCount()).To(Equal(1))
+		Expect(networkMapper.GetVNIArgsForCall(0)).To(Equal("some-network-id"))
+	})
+
+	Context("when getting the VNI fails", func() {
+		BeforeEach(func() {
+			networkMapper.GetVNIReturns(0, errors.New("some error"))
+		})
+
+		It("logs the error and responds with status code 500", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			Expect(logger).To(gbytes.Say("network-mapper-get-vni.*some error"))
+		})
+
+		It("does not get the sandbox namespace or attempt to delete", func() {
+			Expect(sandboxRepo.GetCallCount()).To(Equal(0))
+			Expect(deletor.DeleteCallCount()).To(Equal(0))
+		})
 	})
 
 	It("computes the sandbox name from the VNI", func() {
@@ -173,7 +203,6 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		},
 		Entry("interface", "InterfaceName", "interface_name"),
 		Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
-		Entry("vni", "VNI", "vni"),
 	)
 
 	Context("when the sandbox repo fails", func() {

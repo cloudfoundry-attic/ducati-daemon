@@ -28,6 +28,7 @@ type Daemon struct {
 	Database       Database `json:"database"`
 	Index          int      `json:"index"`
 	HostAddress    string   `json:"host_address"`
+	VNI            int      `json:"vni"`
 }
 
 func Unmarshal(input io.Reader) (Daemon, error) {
@@ -60,6 +61,7 @@ type ValidatedConfig struct {
 	DatabaseURL    string
 	SandboxRepoDir string
 	HostAddress    net.IP
+	VNI            int
 }
 
 func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
@@ -85,6 +87,10 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 
 	if d.SandboxDir == "" {
 		return nil, errors.New(`missing required config "sandbox_dir"`)
+	}
+
+	if d.VNI == 0 {
+		return nil, errors.New(`missing required config "vni"`)
 	}
 
 	if d.Database.Host == "" {
@@ -137,6 +143,7 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		DatabaseURL:    dbURL,
 		SandboxRepoDir: d.SandboxDir,
 		HostAddress:    hostAddress,
+		VNI:            d.VNI,
 	}, nil
 }
 

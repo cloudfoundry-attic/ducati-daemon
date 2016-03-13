@@ -28,6 +28,7 @@ type NetworksSetupContainer struct {
 	OSThreadLocker ossupport.OSThreadLocker
 	Marshaler      marshal.Marshaler
 	IPAllocator    ipam.IPAllocator
+	NetworkMapper  ipam.NetworkMapper
 }
 
 func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -53,6 +54,12 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 
 	networkID := rata.Param(req, "network_id")
 	containerID := rata.Param(req, "container_id")
+
+	vni, err := h.NetworkMapper.GetVNI(networkID)
+	if err != nil {
+		logger.Error("network-mapper-get-vni", err)
+		resp.WriteHeader(http.StatusInternalServerError)
+	}
 
 	ipamResult, err := h.IPAllocator.AllocateIP(networkID, containerID)
 	if err != nil {
@@ -81,7 +88,7 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 		ContainerNsPath: containerPayload.ContainerNamespace,
 		ContainerID:     rata.Param(req, "container_id"),
 		InterfaceName:   containerPayload.InterfaceName,
-		VNI:             containerPayload.VNI,
+		VNI:             vni,
 		IPAMResult:      ipamResult,
 	}
 

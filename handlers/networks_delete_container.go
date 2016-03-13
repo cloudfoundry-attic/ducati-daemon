@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -32,6 +33,7 @@ type NetworksDeleteContainer struct {
 	Deletor        deletor
 	OSThreadLocker ossupport.OSThreadLocker
 	SandboxRepo    repository
+	NetworkMapper  ipam.NetworkMapper
 }
 
 func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, request *http.Request) {
@@ -41,7 +43,7 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 	logger := h.Logger.Session("networks-delete-containers")
 
 	containerID := rata.Param(request, "container_id")
-	_ = rata.Param(request, "network_id") // we may want this later
+	networkID := rata.Param(request, "network_id")
 
 	bodyBytes, err := ioutil.ReadAll(request.Body)
 	if err != nil {
@@ -70,13 +72,13 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 		return
 	}
 
-	if payload.VNI == 0 {
-		logger.Error("bad-request", errors.New("missing-vni"))
-		response.WriteHeader(http.StatusBadRequest)
-		return
+	vni, err := h.NetworkMapper.GetVNI(networkID)
+	if err != nil {
+		logger.Error("network-mapper-get-vni", err)
+		response.WriteHeader(http.StatusInternalServerError)
 	}
 
-	sandboxName := fmt.Sprintf("vni-%d", payload.VNI)
+	sandboxName := fmt.Sprintf("vni-%d", vni)
 	sandboxNS, err := h.SandboxRepo.Get(sandboxName)
 	if err != nil {
 		logger.Error("sandbox-repo", err)
@@ -88,7 +90,7 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 		InterfaceName:   payload.InterfaceName,
 		ContainerNSPath: payload.ContainerNamespace,
 		SandboxNSPath:   sandboxNS.Path(),
-		VxlanDeviceName: fmt.Sprintf("vxlan%d", payload.VNI),
+		VxlanDeviceName: fmt.Sprintf("vxlan%d", vni),
 	}
 
 	err = h.Deletor.Delete(deletorConfig)

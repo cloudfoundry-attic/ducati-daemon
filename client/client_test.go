@@ -150,7 +150,6 @@ var _ = Describe("Client", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "interface-name",
-				VNI:                99,
 			}
 
 			returnedResult = types.Result{
@@ -298,7 +297,6 @@ var _ = Describe("Client", func() {
 			cniPayload = models.NetworksDeleteContainerPayload{
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "some-interface-name",
-				VNI:                42,
 			}
 
 			server.AppendHandlers(ghttp.CombineHandlers(

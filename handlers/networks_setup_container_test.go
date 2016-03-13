@@ -36,6 +36,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 		osLocker            *fakes.OSThreadLocker
 		marshaler           *fakes.Marshaler
 		ipAllocator         *fakes.IPAllocator
+		networkMapper       *fakes.NetworkMapper
 		expectedResultBytes []byte
 	)
 
@@ -53,6 +54,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 		marshaler.MarshalStub = json.Marshal
 
 		ipAllocator = &fakes.IPAllocator{}
+		networkMapper = &fakes.NetworkMapper{}
 
 		setupHandler := &handlers.NetworksSetupContainer{
 			Unmarshaler:    unmarshaler,
@@ -62,6 +64,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 			OSThreadLocker: osLocker,
 			Marshaler:      marshaler,
 			IPAllocator:    ipAllocator,
+			NetworkMapper:  networkMapper,
 		}
 
 		ipamResult = &types.Result{
@@ -113,9 +116,9 @@ var _ = Describe("NetworksSetupContainer", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
-			VNI:                99,
 		})
 		Expect(err).NotTo(HaveOccurred())
+		networkMapper.GetVNIReturns(99, nil)
 
 		request.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
 		resp := httptest.NewRecorder()
@@ -128,8 +131,8 @@ var _ = Describe("NetworksSetupContainer", func() {
 			ContainerNsPath: "/some/namespace/path",
 			ContainerID:     "container-id",
 			InterfaceName:   "interface-name",
-			VNI:             99,
 			IPAMResult:      ipamResult,
+			VNI:             99,
 		}))
 
 		Expect(datastore.CreateCallCount()).To(Equal(1))
@@ -148,6 +151,33 @@ var _ = Describe("NetworksSetupContainer", func() {
 
 		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
 		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
+	})
+
+	It("uses the network id to get the VNI", func() {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
+
+		Expect(networkMapper.GetVNICallCount()).To(Equal(1))
+		Expect(networkMapper.GetVNIArgsForCall(0)).To(Equal("network-id-1"))
+	})
+
+	Context("when getting the VNI fails", func() {
+		BeforeEach(func() {
+			networkMapper.GetVNIReturns(0, errors.New("some error"))
+		})
+
+		It("logs the error and responds with status code 500", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			Expect(logger).To(gbytes.Say("network-mapper-get-vni.*some error"))
+		})
+
+		It("does not attempt to allocate an IP or call create", func() {
+			Expect(ipAllocator.AllocateIPCallCount()).To(Equal(0))
+			Expect(creator.SetupCallCount()).To(Equal(0))
+		})
 	})
 
 	Context("when there are errors", func() {

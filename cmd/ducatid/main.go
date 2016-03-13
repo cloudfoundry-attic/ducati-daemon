@@ -106,6 +106,7 @@ func main() {
 		Netlinker: nl.Netlink,
 	}
 	missWatcher := watcher.New(logger, subscriber, &sync.Mutex{})
+	networkMapper := &ipam.FixedNetworkMapper{VNI: conf.VNI}
 
 	commandBuilder := &container.CommandBuilder{
 		SandboxRepo:   sandboxRepo,
@@ -144,6 +145,7 @@ func main() {
 		OSThreadLocker: osThreadLocker,
 		IPAllocator:    ipAllocator,
 		Marshaler:      marshaler,
+		NetworkMapper:  networkMapper,
 	}
 
 	rataHandlers["networks_delete_container"] = &handlers.NetworksDeleteContainer{
@@ -153,6 +155,7 @@ func main() {
 		Deletor:        deletor,
 		OSThreadLocker: osThreadLocker,
 		SandboxRepo:    sandboxRepo,
+		NetworkMapper:  networkMapper,
 	}
 
 	routes := rata.Routes{
