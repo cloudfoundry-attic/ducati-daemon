@@ -292,7 +292,6 @@ var _ = Describe("NetworksSetupContainer", func() {
 					Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 				})
 			})
-
 		})
 
 		Context("when marshaling the result fails", func() {

@@ -56,7 +56,6 @@ var _ = Describe("CommandBuilder", func() {
 				HostNamespace: hostNamespace,
 			}
 
-			By("adding the first route")
 			ipamResult := &types.Result{
 				IP4: &types.IPConfig{
 					IP: net.IPNet{
@@ -65,13 +64,13 @@ var _ = Describe("CommandBuilder", func() {
 					},
 					Routes: []types.Route{{
 						Dst: net.IPNet{
-							IP:   net.ParseIP("192.168.1.1"),
+							IP:   net.ParseIP("192.168.1.0"),
 							Mask: net.CIDRMask(16, 32),
 						},
 					}, {
 						Dst: net.IPNet{
-							IP:   net.ParseIP("10.11.12.13"),
-							Mask: net.CIDRMask(8, 32),
+							IP:   net.ParseIP("192.168.9.0"),
+							Mask: net.CIDRMask(16, 32),
 						},
 					}},
 				},
@@ -105,13 +104,22 @@ var _ = Describe("CommandBuilder", func() {
 									commands.SetLinkUp{
 										LinkName: "some-vxlan-name",
 									},
-									commands.AddRoute{
-										Interface: "some-vxlan-name",
-										Destination: net.IPNet{
-											IP:   net.ParseIP("192.168.1.1"),
-											Mask: net.CIDRMask(16, 32),
+									commands.All(
+										commands.AddRoute{
+											Interface: "some-vxlan-name",
+											Destination: net.IPNet{
+												IP:   net.ParseIP("192.168.1.0"),
+												Mask: net.CIDRMask(16, 32),
+											},
 										},
-									},
+										commands.AddRoute{
+											Interface: "some-vxlan-name",
+											Destination: net.IPNet{
+												IP:   net.ParseIP("192.168.9.0"),
+												Mask: net.CIDRMask(16, 32),
+											},
+										},
+									),
 								),
 							},
 						),

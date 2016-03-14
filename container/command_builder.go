@@ -43,6 +43,16 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 
+	var routeCommands []executor.Command
+	for _, route := range ipamResult.IP4.Routes {
+		routeCommand := commands.AddRoute{
+			Interface:   vxlanName,
+			Destination: route.Dst,
+		}
+
+		routeCommands = append(routeCommands, routeCommand)
+	}
+
 	return commands.InNamespace{
 		Namespace: sandboxNS,
 		Command: commands.Unless{
@@ -69,10 +79,7 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 						commands.SetLinkUp{
 							LinkName: vxlanName,
 						},
-						commands.AddRoute{
-							Interface:   vxlanName,
-							Destination: ipamResult.IP4.Routes[0].Dst,
-						},
+						commands.All(routeCommands...),
 					),
 				},
 			),
