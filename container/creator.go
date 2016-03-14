@@ -16,7 +16,7 @@ import (
 //go:generate counterfeiter -o ../fakes/command_builder.go --fake-name CommandBuilder . commandBuilder
 type commandBuilder interface {
 	IdempotentlyCreateSandbox(sandboxName string) executor.Command
-	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command
+	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string, ipamResult *types.Result) executor.Command
 	AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command
 	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command
 	IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command
@@ -58,7 +58,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	err := c.Executor.Execute(
 		commands.All(
 			c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName),
-			c.CommandBuilder.IdempotentlyCreateVxlan(vxlanName, config.VNI, sandboxName),
+			c.CommandBuilder.IdempotentlyCreateVxlan(vxlanName, config.VNI, sandboxName, config.IPAMResult),
 			c.CommandBuilder.SetupVeth(containerNS, sandboxLinkName, config.InterfaceName, config.IPAMResult.IP4.IP, sandboxName, routeCommands),
 			c.CommandBuilder.IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName, bridgeName, config.IPAMResult),
 		),

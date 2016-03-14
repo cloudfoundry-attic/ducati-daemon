@@ -34,7 +34,12 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.
 	}
 }
 
-func (b *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command {
+func (b *CommandBuilder) IdempotentlyCreateVxlan(
+	vxlanName string,
+	vni int,
+	sandboxName string,
+	ipamResult *types.Result,
+) executor.Command {
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 
@@ -60,9 +65,15 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sand
 				},
 				commands.InNamespace{
 					Namespace: sandboxNS,
-					Command: commands.SetLinkUp{
-						LinkName: vxlanName,
-					},
+					Command: commands.All(
+						commands.SetLinkUp{
+							LinkName: vxlanName,
+						},
+						commands.AddRoute{
+							Interface:   vxlanName,
+							Destination: ipamResult.IP4.Routes[0].Dst,
+						},
+					),
 				},
 			),
 		},

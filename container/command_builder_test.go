@@ -56,7 +56,28 @@ var _ = Describe("CommandBuilder", func() {
 				HostNamespace: hostNamespace,
 			}
 
-			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name")
+			By("adding the first route")
+			ipamResult := &types.Result{
+				IP4: &types.IPConfig{
+					IP: net.IPNet{
+						IP:   net.ParseIP("192.168.1.1"),
+						Mask: net.CIDRMask(16, 32),
+					},
+					Routes: []types.Route{{
+						Dst: net.IPNet{
+							IP:   net.ParseIP("192.168.1.1"),
+							Mask: net.CIDRMask(16, 32),
+						},
+					}, {
+						Dst: net.IPNet{
+							IP:   net.ParseIP("10.11.12.13"),
+							Mask: net.CIDRMask(8, 32),
+						},
+					}},
+				},
+			}
+
+			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name", ipamResult)
 			Expect(cmd).To(Equal(
 				commands.InNamespace{
 					Namespace: sandboxNS,
@@ -80,9 +101,18 @@ var _ = Describe("CommandBuilder", func() {
 							},
 							commands.InNamespace{
 								Namespace: namespace.NewNamespace("/some/repo/path/some-sandbox-name"),
-								Command: commands.SetLinkUp{
-									LinkName: "some-vxlan-name",
-								},
+								Command: commands.All(
+									commands.SetLinkUp{
+										LinkName: "some-vxlan-name",
+									},
+									commands.AddRoute{
+										Interface: "some-vxlan-name",
+										Destination: net.IPNet{
+											IP:   net.ParseIP("192.168.1.1"),
+											Mask: net.CIDRMask(16, 32),
+										},
+									},
+								),
 							},
 						),
 					},

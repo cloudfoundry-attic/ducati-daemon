@@ -221,6 +221,39 @@ var _ = Describe("Networks", func() {
 			Expect(addrs[0].IPNet.IP.String()).To(Equal(ipamResult.IP4.Gateway.String()))
 		})
 
+		It("defines a route for the vxlan overlay in the sandbox", func() {
+			sandboxNS, err := sandboxRepo.Get(sandboxName)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = sandboxNS.Execute(func(_ *os.File) error {
+				link, err := netlink.LinkByName(fmt.Sprintf("vxlan%d", vni))
+				Expect(err).NotTo(HaveOccurred())
+				vxlan, ok := link.(*netlink.Vxlan)
+				Expect(ok).To(BeTrue())
+
+				routes, err := netlink.RouteList(vxlan, netlink.FAMILY_V4)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(routes).NotTo(BeEmpty())
+
+				var sanitizedRoutes []netlink.Route
+				for _, route := range routes {
+					sanitizedRoutes = append(sanitizedRoutes, netlink.Route{
+						Gw:  route.Gw,
+						Dst: route.Dst,
+						Src: route.Src,
+					})
+				}
+
+				_, vxlanNet, err := net.ParseCIDR("192.168.0.0/16")
+				Expect(sanitizedRoutes).To(ConsistOf(netlink.Route{
+					Dst: vxlanNet,
+				}))
+
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("creates a veth pair in the container and sandbox namespaces", func() {
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
@@ -255,7 +288,7 @@ var _ = Describe("Networks", func() {
 
 		})
 
-		It("should contain the routes", func() {
+		It("defines routes in the container", func() {
 			err := containerNamespace.Execute(func(_ *os.File) error {
 				l, err := netlink.LinkByName("vx-eth0")
 				Expect(err).NotTo(HaveOccurred())
