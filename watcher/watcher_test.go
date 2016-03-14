@@ -28,7 +28,11 @@ var _ = Describe("Watcher", func() {
 		logger = lagertest.NewTestLogger("test")
 		locker = &fakes.Locker{}
 		namespace = &fakes.Namespace{}
-		missWatcher = watcher.New(logger, sub, locker)
+		drainer := &watcher.Drainer{
+			Logger:   logger,
+			Firehose: make(chan watcher.Miss),
+		}
+		missWatcher = watcher.New(sub, locker, drainer)
 		namespace.ExecuteStub = func(callback func(ns *os.File) error) error {
 			err := callback(nil)
 			if err != nil {

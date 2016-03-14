@@ -5,8 +5,6 @@ import (
 	"net"
 	"os"
 	"sync"
-
-	"github.com/pivotal-golang/lager"
 )
 
 type Neigh struct {
@@ -35,25 +33,18 @@ type MissWatcher interface {
 	StopMonitor(Namespace) error
 }
 
-func New(logger lager.Logger, subscriber sub, locker sync.Locker) MissWatcher {
-	firehose := make(chan Miss)
+func New(subscriber sub, locker sync.Locker, drainer *Drainer) MissWatcher {
 	w := &missWatcher{
-		Logger:     logger,
 		Subscriber: subscriber,
 		DoneChans:  make(map[string]chan struct{}),
 		Locker:     locker,
-		Firehose:   firehose,
-		Drainer: &Drainer{
-			Logger:   logger,
-			Firehose: firehose,
-		},
+		Firehose:   drainer.Firehose,
 	}
-	go w.Drainer.Drain()
+	go drainer.Drain()
 	return w
 }
 
 type missWatcher struct {
-	Logger     lager.Logger
 	Subscriber sub
 	DoneChans  map[string]chan struct{}
 	Locker     sync.Locker

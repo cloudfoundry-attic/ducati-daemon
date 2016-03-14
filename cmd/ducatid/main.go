@@ -105,7 +105,11 @@ func main() {
 		Logger:    logger.Session("subscriber"),
 		Netlinker: nl.Netlink,
 	}
-	missWatcher := watcher.New(logger, subscriber, &sync.Mutex{})
+	drainer := &watcher.Drainer{
+		Logger:   logger,
+		Firehose: make(chan watcher.Miss),
+	}
+	missWatcher := watcher.New(subscriber, &sync.Mutex{}, drainer)
 	networkMapper := &ipam.FixedNetworkMapper{VNI: conf.VNI}
 
 	commandBuilder := &container.CommandBuilder{
