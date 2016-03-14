@@ -36,14 +36,19 @@ type MissWatcher interface {
 }
 
 func New(logger lager.Logger, subscriber sub, locker sync.Locker) MissWatcher {
+	firehose := make(chan Miss)
 	w := &missWatcher{
 		Logger:     logger,
 		Subscriber: subscriber,
 		DoneChans:  make(map[string]chan struct{}),
 		Locker:     locker,
-		Firehose:   make(chan Miss),
+		Firehose:   firehose,
+		Drainer: &Drainer{
+			Logger:   logger,
+			Firehose: firehose,
+		},
 	}
-	go w.DrainFirehose()
+	go w.Drainer.Drain()
 	return w
 }
 
@@ -53,21 +58,12 @@ type missWatcher struct {
 	DoneChans  map[string]chan struct{}
 	Locker     sync.Locker
 	Firehose   chan Miss
+	Drainer    *Drainer
 }
 
 type Miss struct {
 	SandboxName string
 	DestIP      net.IP
-}
-
-func (w *missWatcher) DrainFirehose() {
-	for {
-		msg := <-w.Firehose
-		w.Logger.Info("sandbox-miss", lager.Data{
-			"sandbox": msg.SandboxName,
-			"dest_ip": msg.DestIP,
-		})
-	}
 }
 
 func (w *missWatcher) StartMonitor(ns Namespace) error {
