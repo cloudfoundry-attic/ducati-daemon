@@ -5,11 +5,15 @@ import (
 	"path/filepath"
 )
 
-//go:generate counterfeiter -o ../../fakes/namespace.go --fake-name Namespace . Namespace
-type Namespace interface {
-	Destroy() error
+type Executor interface {
 	Execute(func(*os.File) error) error
 	Name() string
+}
+
+//go:generate counterfeiter -o ../../fakes/namespace.go --fake-name Namespace . Namespace
+type Namespace interface {
+	Executor
+	Destroy() error
 	Open() (*os.File, error)
 	Path() string
 }

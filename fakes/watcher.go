@@ -4,32 +4,33 @@ package fakes
 import (
 	"sync"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type MissWatcher struct {
-	StartMonitorStub        func(watcher.Namespace) error
+	StartMonitorStub        func(namespace.Executor) error
 	startMonitorMutex       sync.RWMutex
 	startMonitorArgsForCall []struct {
-		arg1 watcher.Namespace
+		arg1 namespace.Executor
 	}
 	startMonitorReturns struct {
 		result1 error
 	}
-	StopMonitorStub        func(watcher.Namespace) error
+	StopMonitorStub        func(namespace.Executor) error
 	stopMonitorMutex       sync.RWMutex
 	stopMonitorArgsForCall []struct {
-		arg1 watcher.Namespace
+		arg1 namespace.Executor
 	}
 	stopMonitorReturns struct {
 		result1 error
 	}
 }
 
-func (fake *MissWatcher) StartMonitor(arg1 watcher.Namespace) error {
+func (fake *MissWatcher) StartMonitor(arg1 namespace.Executor) error {
 	fake.startMonitorMutex.Lock()
 	fake.startMonitorArgsForCall = append(fake.startMonitorArgsForCall, struct {
-		arg1 watcher.Namespace
+		arg1 namespace.Executor
 	}{arg1})
 	fake.startMonitorMutex.Unlock()
 	if fake.StartMonitorStub != nil {
@@ -45,7 +46,7 @@ func (fake *MissWatcher) StartMonitorCallCount() int {
 	return len(fake.startMonitorArgsForCall)
 }
 
-func (fake *MissWatcher) StartMonitorArgsForCall(i int) watcher.Namespace {
+func (fake *MissWatcher) StartMonitorArgsForCall(i int) namespace.Executor {
 	fake.startMonitorMutex.RLock()
 	defer fake.startMonitorMutex.RUnlock()
 	return fake.startMonitorArgsForCall[i].arg1
@@ -58,10 +59,10 @@ func (fake *MissWatcher) StartMonitorReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *MissWatcher) StopMonitor(arg1 watcher.Namespace) error {
+func (fake *MissWatcher) StopMonitor(arg1 namespace.Executor) error {
 	fake.stopMonitorMutex.Lock()
 	fake.stopMonitorArgsForCall = append(fake.stopMonitorArgsForCall, struct {
-		arg1 watcher.Namespace
+		arg1 namespace.Executor
 	}{arg1})
 	fake.stopMonitorMutex.Unlock()
 	if fake.StopMonitorStub != nil {
@@ -77,7 +78,7 @@ func (fake *MissWatcher) StopMonitorCallCount() int {
 	return len(fake.stopMonitorArgsForCall)
 }
 
-func (fake *MissWatcher) StopMonitorArgsForCall(i int) watcher.Namespace {
+func (fake *MissWatcher) StopMonitorArgsForCall(i int) namespace.Executor {
 	fake.stopMonitorMutex.RLock()
 	defer fake.stopMonitorMutex.RUnlock()
 	return fake.stopMonitorArgsForCall[i].arg1

@@ -60,3 +60,7 @@ func (*nl) Subscribe(protocol int, groups ...uint) (NLSocket, error) {
 func (*nl) NeighDeserialize(data []byte) (*netlink.Neigh, error) {
 	return netlink.NeighDeserialize(data)
 }
+
+func (*nl) AddNeigh(neigh *netlink.Neigh) error {
+	return netlink.NeighAdd(neigh)
+}

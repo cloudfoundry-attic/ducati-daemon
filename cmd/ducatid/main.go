@@ -18,6 +18,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/ip"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/links"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/neigh"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/subscriber"
 	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
@@ -105,11 +106,21 @@ func main() {
 		Logger:    logger.Session("subscriber"),
 		Netlinker: nl.Netlink,
 	}
-	drainer := &watcher.Drainer{
-		Logger:   logger,
-		Firehose: make(chan watcher.Miss),
+	resolver := &watcher.Resolver{
+		Logger: logger,
+		Store:  dataStore,
 	}
-	missWatcher := watcher.New(subscriber, &sync.Mutex{}, drainer)
+	arpInserter := &neigh.ARPInserter{
+		Logger:         logger,
+		Netlinker:      nl.Netlink,
+		OSThreadLocker: osThreadLocker,
+	}
+	missWatcher := watcher.New(
+		subscriber,
+		&sync.Mutex{},
+		resolver,
+		arpInserter,
+	)
 	networkMapper := &ipam.FixedNetworkMapper{VNI: conf.VNI}
 
 	commandBuilder := &container.CommandBuilder{

@@ -20,7 +20,9 @@ var _ = Describe("Watcher", func() {
 		locker      *fakes.Locker
 		sub         *fakes.Subscriber
 		namespace   *fakes.Namespace
+		resolver    *fakes.Resolver
 		missWatcher watcher.MissWatcher
+		arpInserter *fakes.ARPInserter
 	)
 
 	BeforeEach(func() {
@@ -28,11 +30,11 @@ var _ = Describe("Watcher", func() {
 		logger = lagertest.NewTestLogger("test")
 		locker = &fakes.Locker{}
 		namespace = &fakes.Namespace{}
-		drainer := &watcher.Drainer{
-			Logger:   logger,
-			Firehose: make(chan watcher.Miss),
-		}
-		missWatcher = watcher.New(sub, locker, drainer)
+		resolver = &fakes.Resolver{}
+		arpInserter = &fakes.ARPInserter{}
+
+		missWatcher = watcher.New(sub, locker, resolver, arpInserter)
+
 		namespace.ExecuteStub = func(callback func(ns *os.File) error) error {
 			err := callback(nil)
 			if err != nil {
@@ -62,7 +64,7 @@ var _ = Describe("Watcher", func() {
 			Expect(namespace.ExecuteCallCount()).To(Equal(1))
 		})
 
-		It("forwards Miss messages to the Firehose", func() {
+		It("forwards Neighbor messages to the resolver, running in a separate goroutine", func() {
 			sub.SubscribeStub = func(subChan chan<- *watcher.Neigh, done <-chan struct{}) error {
 				go func() {
 					subChan <- &watcher.Neigh{IP: net.ParseIP("1.2.3.4")}
@@ -72,7 +74,47 @@ var _ = Describe("Watcher", func() {
 
 			missWatcher.StartMonitor(namespace)
 
-			Eventually(logger).Should(gbytes.Say("1.2.3.4.*%s", namespace.Name()))
+			Eventually(resolver.ResolveMissesCallCount).Should(Equal(1))
+			misses, resolved := resolver.ResolveMissesArgsForCall(0)
+			Expect(resolved).NotTo(BeNil())
+
+			Eventually(misses).Should(Receive())
+		})
+
+		It("starts HandleResolvedNeighbors with the correct channel", func() {
+			missWatcher.StartMonitor(namespace)
+
+			Eventually(arpInserter.HandleResolvedNeighborsCallCount).Should(Equal(1))
+			Eventually(resolver.ResolveMissesCallCount).Should(Equal(1))
+
+			_, resolverResolved := resolver.ResolveMissesArgsForCall(0)
+			ns, inserterResolved := arpInserter.HandleResolvedNeighborsArgsForCall(0)
+			Expect(ns).To(Equal(namespace))
+
+			go func() {
+				resolverResolved <- watcher.Neighbor{SandboxName: "thingy"}
+			}()
+
+			var neigh watcher.Neighbor
+			Eventually(inserterResolved).Should(Receive(&neigh))
+			Expect(neigh).To(Equal(watcher.Neighbor{SandboxName: "thingy"}))
+		})
+
+		Context("when HandleResolvedNeighbors fails", func() {
+			It("returns the error", func() {
+				arpInserter.HandleResolvedNeighborsReturns(errors.New("zuccini"))
+
+				err := missWatcher.StartMonitor(namespace)
+				Expect(err).To(MatchError("arp inserter failed: zuccini"))
+			})
+
+			It("subscriber does not get called", func() {
+				arpInserter.HandleResolvedNeighborsReturns(errors.New("zuccini"))
+
+				_ = missWatcher.StartMonitor(namespace)
+
+				Consistently(sub.SubscribeCallCount).Should(Equal(0))
+			})
 		})
 
 		Context("when the miss message doesn't have a destination IP", func() {

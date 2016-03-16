@@ -9,12 +9,6 @@ import (
 )
 
 type Namespace struct {
-	DestroyStub        func() error
-	destroyMutex       sync.RWMutex
-	destroyArgsForCall []struct{}
-	destroyReturns     struct {
-		result1 error
-	}
 	ExecuteStub        func(func(*os.File) error) error
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
@@ -29,6 +23,12 @@ type Namespace struct {
 	nameReturns     struct {
 		result1 string
 	}
+	DestroyStub        func() error
+	destroyMutex       sync.RWMutex
+	destroyArgsForCall []struct{}
+	destroyReturns     struct {
+		result1 error
+	}
 	OpenStub        func() (*os.File, error)
 	openMutex       sync.RWMutex
 	openArgsForCall []struct{}
@@ -42,30 +42,6 @@ type Namespace struct {
 	pathReturns     struct {
 		result1 string
 	}
-}
-
-func (fake *Namespace) Destroy() error {
-	fake.destroyMutex.Lock()
-	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct{}{})
-	fake.destroyMutex.Unlock()
-	if fake.DestroyStub != nil {
-		return fake.DestroyStub()
-	} else {
-		return fake.destroyReturns.result1
-	}
-}
-
-func (fake *Namespace) DestroyCallCount() int {
-	fake.destroyMutex.RLock()
-	defer fake.destroyMutex.RUnlock()
-	return len(fake.destroyArgsForCall)
-}
-
-func (fake *Namespace) DestroyReturns(result1 error) {
-	fake.DestroyStub = nil
-	fake.destroyReturns = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *Namespace) Execute(arg1 func(*os.File) error) error {
@@ -121,6 +97,30 @@ func (fake *Namespace) NameReturns(result1 string) {
 	fake.NameStub = nil
 	fake.nameReturns = struct {
 		result1 string
+	}{result1}
+}
+
+func (fake *Namespace) Destroy() error {
+	fake.destroyMutex.Lock()
+	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct{}{})
+	fake.destroyMutex.Unlock()
+	if fake.DestroyStub != nil {
+		return fake.DestroyStub()
+	} else {
+		return fake.destroyReturns.result1
+	}
+}
+
+func (fake *Namespace) DestroyCallCount() int {
+	fake.destroyMutex.RLock()
+	defer fake.destroyMutex.RUnlock()
+	return len(fake.destroyArgsForCall)
+}
+
+func (fake *Namespace) DestroyReturns(result1 error) {
+	fake.DestroyStub = nil
+	fake.destroyReturns = struct {
+		result1 error
 	}{result1}
 }
 

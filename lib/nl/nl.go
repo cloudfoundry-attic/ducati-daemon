@@ -29,4 +29,5 @@ type Netlinker interface {
 	RouteList(netlink.Link, int) ([]netlink.Route, error)
 	Subscribe(int, ...uint) (NLSocket, error)
 	NeighDeserialize([]byte) (*netlink.Neigh, error)
+	AddNeigh(*netlink.Neigh) error
 }

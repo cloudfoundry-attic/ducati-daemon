@@ -5,6 +5,8 @@ import (
 	"net"
 	"os"
 	"sync"
+
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
 type Neigh struct {
@@ -22,43 +24,48 @@ type sub interface {
 	Subscribe(ch chan<- *Neigh, done <-chan struct{}) error
 }
 
-type Namespace interface {
-	Execute(func(*os.File) error) error
-	Name() string
-}
-
 //go:generate counterfeiter -o ../fakes/watcher.go --fake-name MissWatcher . MissWatcher
 type MissWatcher interface {
-	StartMonitor(Namespace) error
-	StopMonitor(Namespace) error
+	StartMonitor(namespace.Executor) error
+	StopMonitor(namespace.Executor) error
 }
 
-func New(subscriber sub, locker sync.Locker, drainer *Drainer) MissWatcher {
+//go:generate counterfeiter -o ../fakes/arp_inserter.go --fake-name ARPInserter . arpInserter
+type arpInserter interface {
+	HandleResolvedNeighbors(ns namespace.Executor, resolvedNeighbors <-chan Neighbor) error
+}
+
+func New(subscriber sub, locker sync.Locker, resolver resolver, arpInserter arpInserter) MissWatcher {
 	w := &missWatcher{
-		Subscriber: subscriber,
-		DoneChans:  make(map[string]chan struct{}),
-		Locker:     locker,
-		Firehose:   drainer.Firehose,
+		Subscriber:  subscriber,
+		DoneChans:   make(map[string]chan struct{}),
+		Locker:      locker,
+		Resolver:    resolver,
+		ARPInserter: arpInserter,
 	}
-	go drainer.Drain()
+
 	return w
 }
 
 type missWatcher struct {
-	Subscriber sub
-	DoneChans  map[string]chan struct{}
-	Locker     sync.Locker
-	Firehose   chan Miss
-	Drainer    *Drainer
+	Subscriber  sub
+	DoneChans   map[string]chan struct{}
+	Locker      sync.Locker
+	Firehose    chan Neighbor
+	ARPInserter arpInserter
+	Resolver    resolver
 }
 
-type Miss struct {
+type Neighbor struct {
 	SandboxName string
-	DestIP      net.IP
+	Neigh       Neigh
 }
 
-func (w *missWatcher) StartMonitor(ns Namespace) error {
+func (w *missWatcher) StartMonitor(ns namespace.Executor) error {
 	subChan := make(chan *Neigh)
+
+	unresolvedMisses := make(chan Neighbor)
+	resolvedNeighbors := make(chan Neighbor)
 
 	doneChan := make(chan struct{})
 
@@ -66,11 +73,17 @@ func (w *missWatcher) StartMonitor(ns Namespace) error {
 	w.DoneChans[ns.Name()] = doneChan
 	w.Locker.Unlock()
 
-	err := ns.Execute(func(f *os.File) error {
+	err := w.ARPInserter.HandleResolvedNeighbors(ns, resolvedNeighbors)
+	if err != nil {
+		return fmt.Errorf("arp inserter failed: %s", err)
+	}
+
+	err = ns.Execute(func(f *os.File) error {
 		err := w.Subscriber.Subscribe(subChan, doneChan)
 		if err != nil {
 			return fmt.Errorf("subscribe in %s: %s", ns.Name(), err)
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -83,19 +96,19 @@ func (w *missWatcher) StartMonitor(ns Namespace) error {
 				continue
 			}
 
-			miss := Miss{
+			unresolvedMisses <- Neighbor{
 				SandboxName: ns.Name(),
-				DestIP:      neigh.IP,
+				Neigh:       *neigh,
 			}
-
-			w.Firehose <- miss
 		}
 	}()
+
+	go w.Resolver.ResolveMisses(unresolvedMisses, resolvedNeighbors)
 
 	return nil
 }
 
-func (w *missWatcher) StopMonitor(ns Namespace) error {
+func (w *missWatcher) StopMonitor(ns namespace.Executor) error {
 	w.Locker.Lock()
 	defer w.Locker.Unlock()
 

@@ -122,6 +122,14 @@ type Netlinker struct {
 		result1 *netlink.Neigh
 		result2 error
 	}
+	AddNeighStub        func(*netlink.Neigh) error
+	addNeighMutex       sync.RWMutex
+	addNeighArgsForCall []struct {
+		arg1 *netlink.Neigh
+	}
+	addNeighReturns struct {
+		result1 error
+	}
 }
 
 func (fake *Netlinker) LinkAdd(link netlink.Link) error {
@@ -541,6 +549,38 @@ func (fake *Netlinker) NeighDeserializeReturns(result1 *netlink.Neigh, result2 e
 		result1 *netlink.Neigh
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *Netlinker) AddNeigh(arg1 *netlink.Neigh) error {
+	fake.addNeighMutex.Lock()
+	fake.addNeighArgsForCall = append(fake.addNeighArgsForCall, struct {
+		arg1 *netlink.Neigh
+	}{arg1})
+	fake.addNeighMutex.Unlock()
+	if fake.AddNeighStub != nil {
+		return fake.AddNeighStub(arg1)
+	} else {
+		return fake.addNeighReturns.result1
+	}
+}
+
+func (fake *Netlinker) AddNeighCallCount() int {
+	fake.addNeighMutex.RLock()
+	defer fake.addNeighMutex.RUnlock()
+	return len(fake.addNeighArgsForCall)
+}
+
+func (fake *Netlinker) AddNeighArgsForCall(i int) *netlink.Neigh {
+	fake.addNeighMutex.RLock()
+	defer fake.addNeighMutex.RUnlock()
+	return fake.addNeighArgsForCall[i].arg1
+}
+
+func (fake *Netlinker) AddNeighReturns(result1 error) {
+	fake.AddNeighStub = nil
+	fake.addNeighReturns = struct {
+		result1 error
+	}{result1}
 }
 
 var _ nl.Netlinker = new(Netlinker)
