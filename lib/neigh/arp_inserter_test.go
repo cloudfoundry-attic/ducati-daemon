@@ -112,13 +112,13 @@ var _ = Describe("ARPInserter", func() {
 		})
 
 		It("locks and unlocks the OS thread", func() {
-			err := inserter.HandleResolvedNeighbors(ns, resolved)
-			Expect(err).NotTo(HaveOccurred())
-
 			netlinker.AddNeighStub = func(_ *netlink.Neigh) error {
 				Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(0))
 				return nil
 			}
+
+			err := inserter.HandleResolvedNeighbors(ns, resolved)
+			Expect(err).NotTo(HaveOccurred())
 
 			Expect(threadLocker.LockOSThreadCallCount()).To(Equal(1))
 			Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(1))
