@@ -17,6 +17,9 @@ type NamedMutex struct {
 }
 
 func (g *NamedMutex) getOrCreateNamedLock(name string) *sync.Mutex {
+	g.control.Lock()
+	defer g.control.Unlock()
+
 	if g.namedLocks == nil {
 		g.namedLocks = make(map[string]*sync.Mutex)
 	}
@@ -29,15 +32,11 @@ func (g *NamedMutex) getOrCreateNamedLock(name string) *sync.Mutex {
 }
 
 func (g *NamedMutex) Lock(name string) {
-	g.control.Lock()
 	namedLock := g.getOrCreateNamedLock(name)
-	g.control.Unlock()
 	namedLock.Lock()
 }
 
 func (g *NamedMutex) Unlock(name string) {
-	g.control.Lock()
 	namedLock := g.getOrCreateNamedLock(name)
-	g.control.Unlock()
 	namedLock.Unlock()
 }
