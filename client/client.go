@@ -33,13 +33,13 @@ type DaemonClient struct {
 	HttpClient  *http.Client
 }
 
-func (d *DaemonClient) ContainerUp(networkID, containerID string, payload models.NetworksSetupContainerPayload) (types.Result, error) {
+func (d *DaemonClient) ContainerUp(payload models.NetworksSetupContainerPayload) (types.Result, error) {
 	postData, err := d.Marshaler.Marshal(payload)
 	if err != nil {
 		return types.Result{}, fmt.Errorf("failed to marshal cni payload: %s", err)
 	}
 
-	url := d.buildURL("networks", networkID, containerID)
+	url := d.buildURL("cni", "add")
 	resp, err := d.HttpClient.Post(url, "application/json", bytes.NewReader(postData))
 	if err != nil {
 		return types.Result{}, fmt.Errorf("failed to perform request: %s", err)
@@ -69,21 +69,16 @@ func (d *DaemonClient) ContainerUp(networkID, containerID string, payload models
 	return ipamResult, nil
 }
 
-func (d *DaemonClient) ContainerDown(networkID, containerID string, payload models.NetworksDeleteContainerPayload) error {
+func (d *DaemonClient) ContainerDown(payload models.NetworksDeleteContainerPayload) error {
 	deleteData, err := d.Marshaler.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cni payload: %s", err)
 	}
 
-	url := d.buildURL("networks", networkID, containerID)
-	req, err := http.NewRequest("DELETE", url, bytes.NewReader(deleteData))
+	url := d.buildURL("cni", "del")
+	resp, err := d.HttpClient.Post(url, "application/json", bytes.NewReader(deleteData))
 	if err != nil {
-		return fmt.Errorf("failed to construct request: %s", err)
-	}
-	req.Header.Set("Content-type", "application/json")
-	resp, err := d.HttpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %s", err)
+		return fmt.Errorf("failed to perform request: %s", err)
 	}
 	defer resp.Body.Close()
 

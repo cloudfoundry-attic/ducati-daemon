@@ -108,7 +108,7 @@ var _ = Describe("Networks", func() {
 		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
 	})
 
-	Describe("POST and DELETE /networks/:network_id/:container_id", func() {
+	Describe("POST to /cni/add and /cni/del", func() {
 		var (
 			upSpec       models.NetworksSetupContainerPayload
 			downSpec     models.NetworksDeleteContainerPayload
@@ -126,25 +126,34 @@ var _ = Describe("Networks", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Path(),
 				InterfaceName:      "vx-eth0",
+				NetworkID:          networkID,
+				ContainerID:        containerID,
 			}
 
 			downSpec = models.NetworksDeleteContainerPayload{
 				InterfaceName:      "vx-eth0",
 				ContainerNamespace: containerNamespace.Path(),
+				NetworkID:          networkID,
+				ContainerID:        containerID,
 			}
 
 			By("adding the container to a network")
 			var err error
-			ipamResult, err = daemonClient.ContainerUp(networkID, containerID, upSpec)
+			ipamResult, err = daemonClient.ContainerUp(upSpec)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			By("removing the container from the network")
-			Expect(daemonClient.ContainerDown(networkID, containerID, downSpec)).To(Succeed())
+			Expect(daemonClient.ContainerDown(downSpec)).To(Succeed())
+
+			By("checking that containers have been removed")
+			containers, err := daemonClient.ListNetworkContainers(networkID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(HaveLen(0))
 
 			By("checking that the sandbox has been cleaned up")
-			_, err := sandboxRepo.Get(sandboxName)
+			_, err = sandboxRepo.Get(sandboxName)
 			Expect(err).To(MatchError(ContainSubstring("no such file or directory")))
 
 			By("checking that the veth device is no longer in the container")
@@ -156,7 +165,7 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should respond to POST and DELETE /networks/:network_id/:container_id", func() {
+		It("responds to POST to /cni/add", func() {
 			containers, err := daemonClient.ListNetworkContainers(networkID)
 			Expect(err).NotTo(HaveOccurred())
 

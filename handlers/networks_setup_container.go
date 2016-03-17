@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
-	"github.com/tedsuo/rata"
 )
 
 //go:generate counterfeiter -o ../fakes/creator.go --fake-name Creator . creator
@@ -44,24 +44,45 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 		return
 	}
 
-	var containerPayload models.NetworksSetupContainerPayload
-	err = h.Unmarshaler.Unmarshal(bodyBytes, &containerPayload)
+	var payload models.NetworksSetupContainerPayload
+	err = h.Unmarshaler.Unmarshal(bodyBytes, &payload)
 	if err != nil {
 		logger.Error("unmarshal-failed", err)
 		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	networkID := rata.Param(req, "network_id")
-	containerID := rata.Param(req, "container_id")
+	if payload.InterfaceName == "" {
+		logger.Error("bad-request", errors.New("missing-interface_name"))
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	vni, err := h.NetworkMapper.GetVNI(networkID)
+	if payload.NetworkID == "" {
+		logger.Error("bad-request", errors.New("missing-network_id"))
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if payload.ContainerID == "" {
+		logger.Error("bad-request", errors.New("missing-container_id"))
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if payload.ContainerNamespace == "" {
+		logger.Error("bad-request", errors.New("missing-container_namespace"))
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	vni, err := h.NetworkMapper.GetVNI(payload.NetworkID)
 	if err != nil {
 		logger.Error("network-mapper-get-vni", err)
 		resp.WriteHeader(http.StatusInternalServerError)
 	}
 
-	ipamResult, err := h.IPAllocator.AllocateIP(networkID, containerID)
+	ipamResult, err := h.IPAllocator.AllocateIP(payload.NetworkID, payload.ContainerID)
 	if err != nil {
 		logger.Error("allocate-ip", err)
 
@@ -84,10 +105,10 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 	}
 
 	containerConfig := container.CreatorConfig{
-		NetworkID:       rata.Param(req, "network_id"),
-		ContainerNsPath: containerPayload.ContainerNamespace,
-		ContainerID:     rata.Param(req, "container_id"),
-		InterfaceName:   containerPayload.InterfaceName,
+		NetworkID:       payload.NetworkID,
+		ContainerNsPath: payload.ContainerNamespace,
+		ContainerID:     payload.ContainerID,
+		InterfaceName:   payload.InterfaceName,
 		VNI:             vni,
 		IPAMResult:      ipamResult,
 	}

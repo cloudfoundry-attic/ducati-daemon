@@ -36,10 +36,8 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		osLocker      *fakes.OSThreadLocker
 		unmarshaler   *fakes.Unmarshaler
 		networkMapper *fakes.NetworkMapper
-
-		sandboxRepo *fakes.Repository
-
-		payload models.NetworksDeleteContainerPayload
+		sandboxRepo   *fakes.Repository
+		payload       models.NetworksDeleteContainerPayload
 	)
 
 	var setPayload = func() {
@@ -74,13 +72,12 @@ var _ = Describe("NetworksDeleteContainer", func() {
 
 		sandboxRepo.GetReturns(namespace.NewNamespace("/some/sandbox/repo/path"), nil)
 
-		handler, request = rataWrap(deleteHandler, "DELETE", "/networks/:network_id/:container_id", rata.Params{
-			"network_id":   "some-network-id",
-			"container_id": "some-container-id",
-		})
+		handler, request = rataWrap(deleteHandler, "POST", "/cni/del", rata.Params{})
 		payload = models.NetworksDeleteContainerPayload{
 			InterfaceName:      "some-interface-name",
 			ContainerNamespace: "/some/container/namespace/path",
+			NetworkID:          "some-network-id",
+			ContainerID:        "some-container-id",
 		}
 		setPayload()
 	})
@@ -203,6 +200,8 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		},
 		Entry("interface", "InterfaceName", "interface_name"),
 		Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
+		Entry("network_id", "NetworkID", "network_id"),
+		Entry("container_id", "ContainerID", "container_id"),
 	)
 
 	Context("when the sandbox repo fails", func() {

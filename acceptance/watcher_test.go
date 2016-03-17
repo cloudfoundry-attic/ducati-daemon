@@ -90,21 +90,25 @@ var _ = Describe("Networks", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: containerNamespace.Path(),
 			InterfaceName:      "vx-eth0",
+			NetworkID:          networkID,
+			ContainerID:        containerID,
 		}
 
 		downSpec = models.NetworksDeleteContainerPayload{
 			InterfaceName:      "vx-eth0",
 			ContainerNamespace: containerNamespace.Path(),
+			NetworkID:          networkID,
+			ContainerID:        containerID,
 		}
 
 		By("adding the container to a network")
-		_, err = daemonClient.ContainerUp(networkID, containerID, upSpec)
+		_, err = daemonClient.ContainerUp(upSpec)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		By("removing the container from the network")
-		Expect(daemonClient.ContainerDown(networkID, containerID, downSpec)).To(Succeed())
+		Expect(daemonClient.ContainerDown(downSpec)).To(Succeed())
 
 		session.Interrupt()
 		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))

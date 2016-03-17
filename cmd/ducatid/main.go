@@ -175,8 +175,8 @@ func main() {
 
 	routes := rata.Routes{
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
-		{Name: "networks_setup_container", Method: "POST", Path: "/networks/:network_id/:container_id"},
-		{Name: "networks_delete_container", Method: "DELETE", Path: "/networks/:network_id/:container_id"},
+		{Name: "networks_setup_container", Method: "POST", Path: "/cni/add"},
+		{Name: "networks_delete_container", Method: "POST", Path: "/cni/del"},
 	}
 
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)

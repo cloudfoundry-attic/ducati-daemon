@@ -24,7 +24,6 @@ var _ = Describe("Client", func() {
 		server      *ghttp.Server
 		marshaler   *fakes.Marshaler
 		unmarshaler *fakes.Unmarshaler
-		container   models.Container
 
 		roundTripper *fakes.RoundTripper
 		httpClient   *http.Client
@@ -51,10 +50,6 @@ var _ = Describe("Client", func() {
 		}
 
 		marshaler.MarshalStub = json.Marshal
-
-		container = models.Container{
-			ID: "some-container-id",
-		}
 	})
 
 	AfterEach(func() {
@@ -150,6 +145,8 @@ var _ = Describe("Client", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "interface-name",
+				NetworkID:          "some-network-id",
+				ContainerID:        "some-container-id",
 			}
 
 			returnedResult = types.Result{
@@ -172,17 +169,17 @@ var _ = Describe("Client", func() {
 			}
 
 			server.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/networks/some-network-id/some-container-id"),
+				ghttp.VerifyRequest("POST", "/cni/add"),
 				ghttp.VerifyJSONRepresenting(cniPayload),
 				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWithJSONEncoded(http.StatusCreated, returnedResult),
 			))
 		})
 
-		It("should POST to the /networks/:network_id/:container_id endpoint with a CNI payload", func() {
+		It("should POST to the /cni/add endpoint with a CNI payload", func() {
 			unmarshaler.UnmarshalStub = json.Unmarshal
 
-			receivedResult, err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+			receivedResult, err := c.ContainerUp(cniPayload)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(receivedResult).To(Equal(returnedResult))
@@ -192,10 +189,10 @@ var _ = Describe("Client", func() {
 		})
 
 		It("uses the provided HTTP client", func() {
-			_, err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+			_, err := c.ContainerUp(cniPayload)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
-			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/networks/some-network-id/some-container-id"))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/cni/add"))
 		})
 
 		Context("when an error occurs", func() {
@@ -203,7 +200,7 @@ var _ = Describe("Client", func() {
 				It("returns an error", func() {
 					marshaler.MarshalReturns(nil, errors.New("explosion with marshal"))
 
-					_, err := c.ContainerUp("", "", cniPayload)
+					_, err := c.ContainerUp(cniPayload)
 					Expect(err).To(MatchError("failed to marshal cni payload: explosion with marshal"))
 				})
 			})
@@ -215,7 +212,7 @@ var _ = Describe("Client", func() {
 						Marshaler: marshaler,
 					}
 
-					_, err := c.ContainerUp("", "", cniPayload)
+					_, err := c.ContainerUp(cniPayload)
 					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
 				})
 			})
@@ -224,13 +221,13 @@ var _ = Describe("Client", func() {
 				BeforeEach(func() {
 					server.Reset()
 					server.AppendHandlers(ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/networks/some-network-id/some-container-id"),
+						ghttp.VerifyRequest("POST", "/cni/add"),
 						ghttp.RespondWith(http.StatusInternalServerError, nil),
 					))
 				})
 
 				It("should return an error", func() {
-					_, err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+					_, err := c.ContainerUp(cniPayload)
 					Expect(err).To(MatchError(`unexpected status code on ContainerUp: expected 201 but got 500`))
 				})
 			})
@@ -249,7 +246,7 @@ var _ = Describe("Client", func() {
 				})
 
 				It("should return a wrapped error", func() {
-					_, err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+					_, err := c.ContainerUp(cniPayload)
 					Expect(err).To(MatchError("reading response body: potato"))
 				})
 
@@ -258,11 +255,11 @@ var _ = Describe("Client", func() {
 			Context("when the http response code is a 409 Conflict", func() {
 				It("should return an ipam.NoMoreAddressesError", func() {
 					server.SetHandler(0, ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/networks/some-network-id/some-container-id"),
+						ghttp.VerifyRequest("POST", "/cni/add"),
 						ghttp.RespondWith(http.StatusConflict, `{ "error": "boom" }`),
 					))
 
-					_, err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+					_, err := c.ContainerUp(cniPayload)
 					Expect(err).To(Equal(ipam.NoMoreAddressesError))
 				})
 			})
@@ -270,11 +267,11 @@ var _ = Describe("Client", func() {
 			Context("when the http response code is unexpected", func() {
 				It("should return an error", func() {
 					server.SetHandler(0, ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/networks/some-network-id/some-container-id"),
+						ghttp.VerifyRequest("POST", "/cni/add"),
 						ghttp.RespondWith(http.StatusTeapot, `{{{`),
 					))
 
-					_, err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+					_, err := c.ContainerUp(cniPayload)
 					Expect(err).To(MatchError(`unexpected status code on ContainerUp: expected 201 but got 418`))
 				})
 			})
@@ -283,7 +280,7 @@ var _ = Describe("Client", func() {
 				It("should return an error", func() {
 					unmarshaler.UnmarshalReturns(errors.New("explosion with unmarshal"))
 
-					_, err := c.ContainerUp("some-network-id", "some-container-id", cniPayload)
+					_, err := c.ContainerUp(cniPayload)
 					Expect(err).To(MatchError("failed to unmarshal IPAM result: explosion with unmarshal"))
 				})
 			})
@@ -297,28 +294,30 @@ var _ = Describe("Client", func() {
 			cniPayload = models.NetworksDeleteContainerPayload{
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "some-interface-name",
+				NetworkID:          "some-network-id",
+				ContainerID:        "some-container-id",
 			}
 
 			server.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("DELETE", "/networks/some-network-id/some-container-id"),
+				ghttp.VerifyRequest("POST", "/cni/del"),
 				ghttp.VerifyJSONRepresenting(cniPayload),
 				ghttp.VerifyHeaderKV("Content-type", "application/json"),
 				ghttp.RespondWith(http.StatusNoContent, nil),
 			))
 		})
 
-		It("should DELETE the /networks/:network_id/:container_id endpoint with a CNI payload", func() {
-			Expect(c.ContainerDown("some-network-id", "some-container-id", cniPayload)).To(Succeed())
+		It("should POST the /cni/del endpoint with a CNI payload", func() {
+			Expect(c.ContainerDown(cniPayload)).To(Succeed())
 			Expect(server.ReceivedRequests()).Should(HaveLen(1))
 			Expect(marshaler.MarshalCallCount()).To(Equal(1))
 			Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
 		})
 
 		It("uses the provided HTTP client", func() {
-			Expect(c.ContainerDown("some-network-id", "some-container-id", cniPayload)).To(Succeed())
+			Expect(c.ContainerDown(cniPayload)).To(Succeed())
 
 			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
-			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/networks/some-network-id/some-container-id"))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/cni/del"))
 		})
 
 		Context("when an error occurs", func() {
@@ -326,20 +325,20 @@ var _ = Describe("Client", func() {
 				It("returns an error", func() {
 					marshaler.MarshalReturns(nil, errors.New("explosion with marshal"))
 
-					err := c.ContainerDown("", "", cniPayload)
+					err := c.ContainerDown(cniPayload)
 					Expect(err).To(MatchError("failed to marshal cni payload: explosion with marshal"))
 				})
 			})
 
-			Context("when the request cannot be constructed", func() {
+			Context("when the request cannot be performed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
 						BaseURL:   "%%%%",
 						Marshaler: marshaler,
 					}
 
-					err := c.ContainerDown("", "", cniPayload)
-					Expect(err).To(MatchError(ContainSubstring("failed to construct request: parse")))
+					err := c.ContainerDown(cniPayload)
+					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
 				})
 			})
 
@@ -347,9 +346,11 @@ var _ = Describe("Client", func() {
 				BeforeEach(func() {
 					c.BaseURL = "http://0.0.0.0:12345"
 				})
+
 				It("should return an error", func() {
-					err := c.ContainerDown("", "", cniPayload)
-					Expect(err).To(MatchError(ContainSubstring("request failed: dial")))
+					err := c.ContainerDown(cniPayload)
+					Expect(err).To(MatchError("failed to perform request: Post http://0.0.0.0:12345/cni/del: " +
+						"dial tcp 0.0.0.0:12345: getsockopt: connection refused"))
 				})
 			})
 
@@ -357,13 +358,13 @@ var _ = Describe("Client", func() {
 				BeforeEach(func() {
 					server.Reset()
 					server.AppendHandlers(ghttp.CombineHandlers(
-						ghttp.VerifyRequest("DELETE", "/networks/some-network-id/some-container-id"),
+						ghttp.VerifyRequest("POST", "/cni/del"),
 						ghttp.RespondWith(http.StatusInternalServerError, nil),
 					))
 				})
 
 				It("should return an error", func() {
-					err := c.ContainerDown("some-network-id", "some-container-id", cniPayload)
+					err := c.ContainerDown(cniPayload)
 					Expect(err).To(MatchError(`unexpected status code on ContainerDown: expected 204 but got 500`))
 				})
 			})

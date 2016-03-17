@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
@@ -38,7 +41,14 @@ var _ = Describe("NetworksSetupContainer", func() {
 		ipAllocator         *fakes.IPAllocator
 		networkMapper       *fakes.NetworkMapper
 		expectedResultBytes []byte
+		payload             models.NetworksSetupContainerPayload
 	)
+
+	var setPayload = func() {
+		payloadBytes, err := json.Marshal(payload)
+		Expect(err).NotTo(HaveOccurred())
+		request.Body = ioutil.NopCloser(bytes.NewBuffer(payloadBytes))
+	}
 
 	BeforeEach(func() {
 		osLocker = &fakes.OSThreadLocker{}
@@ -104,23 +114,20 @@ var _ = Describe("NetworksSetupContainer", func() {
 			IP:        "192.168.160.3",
 		}, nil)
 
-		handler, request = rataWrap(setupHandler, "POST", "/networks/:network_id/:container_id", rata.Params{
-			"network_id":   "network-id-1",
-			"container_id": "container-id",
-		})
-		request.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(`{}`)))
-	})
-
-	It("sets up the container network", func() {
-		payload, err := json.Marshal(models.NetworksSetupContainerPayload{
+		handler, request = rataWrap(setupHandler, "POST", "/cni/add", rata.Params{})
+		payload = models.NetworksSetupContainerPayload{
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
-		})
-		Expect(err).NotTo(HaveOccurred())
+			NetworkID:          "network-id-1",
+			ContainerID:        "container-id",
+		}
+		setPayload()
+	})
+
+	It("sets up the container network", func() {
 		networkMapper.GetVNIReturns(99, nil)
 
-		request.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)
 
@@ -211,6 +218,28 @@ var _ = Describe("NetworksSetupContainer", func() {
 				Expect(creator.SetupCallCount()).To(BeZero())
 			})
 		})
+
+		DescribeTable("missing payload fields",
+			func(paramToRemove, jsonName string) {
+				field := reflect.ValueOf(&payload).Elem().FieldByName(paramToRemove)
+				if !field.IsValid() {
+					Fail("invalid test: payload does not have a field named " + paramToRemove)
+				}
+				field.Set(reflect.Zero(field.Type()))
+				setPayload()
+
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(resp.Code).To(Equal(http.StatusBadRequest))
+				Expect(logger).To(gbytes.Say(fmt.Sprintf(
+					"networks-setup-containers.bad-request.*missing-%s", jsonName)))
+			},
+			Entry("interface", "InterfaceName", "interface_name"),
+			Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
+			Entry("network_id", "NetworkID", "network_id"),
+			Entry("container_id", "ContainerID", "container_id"),
+		)
 
 		Context("when container creation fails", func() {
 			It("logs an error and 500s", func() {

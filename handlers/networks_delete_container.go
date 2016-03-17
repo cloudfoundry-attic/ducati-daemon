@@ -14,7 +14,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
-	"github.com/tedsuo/rata"
 )
 
 //go:generate counterfeiter -o ../fakes/deletor.go --fake-name Deletor . deletor
@@ -36,19 +35,16 @@ type NetworksDeleteContainer struct {
 	NetworkMapper  ipam.NetworkMapper
 }
 
-func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+func (h *NetworksDeleteContainer) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	h.OSThreadLocker.LockOSThread()
 	defer h.OSThreadLocker.UnlockOSThread()
 
 	logger := h.Logger.Session("networks-delete-containers")
 
-	containerID := rata.Param(request, "container_id")
-	networkID := rata.Param(request, "network_id")
-
 	bodyBytes, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		logger.Error("body-read-failed", err)
-		response.WriteHeader(http.StatusBadRequest)
+		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -56,33 +52,45 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 	err = h.Unmarshaler.Unmarshal(bodyBytes, &payload)
 	if err != nil {
 		logger.Error("unmarshal-failed", err)
-		response.WriteHeader(http.StatusBadRequest)
+		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if payload.InterfaceName == "" {
 		logger.Error("bad-request", errors.New("missing-interface_name"))
-		response.WriteHeader(http.StatusBadRequest)
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if payload.NetworkID == "" {
+		logger.Error("bad-request", errors.New("missing-network_id"))
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if payload.ContainerID == "" {
+		logger.Error("bad-request", errors.New("missing-container_id"))
+		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if payload.ContainerNamespace == "" {
 		logger.Error("bad-request", errors.New("missing-container_namespace"))
-		response.WriteHeader(http.StatusBadRequest)
+		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	vni, err := h.NetworkMapper.GetVNI(networkID)
+	vni, err := h.NetworkMapper.GetVNI(payload.NetworkID)
 	if err != nil {
 		logger.Error("network-mapper-get-vni", err)
-		response.WriteHeader(http.StatusInternalServerError)
+		resp.WriteHeader(http.StatusInternalServerError)
 	}
 
 	sandboxName := fmt.Sprintf("vni-%d", vni)
 	sandboxNS, err := h.SandboxRepo.Get(sandboxName)
 	if err != nil {
 		logger.Error("sandbox-repo", err)
-		response.WriteHeader(http.StatusInternalServerError)
+		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -96,16 +104,16 @@ func (h *NetworksDeleteContainer) ServeHTTP(response http.ResponseWriter, reques
 	err = h.Deletor.Delete(deletorConfig)
 	if err != nil {
 		logger.Error("deletor.delete-failed", err)
-		response.WriteHeader(http.StatusInternalServerError)
+		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	err = h.Datastore.Delete(containerID)
+	err = h.Datastore.Delete(payload.ContainerID)
 	if err != nil {
 		logger.Error("datastore.delete-failed", err)
-		response.WriteHeader(http.StatusInternalServerError)
+		resp.WriteHeader(http.StatusInternalServerError)
 		return // untested
 	}
 
-	response.WriteHeader(http.StatusNoContent)
+	resp.WriteHeader(http.StatusNoContent)
 }
