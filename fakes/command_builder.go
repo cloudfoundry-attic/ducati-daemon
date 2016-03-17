@@ -11,10 +11,11 @@ import (
 )
 
 type CommandBuilder struct {
-	IdempotentlyCreateSandboxStub        func(sandboxName string) executor.Command
+	IdempotentlyCreateSandboxStub        func(sandboxName, vxlanDeviceName string) executor.Command
 	idempotentlyCreateSandboxMutex       sync.RWMutex
 	idempotentlyCreateSandboxArgsForCall []struct {
-		sandboxName string
+		sandboxName     string
+		vxlanDeviceName string
 	}
 	idempotentlyCreateSandboxReturns struct {
 		result1 executor.Command
@@ -66,14 +67,15 @@ type CommandBuilder struct {
 	}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.Command {
+func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string, vxlanDeviceName string) executor.Command {
 	fake.idempotentlyCreateSandboxMutex.Lock()
 	fake.idempotentlyCreateSandboxArgsForCall = append(fake.idempotentlyCreateSandboxArgsForCall, struct {
-		sandboxName string
-	}{sandboxName})
+		sandboxName     string
+		vxlanDeviceName string
+	}{sandboxName, vxlanDeviceName})
 	fake.idempotentlyCreateSandboxMutex.Unlock()
 	if fake.IdempotentlyCreateSandboxStub != nil {
-		return fake.IdempotentlyCreateSandboxStub(sandboxName)
+		return fake.IdempotentlyCreateSandboxStub(sandboxName, vxlanDeviceName)
 	} else {
 		return fake.idempotentlyCreateSandboxReturns.result1
 	}
@@ -85,10 +87,10 @@ func (fake *CommandBuilder) IdempotentlyCreateSandboxCallCount() int {
 	return len(fake.idempotentlyCreateSandboxArgsForCall)
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateSandboxArgsForCall(i int) string {
+func (fake *CommandBuilder) IdempotentlyCreateSandboxArgsForCall(i int) (string, string) {
 	fake.idempotentlyCreateSandboxMutex.RLock()
 	defer fake.idempotentlyCreateSandboxMutex.RUnlock()
-	return fake.idempotentlyCreateSandboxArgsForCall[i].sandboxName
+	return fake.idempotentlyCreateSandboxArgsForCall[i].sandboxName, fake.idempotentlyCreateSandboxArgsForCall[i].vxlanDeviceName
 }
 
 func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 executor.Command) {

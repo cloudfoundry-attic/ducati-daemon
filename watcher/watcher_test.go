@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,52 +17,58 @@ import (
 
 var _ = Describe("Watcher", func() {
 	var (
-		logger      *lagertest.TestLogger
-		locker      *fakes.Locker
-		sub         *fakes.Subscriber
-		namespace   *fakes.Namespace
-		resolver    *fakes.Resolver
-		missWatcher watcher.MissWatcher
-		arpInserter *fakes.ARPInserter
+		logger        *lagertest.TestLogger
+		locker        *fakes.Locker
+		sub           *fakes.Subscriber
+		ns            *fakes.Namespace
+		vxlanLinkName string
+		resolver      *fakes.Resolver
+		missWatcher   watcher.MissWatcher
+		arpInserter   *fakes.ARPInserter
 	)
 
 	BeforeEach(func() {
 		sub = &fakes.Subscriber{}
 		logger = lagertest.NewTestLogger("test")
 		locker = &fakes.Locker{}
-		namespace = &fakes.Namespace{}
+		ns = &fakes.Namespace{}
+		vxlanLinkName = "some-vxlan-name"
 		resolver = &fakes.Resolver{}
+
 		arpInserter = &fakes.ARPInserter{}
+		arpInserter.HandleResolvedNeighborsStub = func(ready chan error, _ namespace.Executor, _ string, _ <-chan watcher.Neighbor) {
+			close(ready)
+		}
 
 		missWatcher = watcher.New(sub, locker, resolver, arpInserter)
 
-		namespace.ExecuteStub = func(callback func(ns *os.File) error) error {
+		ns.ExecuteStub = func(callback func(ns *os.File) error) error {
 			err := callback(nil)
 			if err != nil {
 				return fmt.Errorf("callback failed: %s", err)
 			}
 			return nil
 		}
-		namespace.NameReturns("some-namespace")
+		ns.NameReturns("some-namespace")
 	})
 
 	Describe("StartMonitor", func() {
 		It("subscribes to sandbox l3 misses", func() {
-			missWatcher.StartMonitor(namespace)
+			missWatcher.StartMonitor(ns, vxlanLinkName)
 
 			Expect(sub.SubscribeCallCount()).To(Equal(1))
 		})
 
 		It("invokes the subscribe call from within the namespace", func() {
-			namespace.ExecuteStub = func(callback func(ns *os.File) error) error {
+			ns.ExecuteStub = func(callback func(ns *os.File) error) error {
 				Expect(sub.SubscribeCallCount()).To(Equal(0))
 				callback(nil)
 				Expect(sub.SubscribeCallCount()).To(Equal(1))
 				return nil
 			}
 
-			missWatcher.StartMonitor(namespace)
-			Expect(namespace.ExecuteCallCount()).To(Equal(1))
+			missWatcher.StartMonitor(ns, vxlanLinkName)
+			Expect(ns.ExecuteCallCount()).To(Equal(1))
 		})
 
 		It("forwards Neighbor messages to the resolver, running in a separate goroutine", func() {
@@ -72,7 +79,7 @@ var _ = Describe("Watcher", func() {
 				return nil
 			}
 
-			missWatcher.StartMonitor(namespace)
+			missWatcher.StartMonitor(ns, vxlanLinkName)
 
 			Eventually(resolver.ResolveMissesCallCount).Should(Equal(1))
 			misses, resolved := resolver.ResolveMissesArgsForCall(0)
@@ -81,15 +88,32 @@ var _ = Describe("Watcher", func() {
 			Eventually(misses).Should(Receive())
 		})
 
-		It("starts HandleResolvedNeighbors with the correct channel", func() {
-			missWatcher.StartMonitor(namespace)
+		It("starts the APRInserter and waits on the ready channel", func() {
+			arpInserter.HandleResolvedNeighborsStub = nil
+
+			result := make(chan error, 1)
+			go func() { result <- missWatcher.StartMonitor(ns, vxlanLinkName) }()
+
+			Eventually(arpInserter.HandleResolvedNeighborsCallCount).Should(Equal(1))
+
+			ready, sboxNS, vxlanName, inserterResolved := arpInserter.HandleResolvedNeighborsArgsForCall(0)
+			Consistently(ready).ShouldNot(BeClosed())
+			Expect(sboxNS).To(Equal(ns))
+			Expect(vxlanName).To(Equal("some-vxlan-name"))
+			Consistently(inserterResolved).ShouldNot(BeClosed())
+
+			close(ready)
+			Eventually(result).Should(Receive(BeNil()))
+		})
+
+		It("forwards resolved misses to the arp inserter", func() {
+			missWatcher.StartMonitor(ns, vxlanLinkName)
 
 			Eventually(arpInserter.HandleResolvedNeighborsCallCount).Should(Equal(1))
 			Eventually(resolver.ResolveMissesCallCount).Should(Equal(1))
 
 			_, resolverResolved := resolver.ResolveMissesArgsForCall(0)
-			ns, inserterResolved := arpInserter.HandleResolvedNeighborsArgsForCall(0)
-			Expect(ns).To(Equal(namespace))
+			_, _, _, inserterResolved := arpInserter.HandleResolvedNeighborsArgsForCall(0)
 
 			go func() {
 				resolverResolved <- watcher.Neighbor{SandboxName: "thingy"}
@@ -100,19 +124,20 @@ var _ = Describe("Watcher", func() {
 			Expect(neigh).To(Equal(watcher.Neighbor{SandboxName: "thingy"}))
 		})
 
-		Context("when HandleResolvedNeighbors fails", func() {
-			It("returns the error", func() {
-				arpInserter.HandleResolvedNeighborsReturns(errors.New("zuccini"))
+		Context("when SyncHandleResolvedNeighbors fails", func() {
+			BeforeEach(func() {
+				arpInserter.HandleResolvedNeighborsStub = func(ready chan error, _ namespace.Executor, _ string, _ <-chan watcher.Neighbor) {
+					ready <- errors.New("zuccini")
+				}
+			})
 
-				err := missWatcher.StartMonitor(namespace)
-				Expect(err).To(MatchError("arp inserter failed: zuccini"))
+			It("returns the error", func() {
+				err := missWatcher.StartMonitor(ns, vxlanLinkName)
+				Expect(err).To(MatchError("arp inserter failed: handle resolved: zuccini"))
 			})
 
 			It("subscriber does not get called", func() {
-				arpInserter.HandleResolvedNeighborsReturns(errors.New("zuccini"))
-
-				_ = missWatcher.StartMonitor(namespace)
-
+				missWatcher.StartMonitor(ns, vxlanLinkName)
 				Consistently(sub.SubscribeCallCount).Should(Equal(0))
 			})
 		})
@@ -126,14 +151,14 @@ var _ = Describe("Watcher", func() {
 					return nil
 				}
 
-				missWatcher.StartMonitor(namespace)
+				missWatcher.StartMonitor(ns, vxlanLinkName)
 
 				Consistently(logger).ShouldNot(gbytes.Say("test"))
 			})
 		})
 
 		It("locks and unlocks to protect the map", func() {
-			missWatcher.StartMonitor(namespace)
+			missWatcher.StartMonitor(ns, vxlanLinkName)
 			Expect(locker.LockCallCount()).To(Equal(1))
 			Expect(locker.UnlockCallCount()).To(Equal(1))
 		})
@@ -141,15 +166,15 @@ var _ = Describe("Watcher", func() {
 		Context("when subscribe returns an error", func() {
 			It("returns the error", func() {
 				sub.SubscribeReturns(errors.New("some subscribe error"))
-				err := missWatcher.StartMonitor(namespace)
+				err := missWatcher.StartMonitor(ns, vxlanLinkName)
 				Expect(err).To(MatchError("callback failed: subscribe in some-namespace: some subscribe error"))
 			})
 		})
 
 		Context("when Execute fails", func() {
 			It("returns the error", func() {
-				namespace.ExecuteReturns(errors.New("boom"))
-				Expect(missWatcher.StartMonitor(namespace)).To(MatchError("boom"))
+				ns.ExecuteReturns(errors.New("boom"))
+				Expect(missWatcher.StartMonitor(ns, vxlanLinkName)).To(MatchError("boom"))
 			})
 		})
 	})
@@ -165,17 +190,17 @@ var _ = Describe("Watcher", func() {
 				}()
 				return nil
 			}
-			missWatcher.StartMonitor(namespace)
+			missWatcher.StartMonitor(ns, vxlanLinkName)
 		})
 
 		It("sends a done signal to the subscribed channel", func() {
-			missWatcher.StopMonitor(namespace)
+			missWatcher.StopMonitor(ns)
 
 			Eventually(complete).Should(Receive())
 		})
 
 		It("locks and unlocks to protect the map", func() {
-			missWatcher.StopMonitor(namespace)
+			missWatcher.StopMonitor(ns)
 			Eventually(complete).Should(Receive())
 
 			Expect(locker.LockCallCount()).To(Equal(2))
@@ -184,10 +209,10 @@ var _ = Describe("Watcher", func() {
 
 		Context("when StopMonitor called many times", func() {
 			It("returns a channel not found error", func() {
-				Expect(missWatcher.StopMonitor(namespace)).To(Succeed())
+				Expect(missWatcher.StopMonitor(ns)).To(Succeed())
 				Eventually(complete).Should(Receive())
 
-				Expect(missWatcher.StopMonitor(namespace)).To(MatchError("namespace some-namespace not monitored"))
+				Expect(missWatcher.StopMonitor(ns)).To(MatchError("namespace some-namespace not monitored"))
 			})
 		})
 	})
@@ -195,7 +220,7 @@ var _ = Describe("Watcher", func() {
 	Context("when StopMonitor called without subscription", func() {
 		Context("when StartMonitor NEVER called", func() {
 			It("returns a channel not found error", func() {
-				Expect(missWatcher.StopMonitor(namespace)).To(MatchError("namespace some-namespace not monitored"))
+				Expect(missWatcher.StopMonitor(ns)).To(MatchError("namespace some-namespace not monitored"))
 			})
 		})
 

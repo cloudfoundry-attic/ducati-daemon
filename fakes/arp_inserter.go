@@ -9,28 +9,27 @@ import (
 )
 
 type ARPInserter struct {
-	HandleResolvedNeighborsStub        func(ns namespace.Executor, resolvedNeighbors <-chan watcher.Neighbor) error
+	HandleResolvedNeighborsStub        func(ready chan error, ns namespace.Executor, vxlanName string, resolvedNeighbors <-chan watcher.Neighbor)
 	handleResolvedNeighborsMutex       sync.RWMutex
 	handleResolvedNeighborsArgsForCall []struct {
+		ready             chan error
 		ns                namespace.Executor
+		vxlanName         string
 		resolvedNeighbors <-chan watcher.Neighbor
-	}
-	handleResolvedNeighborsReturns struct {
-		result1 error
 	}
 }
 
-func (fake *ARPInserter) HandleResolvedNeighbors(ns namespace.Executor, resolvedNeighbors <-chan watcher.Neighbor) error {
+func (fake *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Executor, vxlanName string, resolvedNeighbors <-chan watcher.Neighbor) {
 	fake.handleResolvedNeighborsMutex.Lock()
 	fake.handleResolvedNeighborsArgsForCall = append(fake.handleResolvedNeighborsArgsForCall, struct {
+		ready             chan error
 		ns                namespace.Executor
+		vxlanName         string
 		resolvedNeighbors <-chan watcher.Neighbor
-	}{ns, resolvedNeighbors})
+	}{ready, ns, vxlanName, resolvedNeighbors})
 	fake.handleResolvedNeighborsMutex.Unlock()
 	if fake.HandleResolvedNeighborsStub != nil {
-		return fake.HandleResolvedNeighborsStub(ns, resolvedNeighbors)
-	} else {
-		return fake.handleResolvedNeighborsReturns.result1
+		fake.HandleResolvedNeighborsStub(ready, ns, vxlanName, resolvedNeighbors)
 	}
 }
 
@@ -40,15 +39,8 @@ func (fake *ARPInserter) HandleResolvedNeighborsCallCount() int {
 	return len(fake.handleResolvedNeighborsArgsForCall)
 }
 
-func (fake *ARPInserter) HandleResolvedNeighborsArgsForCall(i int) (namespace.Executor, <-chan watcher.Neighbor) {
+func (fake *ARPInserter) HandleResolvedNeighborsArgsForCall(i int) (chan error, namespace.Executor, string, <-chan watcher.Neighbor) {
 	fake.handleResolvedNeighborsMutex.RLock()
 	defer fake.handleResolvedNeighborsMutex.RUnlock()
-	return fake.handleResolvedNeighborsArgsForCall[i].ns, fake.handleResolvedNeighborsArgsForCall[i].resolvedNeighbors
-}
-
-func (fake *ARPInserter) HandleResolvedNeighborsReturns(result1 error) {
-	fake.HandleResolvedNeighborsStub = nil
-	fake.handleResolvedNeighborsReturns = struct {
-		result1 error
-	}{result1}
+	return fake.handleResolvedNeighborsArgsForCall[i].ready, fake.handleResolvedNeighborsArgsForCall[i].ns, fake.handleResolvedNeighborsArgsForCall[i].vxlanName, fake.handleResolvedNeighborsArgsForCall[i].resolvedNeighbors
 }

@@ -2,14 +2,18 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type StartMonitor struct {
-	Watcher     watcher.MissWatcher
-	SandboxName string
+	HostNamespace namespace.Namespace
+	Watcher       watcher.MissWatcher
+	SandboxName   string
+	VxlanLinkName string
 }
 
 func (sm StartMonitor) Execute(context executor.Context) error {
@@ -18,11 +22,13 @@ func (sm StartMonitor) Execute(context executor.Context) error {
 		return fmt.Errorf("getting sandbox namespace: %s", err)
 	}
 
-	err = sm.Watcher.StartMonitor(ns)
-	if err != nil {
-		return fmt.Errorf("watcher start monitor: %s", err)
-	}
-	return nil
+	return sm.HostNamespace.Execute(func(_ *os.File) error {
+		err = sm.Watcher.StartMonitor(ns, sm.VxlanLinkName)
+		if err != nil {
+			return fmt.Errorf("watcher start monitor: %s", err)
+		}
+		return nil
+	})
 }
 
 func (sm StartMonitor) String() string {

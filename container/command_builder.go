@@ -17,7 +17,7 @@ type CommandBuilder struct {
 	HostNamespace namespace.Namespace
 }
 
-func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.Command {
+func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName string) executor.Command {
 	return commands.Unless{
 		Condition: conditions.SandboxNamespaceExists{
 			Name: sandboxName,
@@ -25,10 +25,6 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string) executor.
 		Command: commands.All(
 			commands.CreateSandboxNamespace{
 				Name: sandboxName,
-			},
-			commands.StartMonitor{
-				Watcher:     b.MissWatcher,
-				SandboxName: sandboxName,
 			},
 		),
 	}
@@ -81,6 +77,12 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 						},
 						commands.All(routeCommands...),
 					),
+				},
+				commands.StartMonitor{
+					HostNamespace: b.HostNamespace,
+					Watcher:       b.MissWatcher,
+					SandboxName:   sandboxName,
+					VxlanLinkName: vxlanName,
 				},
 			),
 		},

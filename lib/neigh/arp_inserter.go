@@ -19,35 +19,29 @@ type ARPInserter struct {
 	OSThreadLocker ossupport.OSThreadLocker
 }
 
-func (a *ARPInserter) HandleResolvedNeighbors(ns namespace.Executor, resolvedChan <-chan watcher.Neighbor) error {
-	ready := make(chan error)
-
-	go a.runLocked(ready, ns, resolvedChan)
-
-	err := <-ready
-	if err != nil {
-		return fmt.Errorf("namespace execute failed: %s", err)
-	}
-
-	return nil
-}
-
-func (a *ARPInserter) runLocked(ready chan error, ns namespace.Executor, resolvedChan <-chan watcher.Neighbor) {
+func (a *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Executor, vxlanDeviceName string, resolvedChan <-chan watcher.Neighbor) {
 	a.OSThreadLocker.LockOSThread()
 	defer a.OSThreadLocker.UnlockOSThread()
 
 	err := ns.Execute(func(f *os.File) error {
+		vxlanLink, err := a.Netlinker.LinkByName(vxlanDeviceName)
+		if err != nil {
+			return fmt.Errorf("find link %q: %s", vxlanDeviceName, err)
+		}
+
 		close(ready)
-		a.addNeighbors(resolvedChan)
+
+		a.addNeighbors(vxlanLink.Attrs().Index, resolvedChan)
 		return nil
 	})
 
 	if err != nil {
-		ready <- err
+		ready <- fmt.Errorf("namespace execute failed: %s", err)
+		close(ready)
 	}
 }
 
-func (a *ARPInserter) addNeighbors(resolvedChan <-chan watcher.Neighbor) {
+func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watcher.Neighbor) {
 	for msg := range resolvedChan {
 		neigh := reverseConvert(msg.Neigh)
 		neigh.State = netlink.NUD_REACHABLE
@@ -58,12 +52,14 @@ func (a *ARPInserter) addNeighbors(resolvedChan <-chan watcher.Neighbor) {
 			continue
 		}
 
-		fdb := reverseConvert(msg.Neigh)
-		fdb.IP = msg.VTEP
-		fdb.Family = syscall.AF_BRIDGE
-		fdb.Flags = netlink.NTF_SELF
-		fdb.Type = 0
-		fdb.State = 0
+		fdb := &netlink.Neigh{
+			LinkIndex:    vxlanLinkIndex,
+			HardwareAddr: neigh.HardwareAddr,
+			IP:           msg.VTEP,
+			Family:       syscall.AF_BRIDGE,
+			Flags:        netlink.NTF_SELF,
+			State:        netlink.NUD_REACHABLE,
+		}
 
 		err = a.Netlinker.SetNeigh(fdb)
 		if err != nil {

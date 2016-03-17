@@ -129,8 +129,9 @@ var _ = Describe("Setup", func() {
 		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
 		Expect(commandGroup[0]).To(Equal(createSandboxResult))
 
-		sandboxName := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
+		sandboxName, vxlanDeviceName := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
 		Expect(sandboxName).To(Equal("vni-99"))
+		Expect(vxlanDeviceName).To(Equal("vxlan99"))
 	})
 
 	It("should execute the IdempotentlyCreateVxlan command group", func() {

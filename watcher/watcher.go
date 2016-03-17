@@ -26,13 +26,13 @@ type sub interface {
 
 //go:generate counterfeiter -o ../fakes/watcher.go --fake-name MissWatcher . MissWatcher
 type MissWatcher interface {
-	StartMonitor(namespace.Executor) error
+	StartMonitor(ns namespace.Executor, vxlanLinkName string) error
 	StopMonitor(namespace.Executor) error
 }
 
 //go:generate counterfeiter -o ../fakes/arp_inserter.go --fake-name ARPInserter . arpInserter
 type arpInserter interface {
-	HandleResolvedNeighbors(ns namespace.Executor, resolvedNeighbors <-chan Neighbor) error
+	HandleResolvedNeighbors(ready chan error, ns namespace.Executor, vxlanName string, resolvedNeighbors <-chan Neighbor)
 }
 
 func New(subscriber sub, locker sync.Locker, resolver resolver, arpInserter arpInserter) MissWatcher {
@@ -62,7 +62,7 @@ type Neighbor struct {
 	Neigh       Neigh
 }
 
-func (w *missWatcher) StartMonitor(ns namespace.Executor) error {
+func (w *missWatcher) StartMonitor(ns namespace.Executor, vxlanName string) error {
 	subChan := make(chan *Neigh)
 
 	unresolvedMisses := make(chan Neighbor)
@@ -74,7 +74,7 @@ func (w *missWatcher) StartMonitor(ns namespace.Executor) error {
 	w.DoneChans[ns.Name()] = doneChan
 	w.Locker.Unlock()
 
-	err := w.ARPInserter.HandleResolvedNeighbors(ns, resolvedNeighbors)
+	err := w.startARPInserter(ns, vxlanName, resolvedNeighbors)
 	if err != nil {
 		return fmt.Errorf("arp inserter failed: %s", err)
 	}
@@ -121,6 +121,19 @@ func (w *missWatcher) StopMonitor(ns namespace.Executor) error {
 	delete(w.DoneChans, ns.Name())
 
 	doneChan <- struct{}{}
+
+	return nil
+}
+
+func (w *missWatcher) startARPInserter(ns namespace.Executor, vxlanDeviceName string, resolvedChan <-chan Neighbor) error {
+	ready := make(chan error)
+
+	go w.ARPInserter.HandleResolvedNeighbors(ready, ns, vxlanDeviceName, resolvedChan)
+
+	err := <-ready
+	if err != nil {
+		return fmt.Errorf("handle resolved: %s", err)
+	}
 
 	return nil
 }

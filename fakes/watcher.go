@@ -9,10 +9,11 @@ import (
 )
 
 type MissWatcher struct {
-	StartMonitorStub        func(namespace.Executor) error
+	StartMonitorStub        func(ns namespace.Executor, vxlanLinkName string) error
 	startMonitorMutex       sync.RWMutex
 	startMonitorArgsForCall []struct {
-		arg1 namespace.Executor
+		ns            namespace.Executor
+		vxlanLinkName string
 	}
 	startMonitorReturns struct {
 		result1 error
@@ -27,14 +28,15 @@ type MissWatcher struct {
 	}
 }
 
-func (fake *MissWatcher) StartMonitor(arg1 namespace.Executor) error {
+func (fake *MissWatcher) StartMonitor(ns namespace.Executor, vxlanLinkName string) error {
 	fake.startMonitorMutex.Lock()
 	fake.startMonitorArgsForCall = append(fake.startMonitorArgsForCall, struct {
-		arg1 namespace.Executor
-	}{arg1})
+		ns            namespace.Executor
+		vxlanLinkName string
+	}{ns, vxlanLinkName})
 	fake.startMonitorMutex.Unlock()
 	if fake.StartMonitorStub != nil {
-		return fake.StartMonitorStub(arg1)
+		return fake.StartMonitorStub(ns, vxlanLinkName)
 	} else {
 		return fake.startMonitorReturns.result1
 	}
@@ -46,10 +48,10 @@ func (fake *MissWatcher) StartMonitorCallCount() int {
 	return len(fake.startMonitorArgsForCall)
 }
 
-func (fake *MissWatcher) StartMonitorArgsForCall(i int) namespace.Executor {
+func (fake *MissWatcher) StartMonitorArgsForCall(i int) (namespace.Executor, string) {
 	fake.startMonitorMutex.RLock()
 	defer fake.startMonitorMutex.RUnlock()
-	return fake.startMonitorArgsForCall[i].arg1
+	return fake.startMonitorArgsForCall[i].ns, fake.startMonitorArgsForCall[i].vxlanLinkName
 }
 
 func (fake *MissWatcher) StartMonitorReturns(result1 error) {

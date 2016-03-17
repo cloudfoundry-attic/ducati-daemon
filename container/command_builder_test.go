@@ -18,13 +18,10 @@ import (
 var _ = Describe("CommandBuilder", func() {
 	Describe("IdempotentlyCreateSandbox", func() {
 		It("should return a command group that idempotently creates the sandbox", func() {
-			missWatcher := &fakes.MissWatcher{}
 
-			b := container.CommandBuilder{
-				MissWatcher: missWatcher,
-			}
+			b := container.CommandBuilder{}
 
-			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name")
+			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name", "some-vxlan-name")
 			Expect(cmd).To(Equal(
 				commands.Unless{
 					Condition: conditions.SandboxNamespaceExists{
@@ -33,10 +30,6 @@ var _ = Describe("CommandBuilder", func() {
 					Command: commands.All(
 						commands.CreateSandboxNamespace{
 							Name: "some-sandbox-name",
-						},
-						commands.StartMonitor{
-							Watcher:     missWatcher,
-							SandboxName: "some-sandbox-name",
 						},
 					),
 				}))
@@ -51,9 +44,11 @@ var _ = Describe("CommandBuilder", func() {
 			sandboxNS := namespace.NewNamespace(fakePath)
 			hostNamespace := namespace.NewNamespace("/proc/self/ns/net")
 
+			missWatcher := &fakes.MissWatcher{}
 			b := container.CommandBuilder{
 				SandboxRepo:   sandboxRepository,
 				HostNamespace: hostNamespace,
+				MissWatcher:   missWatcher,
 			}
 
 			ipamResult := &types.Result{
@@ -86,7 +81,7 @@ var _ = Describe("CommandBuilder", func() {
 						},
 						Command: commands.All(
 							commands.InNamespace{
-								Namespace: namespace.NewNamespace("/proc/self/ns/net"),
+								Namespace: hostNamespace,
 								Command: commands.All(
 									commands.CreateVxlan{
 										Name: "some-vxlan-name",
@@ -121,6 +116,12 @@ var _ = Describe("CommandBuilder", func() {
 										},
 									),
 								),
+							},
+							commands.StartMonitor{
+								HostNamespace: hostNamespace,
+								Watcher:       missWatcher,
+								SandboxName:   "some-sandbox-name",
+								VxlanLinkName: "some-vxlan-name",
 							},
 						),
 					},

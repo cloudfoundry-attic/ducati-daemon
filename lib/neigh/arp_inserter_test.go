@@ -23,7 +23,7 @@ var _ = Describe("ARPInserter", func() {
 		inserter     *neigh.ARPInserter
 		ns           *fakes.Namespace
 		netlinker    *nl_fakes.Netlinker
-		resolved     chan watcher.Neighbor
+		vxlanLink    *netlink.Vxlan
 		logger       *lagertest.TestLogger
 		threadLocker *fakes.OSThreadLocker
 	)
@@ -31,26 +31,36 @@ var _ = Describe("ARPInserter", func() {
 	BeforeEach(func() {
 		ns = &fakes.Namespace{}
 		netlinker = &nl_fakes.Netlinker{}
-		resolved = make(chan watcher.Neighbor, 3)
 		logger = lagertest.NewTestLogger("test")
 		threadLocker = &fakes.OSThreadLocker{}
+		vxlanLink = &netlink.Vxlan{
+			LinkAttrs: netlink.LinkAttrs{
+				Index: 9876,
+			},
+		}
+
+		ns.ExecuteStub = func(callback func(ns *os.File) error) error {
+			return callback(nil)
+		}
+
+		netlinker.LinkByNameStub = func(linkName string) (netlink.Link, error) {
+			return vxlanLink, nil
+		}
 
 		inserter = &neigh.ARPInserter{
 			Logger:         logger,
 			Netlinker:      netlinker,
 			OSThreadLocker: threadLocker,
 		}
-		ns.ExecuteStub = func(callback func(ns *os.File) error) error {
-			defer GinkgoRecover()
-
-			callback(nil)
-			return nil
-		}
 	})
 
 	Describe("HandleResolvedNeighbors", func() {
-		var neigh watcher.Neigh
-		var neighbor watcher.Neighbor
+		var (
+			neigh    watcher.Neigh
+			neighbor watcher.Neighbor
+			resolved chan watcher.Neighbor
+			ready    chan error
+		)
 
 		BeforeEach(func() {
 			mac, err := net.ParseMAC("01:02:03:04:05:06")
@@ -72,130 +82,157 @@ var _ = Describe("ARPInserter", func() {
 				Neigh:       neigh,
 			}
 
+			resolved = make(chan watcher.Neighbor, 3)
 			resolved <- neighbor
 
+			ready = make(chan error, 1)
+		})
+
+		JustBeforeEach(func() {
 			close(resolved)
 		})
 
-		It("sets a neighbor entry via the netlinker from within the namespace", func() {
+		AfterEach(func() {
+			Eventually(ready).Should(BeClosed())
+		})
+
+		It("finds the vxlan device in the sandbox namespace", func() {
+			ns.ExecuteStub = func(callback func(_ *os.File) error) error {
+				Expect(netlinker.LinkByNameCallCount()).To(Equal(0))
+				callback(nil)
+				Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+				return nil
+			}
+
+			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+			Eventually(ready).Should(BeClosed())
+
+			Expect(ns.ExecuteCallCount()).To(Equal(1))
+			Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("some-vxlan-name"))
+		})
+
+		Context("when the vxlan device cannot be found", func() {
+			BeforeEach(func() {
+				netlinker.LinkByNameReturns(nil, errors.New("boom-boom"))
+			})
+
+			It("returns a meaningful error", func() {
+				inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+				Eventually(ready).Should(Receive(MatchError(`namespace execute failed: find link "some-vxlan-name": boom-boom`)))
+			})
+		})
+
+		It("sets a neighbor entry in the sandbox namespace", func() {
 			ns.ExecuteStub = func(callback func(ns *os.File) error) error {
-				defer GinkgoRecover()
-
 				Expect(netlinker.SetNeighCallCount()).To(Equal(0))
 				callback(nil)
 				Expect(netlinker.SetNeighCallCount()).To(Equal(2))
-
-				Expect(netlinker.SetNeighArgsForCall(0)).To(Equal(&netlink.Neigh{
-					LinkIndex:    neigh.LinkIndex,
-					Family:       neigh.Family,
-					State:        netlink.NUD_REACHABLE,
-					Type:         neigh.Type,
-					Flags:        neigh.Flags,
-					IP:           neigh.IP,
-					HardwareAddr: neigh.HardwareAddr,
-				}))
 				return nil
 			}
 
-			err := inserter.HandleResolvedNeighbors(ns, resolved)
-			Expect(err).NotTo(HaveOccurred())
+			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+			Eventually(ready).Should(BeClosed())
 
-			Eventually(ns.ExecuteCallCount()).Should(Equal(1))
+			Expect(ns.ExecuteCallCount()).To(Equal(1))
+			Expect(netlinker.SetNeighArgsForCall(0)).To(Equal(&netlink.Neigh{
+				LinkIndex:    neigh.LinkIndex,
+				Family:       neigh.Family,
+				State:        netlink.NUD_REACHABLE,
+				Type:         neigh.Type,
+				Flags:        neigh.Flags,
+				IP:           neigh.IP,
+				HardwareAddr: neigh.HardwareAddr,
+			}))
 		})
 
-		It("sets a forwarding database entry via the netlinker from within the namespace", func() {
+		It("sets a forwarding database entry in the the namespace", func() {
 			ns.ExecuteStub = func(callback func(_ *os.File) error) error {
-				defer GinkgoRecover()
-
 				Expect(netlinker.SetNeighCallCount()).To(Equal(0))
 				callback(nil)
 				Expect(netlinker.SetNeighCallCount()).To(Equal(2))
-
-				Expect(netlinker.SetNeighArgsForCall(1)).To(Equal(&netlink.Neigh{
-					LinkIndex:    neigh.LinkIndex,
-					HardwareAddr: neigh.HardwareAddr,
-					Family:       syscall.AF_BRIDGE,
-					State:        0,
-					Type:         0,
-					Flags:        netlink.NTF_SELF,
-					IP:           neighbor.VTEP,
-				}))
 				return nil
 			}
 
-			err := inserter.HandleResolvedNeighbors(ns, resolved)
-			Expect(err).NotTo(HaveOccurred())
+			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+			Eventually(ready).Should(BeClosed())
 
-			Eventually(ns.ExecuteCallCount()).Should(Equal(1))
-		})
-
-		It("runs everything in a goroutine and does not block", func() {
-			quitChan := make(chan struct{})
-			ns.ExecuteStub = func(callback func(_ *os.File) error) error {
-				defer GinkgoRecover()
-
-				<-quitChan
-				return callback(nil)
-			}
-
-			exited := make(chan struct{})
-			go func() {
-				inserter.HandleResolvedNeighbors(ns, resolved)
-				close(exited)
-			}()
-
-			close(quitChan)
-			Eventually(exited).Should(BeClosed())
+			Expect(ns.ExecuteCallCount()).To(Equal(1))
+			Expect(netlinker.SetNeighArgsForCall(1)).To(Equal(&netlink.Neigh{
+				LinkIndex:    9876,
+				HardwareAddr: neigh.HardwareAddr,
+				Family:       syscall.AF_BRIDGE,
+				State:        0,
+				Type:         0,
+				Flags:        netlink.NTF_SELF,
+				IP:           neighbor.VTEP,
+			}))
 		})
 
 		It("locks and unlocks the OS thread", func() {
-			netlinker.SetNeighStub = func(_ *netlink.Neigh) error {
+			ns.ExecuteStub = func(callback func(ns *os.File) error) error {
+				callback(nil)
+				Expect(threadLocker.LockOSThreadCallCount()).To(Equal(1))
 				Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(0))
 				return nil
 			}
 
-			err := inserter.HandleResolvedNeighbors(ns, resolved)
-			Expect(err).NotTo(HaveOccurred())
+			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+			Eventually(ready).Should(BeClosed())
 
-			Expect(netlinker.SetNeighCallCount()).To(Equal(2))
+			Expect(ns.ExecuteCallCount()).To(Equal(1))
 			Expect(threadLocker.LockOSThreadCallCount()).To(Equal(1))
 			Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(1))
 		})
 
 		Context("when executing in namespace fails", func() {
-			It("returns the error", func() {
+			BeforeEach(func() {
 				ns.ExecuteReturns(errors.New("peppers"))
+			})
 
-				err := inserter.HandleResolvedNeighbors(ns, resolved)
-				Expect(err).To(MatchError("namespace execute failed: peppers"))
+			It("returns the error", func() {
+				inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+				Eventually(ready).Should(Receive(MatchError("namespace execute failed: peppers")))
 			})
 		})
 
 		Context("when setting a neighbor entry fails", func() {
+			BeforeEach(func() {
+				netlinker.SetNeighStub = func(n *netlink.Neigh) error {
+					if netlinker.SetNeighCallCount() == 1 {
+						return errors.New("go huskies")
+					}
+					return nil
+				}
+
+				resolved <- watcher.Neighbor{}
+			})
+
 			It("logs the error and continues in the loop", func() {
-				netlinker.SetNeighReturns(errors.New("durian"))
+				inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+				Eventually(ready).Should(BeClosed())
 
-				err := inserter.HandleResolvedNeighbors(ns, resolved)
-				Expect(err).NotTo(HaveOccurred())
-
-				Eventually(logger).Should(gbytes.Say("set-l3-neighbor-failed.*durian"))
-				Expect(netlinker.SetNeighCallCount()).To(Equal(1))
+				Eventually(logger).Should(gbytes.Say("set-l3-neighbor-failed.*huskies"))
+				Expect(netlinker.SetNeighCallCount()).To(Equal(3))
 			})
 		})
 
 		Context("when setting the forwarding entry fails", func() {
-			It("logs the error", func() {
+			BeforeEach(func() {
 				netlinker.SetNeighStub = func(n *netlink.Neigh) error {
 					if netlinker.SetNeighCallCount() == 2 {
 						return errors.New("fail-on-two")
 					}
 					return nil
 				}
+				resolved <- watcher.Neighbor{}
+			})
 
-				err := inserter.HandleResolvedNeighbors(ns, resolved)
-				Expect(err).NotTo(HaveOccurred())
+			It("logs the error and continues", func() {
+				inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
+				Eventually(ready).Should(BeClosed())
 
 				Eventually(logger).Should(gbytes.Say("set-l2-forward-failed.*fail-on-two"))
+				Expect(netlinker.SetNeighCallCount()).To(Equal(4))
 			})
 		})
 	})

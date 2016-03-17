@@ -62,5 +62,5 @@ func (*nl) NeighDeserialize(data []byte) (*netlink.Neigh, error) {
 }
 
 func (*nl) SetNeigh(neigh *netlink.Neigh) error {
-	return netlink.NeighAdd(neigh)
+	return netlink.NeighSet(neigh)
 }
