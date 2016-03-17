@@ -30,4 +30,5 @@ type Netlinker interface {
 	Subscribe(int, ...uint) (NLSocket, error)
 	NeighDeserialize([]byte) (*netlink.Neigh, error)
 	AddNeigh(*netlink.Neigh) error
+	SetNeigh(*netlink.Neigh) error
 }

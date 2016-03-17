@@ -40,6 +40,7 @@ func (d *Resolver) ResolveMisses(misses <-chan Neighbor, knownNeighbors chan<- N
 				}
 
 				msg.Neigh.HardwareAddr = mac
+				msg.VTEP = net.ParseIP(container.HostIP)
 				found = true
 				break
 			}

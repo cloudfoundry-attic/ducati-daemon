@@ -3,6 +3,7 @@ package neigh
 import (
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
@@ -48,9 +49,26 @@ func (a *ARPInserter) runLocked(ready chan error, ns namespace.Executor, resolve
 
 func (a *ARPInserter) addNeighbors(resolvedChan <-chan watcher.Neighbor) {
 	for msg := range resolvedChan {
-		err := a.Netlinker.AddNeigh(reverseConvert(msg.Neigh))
+		neigh := reverseConvert(msg.Neigh)
+		neigh.State = netlink.NUD_REACHABLE
+
+		err := a.Netlinker.SetNeigh(neigh)
 		if err != nil {
-			a.Logger.Error("add-neighbor-failed", err)
+			a.Logger.Error("set-l3-neighbor-failed", err)
+			continue
+		}
+
+		fdb := reverseConvert(msg.Neigh)
+		fdb.IP = msg.VTEP
+		fdb.Family = syscall.AF_BRIDGE
+		fdb.Flags = netlink.NTF_SELF
+		fdb.Type = 0
+		fdb.State = 0
+
+		err = a.Netlinker.SetNeigh(fdb)
+		if err != nil {
+			a.Logger.Error("set-l2-forward-failed", err)
+			continue
 		}
 	}
 }

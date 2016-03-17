@@ -58,6 +58,7 @@ type missWatcher struct {
 
 type Neighbor struct {
 	SandboxName string
+	VTEP        net.IP
 	Neigh       Neigh
 }
 

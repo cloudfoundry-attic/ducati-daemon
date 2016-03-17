@@ -55,16 +55,18 @@ var _ = Describe("Resolver", func() {
 
 			fakeStore.AllReturns([]models.Container{
 				models.Container{
-					IP: "1.2.3.4",
+					IP:     "1.2.3.4",
+					HostIP: "10.10.10.10",
 				},
 				models.Container{
-					IP:  "192.168.1.2",
-					MAC: "ff:ff:ff:ff:ff:ff",
+					IP:     "192.168.1.2",
+					MAC:    "ff:ff:ff:ff:ff:ff",
+					HostIP: "10.11.12.13",
 				},
 			}, nil)
 		})
 
-		It("retrieves the MAC address associated with each incoming IP", func() {
+		It("retrieves the addresses associated with each incoming IP", func() {
 			missesChannel <- msg
 
 			Eventually(fakeStore.AllCallCount).Should(Equal(1))
@@ -76,6 +78,7 @@ var _ = Describe("Resolver", func() {
 			expectedMAC, _ := net.ParseMAC("ff:ff:ff:ff:ff:ff")
 			Eventually(knownNeighborsChannel).Should(Receive(Equal(watcher.Neighbor{
 				SandboxName: "some-sandbox-name",
+				VTEP:        net.ParseIP("10.11.12.13"),
 				Neigh: watcher.Neigh{
 					IP:           net.ParseIP("192.168.1.2"),
 					HardwareAddr: expectedMAC,
