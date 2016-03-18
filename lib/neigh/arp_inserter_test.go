@@ -161,7 +161,7 @@ var _ = Describe("ARPInserter", func() {
 				LinkIndex:    9876,
 				HardwareAddr: neigh.HardwareAddr,
 				Family:       syscall.AF_BRIDGE,
-				State:        0,
+				State:        netlink.NUD_REACHABLE,
 				Type:         0,
 				Flags:        netlink.NTF_SELF,
 				IP:           neighbor.VTEP,

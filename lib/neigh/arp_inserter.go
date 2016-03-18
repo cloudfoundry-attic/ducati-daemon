@@ -44,7 +44,7 @@ func (a *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Exe
 func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watcher.Neighbor) {
 	for msg := range resolvedChan {
 		neigh := reverseConvert(msg.Neigh)
-		neigh.State = netlink.NUD_REACHABLE | netlink.NUD_PERMANENT
+		neigh.State = netlink.NUD_REACHABLE
 
 		err := a.Netlinker.SetNeigh(neigh)
 		if err != nil {
@@ -52,7 +52,7 @@ func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watch
 			continue
 		}
 		a.Logger.Info("inserted-neigh", lager.Data{
-			"neigh": neigh,
+			"neigh": neigh.String(),
 		})
 
 		fdb := &netlink.Neigh{
@@ -61,7 +61,7 @@ func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watch
 			IP:           msg.VTEP,
 			Family:       syscall.AF_BRIDGE,
 			Flags:        netlink.NTF_SELF,
-			State:        netlink.NUD_REACHABLE | netlink.NUD_PERMANENT,
+			State:        netlink.NUD_REACHABLE,
 		}
 
 		err = a.Netlinker.SetNeigh(fdb)
@@ -72,7 +72,7 @@ func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watch
 
 		a.Logger.Info("inserted-fdb", lager.Data{
 			"fdb":     fdb,
-			"hw_addr": neigh.HardwareAddr,
+			"hw_addr": neigh.HardwareAddr.String(),
 		})
 	}
 }

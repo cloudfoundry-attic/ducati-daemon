@@ -53,7 +53,7 @@ func (d *Resolver) ResolveMisses(misses <-chan Neighbor, knownNeighbors chan<- N
 
 		d.Logger.Info("resolved", lager.Data{
 			"msg":     msg,
-			"hw_addr": msg.Neigh.HardwareAddr,
+			"hw_addr": msg.Neigh.HardwareAddr.String(),
 		})
 
 		knownNeighbors <- msg
