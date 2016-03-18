@@ -145,11 +145,10 @@ var _ = Describe("Setup", func() {
 		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
 		Expect(commandGroup[1]).To(Equal(createVxlanResult))
 
-		vxlanName, vni, sandboxName, ipamResult := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
+		vxlanName, vni, sandboxName := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
 		Expect(vxlanName).To(Equal("vxlan99"))
 		Expect(vni).To(Equal(99))
 		Expect(sandboxName).To(Equal("vni-99"))
-		Expect(ipamResult).To(Equal(config.IPAMResult))
 	})
 
 	It("should execute the SetupVeth command group, including the route commands", func() {

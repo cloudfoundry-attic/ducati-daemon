@@ -76,9 +76,6 @@ func main() {
 	configFactory := &ipam.ConfigFactory{
 		Config: types.IPConfig{
 			IP: *subnet,
-			Routes: []types.Route{{
-				Dst: *overlay,
-			}},
 		},
 	}
 

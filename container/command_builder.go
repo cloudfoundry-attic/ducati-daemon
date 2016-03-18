@@ -34,20 +34,9 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 	vxlanName string,
 	vni int,
 	sandboxName string,
-	ipamResult *types.Result,
 ) executor.Command {
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 	sandboxNS := namespace.NewNamespace(sandboxNSPath)
-
-	var routeCommands []executor.Command
-	for _, route := range ipamResult.IP4.Routes {
-		routeCommand := commands.AddRoute{
-			Interface:   vxlanName,
-			Destination: route.Dst,
-		}
-
-		routeCommands = append(routeCommands, routeCommand)
-	}
 
 	return commands.InNamespace{
 		Namespace: sandboxNS,
@@ -71,12 +60,9 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 				},
 				commands.InNamespace{
 					Namespace: sandboxNS,
-					Command: commands.All(
-						commands.SetLinkUp{
-							LinkName: vxlanName,
-						},
-						commands.All(routeCommands...),
-					),
+					Command: commands.SetLinkUp{
+						LinkName: vxlanName,
+					},
 				},
 				commands.StartMonitor{
 					HostNamespace: b.HostNamespace,
@@ -108,9 +94,14 @@ func (b *CommandBuilder) AddRoutes(interfaceName string, ipConfig *types.IPConfi
 	return commands.All(routeCommands...)
 }
 
-func (b *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string,
-	containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command {
-
+func (b *CommandBuilder) SetupVeth(
+	containerNS namespace.Namespace,
+	sandboxLinkName string,
+	containerLinkName string,
+	address net.IPNet,
+	sandboxName string,
+	routeCommand executor.Command,
+) executor.Command {
 	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
 
 	return commands.InNamespace{

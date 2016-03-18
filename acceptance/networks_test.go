@@ -72,7 +72,7 @@ var _ = Describe("Networks", func() {
 		configFilePath := writeConfigFile(config.Daemon{
 			ListenHost:     "127.0.0.1",
 			ListenPort:     4001 + GinkgoParallelNode(),
-			LocalSubnet:    "192.168.1.0/24",
+			LocalSubnet:    "192.168.1.0/16",
 			OverlayNetwork: "192.168.0.0/16",
 			SandboxDir:     sandboxRepoDir,
 			Database:       testDatabase.AsDaemonConfig(),
@@ -229,7 +229,7 @@ var _ = Describe("Networks", func() {
 			Expect(addrs[0].IPNet.IP.String()).To(Equal(ipamResult.IP4.Gateway.String()))
 		})
 
-		It("defines a route for the vxlan overlay in the sandbox", func() {
+		It("does not specify routes on the vxlan device", func() {
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -240,6 +240,24 @@ var _ = Describe("Networks", func() {
 				Expect(ok).To(BeTrue())
 
 				routes, err := netlink.RouteList(vxlan, netlink.FAMILY_V4)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(routes).To(BeEmpty())
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("has a route on the bridge for the overlay in the sandbox", func() {
+			sandboxNS, err := sandboxRepo.Get(sandboxName)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = sandboxNS.Execute(func(_ *os.File) error {
+				link, err := netlink.LinkByName(fmt.Sprintf("vxlanbr%d", vni))
+				Expect(err).NotTo(HaveOccurred())
+				bridge, ok := link.(*netlink.Bridge)
+				Expect(ok).To(BeTrue())
+
+				routes, err := netlink.RouteList(bridge, netlink.FAMILY_V4)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(routes).NotTo(BeEmpty())
 
@@ -254,6 +272,7 @@ var _ = Describe("Networks", func() {
 
 				_, vxlanNet, err := net.ParseCIDR("192.168.0.0/16")
 				Expect(sanitizedRoutes).To(ConsistOf(netlink.Route{
+					Src: net.ParseIP("192.168.1.1").To4(),
 					Dst: vxlanNet,
 				}))
 
@@ -303,7 +322,7 @@ var _ = Describe("Networks", func() {
 
 				routes, err := netlink.RouteList(l, netlink.FAMILY_V4)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(routes).To(HaveLen(2))
+				Expect(routes).To(HaveLen(1))
 
 				var sanitizedRoutes []netlink.Route
 				for _, route := range routes {
@@ -316,15 +335,8 @@ var _ = Describe("Networks", func() {
 
 				_, vxlanNet, err := net.ParseCIDR("192.168.0.0/16")
 				Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
+					Src: net.ParseIP("192.168.1.2").To4(),
 					Dst: vxlanNet,
-					Gw:  ipamResult.IP4.Gateway.To4(),
-				}))
-
-				_, linkLocal, err := net.ParseCIDR("192.168.1.0/24")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(sanitizedRoutes).To(ContainElement(netlink.Route{
-					Dst: linkLocal,
-					Src: ipamResult.IP4.IP.IP.To4(),
 				}))
 
 				return nil

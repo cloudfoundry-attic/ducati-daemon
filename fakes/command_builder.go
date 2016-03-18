@@ -20,13 +20,12 @@ type CommandBuilder struct {
 	idempotentlyCreateSandboxReturns struct {
 		result1 executor.Command
 	}
-	IdempotentlyCreateVxlanStub        func(vxlanName string, vni int, sandboxName string, ipamResult *types.Result) executor.Command
+	IdempotentlyCreateVxlanStub        func(vxlanName string, vni int, sandboxName string) executor.Command
 	idempotentlyCreateVxlanMutex       sync.RWMutex
 	idempotentlyCreateVxlanArgsForCall []struct {
 		vxlanName   string
 		vni         int
 		sandboxName string
-		ipamResult  *types.Result
 	}
 	idempotentlyCreateVxlanReturns struct {
 		result1 executor.Command
@@ -100,17 +99,16 @@ func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 executor.Co
 	}{result1}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string, ipamResult *types.Result) executor.Command {
+func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command {
 	fake.idempotentlyCreateVxlanMutex.Lock()
 	fake.idempotentlyCreateVxlanArgsForCall = append(fake.idempotentlyCreateVxlanArgsForCall, struct {
 		vxlanName   string
 		vni         int
 		sandboxName string
-		ipamResult  *types.Result
-	}{vxlanName, vni, sandboxName, ipamResult})
+	}{vxlanName, vni, sandboxName})
 	fake.idempotentlyCreateVxlanMutex.Unlock()
 	if fake.IdempotentlyCreateVxlanStub != nil {
-		return fake.IdempotentlyCreateVxlanStub(vxlanName, vni, sandboxName, ipamResult)
+		return fake.IdempotentlyCreateVxlanStub(vxlanName, vni, sandboxName)
 	} else {
 		return fake.idempotentlyCreateVxlanReturns.result1
 	}
@@ -122,10 +120,10 @@ func (fake *CommandBuilder) IdempotentlyCreateVxlanCallCount() int {
 	return len(fake.idempotentlyCreateVxlanArgsForCall)
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlanArgsForCall(i int) (string, int, string, *types.Result) {
+func (fake *CommandBuilder) IdempotentlyCreateVxlanArgsForCall(i int) (string, int, string) {
 	fake.idempotentlyCreateVxlanMutex.RLock()
 	defer fake.idempotentlyCreateVxlanMutex.RUnlock()
-	return fake.idempotentlyCreateVxlanArgsForCall[i].vxlanName, fake.idempotentlyCreateVxlanArgsForCall[i].vni, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxName, fake.idempotentlyCreateVxlanArgsForCall[i].ipamResult
+	return fake.idempotentlyCreateVxlanArgsForCall[i].vxlanName, fake.idempotentlyCreateVxlanArgsForCall[i].vni, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxName
 }
 
 func (fake *CommandBuilder) IdempotentlyCreateVxlanReturns(result1 executor.Command) {

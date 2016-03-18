@@ -51,27 +51,7 @@ var _ = Describe("CommandBuilder", func() {
 				MissWatcher:   missWatcher,
 			}
 
-			ipamResult := &types.Result{
-				IP4: &types.IPConfig{
-					IP: net.IPNet{
-						IP:   net.ParseIP("192.168.1.1"),
-						Mask: net.CIDRMask(16, 32),
-					},
-					Routes: []types.Route{{
-						Dst: net.IPNet{
-							IP:   net.ParseIP("192.168.1.0"),
-							Mask: net.CIDRMask(16, 32),
-						},
-					}, {
-						Dst: net.IPNet{
-							IP:   net.ParseIP("192.168.9.0"),
-							Mask: net.CIDRMask(16, 32),
-						},
-					}},
-				},
-			}
-
-			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name", ipamResult)
+			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name")
 			Expect(cmd).To(Equal(
 				commands.InNamespace{
 					Namespace: sandboxNS,
@@ -95,27 +75,9 @@ var _ = Describe("CommandBuilder", func() {
 							},
 							commands.InNamespace{
 								Namespace: namespace.NewNamespace("/some/repo/path/some-sandbox-name"),
-								Command: commands.All(
-									commands.SetLinkUp{
-										LinkName: "some-vxlan-name",
-									},
-									commands.All(
-										commands.AddRoute{
-											Interface: "some-vxlan-name",
-											Destination: net.IPNet{
-												IP:   net.ParseIP("192.168.1.0"),
-												Mask: net.CIDRMask(16, 32),
-											},
-										},
-										commands.AddRoute{
-											Interface: "some-vxlan-name",
-											Destination: net.IPNet{
-												IP:   net.ParseIP("192.168.9.0"),
-												Mask: net.CIDRMask(16, 32),
-											},
-										},
-									),
-								),
+								Command: commands.SetLinkUp{
+									LinkName: "some-vxlan-name",
+								},
 							},
 							commands.StartMonitor{
 								HostNamespace: hostNamespace,

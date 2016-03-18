@@ -16,7 +16,7 @@ const fixtureJSON = `
 {
 	"listen_host": "0.0.0.0",
 	"listen_port": 4001,
-	"local_subnet": "192.168.${index}.0/24",
+	"local_subnet": "192.168.${index}.0/16",
 	"overlay_network": "192.168.0.0/16",
 	"sandbox_dir": "/var/vcap/data/ducati/sandbox",
 	"vni": 128,
@@ -39,7 +39,7 @@ var _ = Describe("Daemon config", func() {
 		fixtureDaemon = config.Daemon{
 			ListenHost:     "0.0.0.0",
 			ListenPort:     4001,
-			LocalSubnet:    "192.168.${index}.0/24",
+			LocalSubnet:    "192.168.${index}.0/16",
 			OverlayNetwork: "192.168.0.0/16",
 			SandboxDir:     "/var/vcap/data/ducati/sandbox",
 			VNI:            128,
@@ -86,7 +86,10 @@ var _ = Describe("Daemon config", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, expectedOverlay, _ := net.ParseCIDR("192.168.0.0/16")
-			_, expectedLocalSubnet, _ := net.ParseCIDR("192.168.9.0/24")
+			expectedLocalSubnet := &net.IPNet{
+				IP:   net.ParseIP("192.168.9.0"),
+				Mask: net.CIDRMask(16, 32),
+			}
 
 			dbURL := "postgres://ducati_daemon:some-password@10.244.16.9:5432/ducati?sslmode=disable"
 
@@ -189,11 +192,16 @@ var _ = Describe("Daemon config", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, overlay, _ := net.ParseCIDR("192.168.0.0/16")
-			_, subnet, _ := net.ParseCIDR("192.168.9.0/24")
+
+			expectedLocalSubnet := &net.IPNet{
+				IP:   net.ParseIP("192.168.9.0"),
+				Mask: net.CIDRMask(24, 32),
+			}
+
 			Expect(conf).To(Equal(&config.ValidatedConfig{
 				ListenAddress:  "127.0.0.1:4001",
 				OverlayNetwork: overlay,
-				LocalSubnet:    subnet,
+				LocalSubnet:    expectedLocalSubnet,
 				DatabaseURL:    "postgres://some-username:some-password@some-host:1234/some-database-name?sslmode=some-ssl-mode",
 				SandboxRepoDir: "/some/sandbox/repo/path",
 				HostAddress:    net.ParseIP("10.244.16.3"),

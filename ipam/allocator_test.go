@@ -34,7 +34,7 @@ var _ = Describe("IP Address Management", func() {
 		config = types.IPConfig{
 			IP: net.IPNet{
 				IP:   net.ParseIP("192.168.2.0").To4(),
-				Mask: net.CIDRMask(24, 32),
+				Mask: net.CIDRMask(16, 32),
 			},
 			Routes: []types.Route{{
 				Dst: net.IPNet{
@@ -88,7 +88,7 @@ var _ = Describe("IP Address Management", func() {
 				IP4: &types.IPConfig{
 					IP: net.IPNet{
 						IP:   net.ParseIP("192.168.2.2").To4(),
-						Mask: net.CIDRMask(24, 32),
+						Mask: net.CIDRMask(16, 32),
 					},
 					Gateway: net.ParseIP("192.168.2.1").To4(),
 					Routes: []types.Route{{
@@ -207,10 +207,10 @@ var _ = Describe("IP Address Management", func() {
 				}
 
 				Expect(addresses).To(Equal([]string{
-					"192.168.2.1/24",
-					"192.168.2.2/24",
-					"192.168.2.4/24",
-					"192.168.2.5/24",
+					"192.168.2.1/16",
+					"192.168.2.2/16",
+					"192.168.2.4/16",
+					"192.168.2.5/16",
 				}))
 			})
 		})

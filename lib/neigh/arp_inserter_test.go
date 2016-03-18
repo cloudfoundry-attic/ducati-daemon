@@ -137,7 +137,7 @@ var _ = Describe("ARPInserter", func() {
 			Expect(netlinker.SetNeighArgsForCall(0)).To(Equal(&netlink.Neigh{
 				LinkIndex:    neigh.LinkIndex,
 				Family:       neigh.Family,
-				State:        netlink.NUD_REACHABLE,
+				State:        netlink.NUD_PERMANENT,
 				Type:         neigh.Type,
 				Flags:        neigh.Flags,
 				IP:           neigh.IP,
@@ -161,7 +161,7 @@ var _ = Describe("ARPInserter", func() {
 				LinkIndex:    9876,
 				HardwareAddr: neigh.HardwareAddr,
 				Family:       syscall.AF_BRIDGE,
-				State:        netlink.NUD_REACHABLE,
+				State:        netlink.NUD_PERMANENT,
 				Type:         0,
 				Flags:        netlink.NTF_SELF,
 				IP:           neighbor.VTEP,

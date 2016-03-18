@@ -118,9 +118,14 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 	}
 
 	interpolatedSubnet := strings.Replace(d.LocalSubnet, "${index}", fmt.Sprintf("%d", d.Index), -1)
-	_, subnet, err := net.ParseCIDR(interpolatedSubnet)
+	startIP, subnet, err := net.ParseCIDR(interpolatedSubnet)
 	if err != nil {
 		return nil, fmt.Errorf(`bad config "local_subnet": %s`, err)
+	}
+
+	localSubnet := &net.IPNet{
+		IP:   startIP,
+		Mask: subnet.Mask,
 	}
 
 	_, overlay, err := net.ParseCIDR(d.OverlayNetwork)
@@ -139,7 +144,7 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 	return &ValidatedConfig{
 		ListenAddress:  fmt.Sprintf("%s:%d", d.ListenHost, d.ListenPort),
 		OverlayNetwork: overlay,
-		LocalSubnet:    subnet,
+		LocalSubnet:    localSubnet,
 		DatabaseURL:    dbURL,
 		SandboxRepoDir: d.SandboxDir,
 		HostAddress:    hostAddress,
