@@ -22,6 +22,7 @@ func (d *Resolver) ResolveMisses(misses <-chan Neighbor, knownNeighbors chan<- N
 		d.Logger.Info("sandbox-miss", lager.Data{
 			"sandbox": msg.SandboxName,
 			"dest_ip": msg.Neigh.IP,
+			"msg":     msg,
 		})
 
 		containers, err := d.Store.All()
@@ -49,6 +50,11 @@ func (d *Resolver) ResolveMisses(misses <-chan Neighbor, knownNeighbors chan<- N
 		if !found {
 			continue
 		}
+
+		d.Logger.Info("resolved", lager.Data{
+			"msg":     msg,
+			"hw_addr": msg.Neigh.HardwareAddr,
+		})
 
 		knownNeighbors <- msg
 	}
