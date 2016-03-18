@@ -76,13 +76,43 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		payload = models.NetworksDeleteContainerPayload{
 			InterfaceName:      "some-interface-name",
 			ContainerNamespace: "/some/container/namespace/path",
-			NetworkID:          "some-network-id",
 			ContainerID:        "some-container-id",
 		}
 		setPayload()
 	})
 
+	It("gets the network id from the datastore", func() {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
+
+		Expect(datastore.GetCallCount()).To(Equal(1))
+		containerID := datastore.GetArgsForCall(0)
+		Expect(containerID).To(Equal("some-container-id"))
+	})
+
+	Context("when getting the record from the datastore fails", func() {
+		BeforeEach(func() {
+			datastore.GetReturns(models.Container{}, errors.New("some error"))
+		})
+
+		It("logs the error and responds with status code 500", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			Expect(logger).To(gbytes.Say("datastore.get.*some error"))
+		})
+
+		It("does not proceed with deletion", func() {
+			Expect(networkMapper.GetVNICallCount()).To(Equal(0))
+			Expect(deletor.DeleteCallCount()).To(Equal(0))
+		})
+	})
+
 	It("uses the network id to get the VNI", func() {
+		datastore.GetReturns(models.Container{
+			NetworkID: "some-network-id",
+		}, nil)
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)
 
@@ -200,7 +230,6 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		},
 		Entry("interface", "InterfaceName", "interface_name"),
 		Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
-		Entry("network_id", "NetworkID", "network_id"),
 		Entry("container_id", "ContainerID", "container_id"),
 	)
 

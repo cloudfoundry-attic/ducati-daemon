@@ -14,6 +14,5 @@ type NetworksSetupContainerPayload struct {
 type NetworksDeleteContainerPayload struct {
 	InterfaceName      string `json:"interface_name"`
 	ContainerNamespace string `json:"container_namespace"`
-	NetworkID          string `json:"network_id"`
 	ContainerID        string `json:"container_id"`
 }

@@ -62,12 +62,6 @@ func (h *NetworksDeleteContainer) ServeHTTP(resp http.ResponseWriter, request *h
 		return
 	}
 
-	if payload.NetworkID == "" {
-		logger.Error("bad-request", errors.New("missing-network_id"))
-		resp.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	if payload.ContainerID == "" {
 		logger.Error("bad-request", errors.New("missing-container_id"))
 		resp.WriteHeader(http.StatusBadRequest)
@@ -80,7 +74,14 @@ func (h *NetworksDeleteContainer) ServeHTTP(resp http.ResponseWriter, request *h
 		return
 	}
 
-	vni, err := h.NetworkMapper.GetVNI(payload.NetworkID)
+	dbRecord, err := h.Datastore.Get(payload.ContainerID)
+	if err != nil {
+		logger.Error("datastore.get-failed", err)
+		resp.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	vni, err := h.NetworkMapper.GetVNI(dbRecord.NetworkID)
 	if err != nil {
 		logger.Error("network-mapper-get-vni", err)
 		resp.WriteHeader(http.StatusInternalServerError)

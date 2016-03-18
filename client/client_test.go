@@ -294,7 +294,6 @@ var _ = Describe("Client", func() {
 			cniPayload = models.NetworksDeleteContainerPayload{
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "some-interface-name",
-				NetworkID:          "some-network-id",
 				ContainerID:        "some-container-id",
 			}
 

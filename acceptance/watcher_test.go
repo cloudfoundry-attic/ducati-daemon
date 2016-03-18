@@ -97,7 +97,6 @@ var _ = Describe("Networks", func() {
 		downSpec = models.NetworksDeleteContainerPayload{
 			InterfaceName:      "vx-eth0",
 			ContainerNamespace: containerNamespace.Path(),
-			NetworkID:          networkID,
 			ContainerID:        containerID,
 		}
 
