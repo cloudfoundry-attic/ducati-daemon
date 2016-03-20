@@ -16,10 +16,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -28,16 +26,13 @@ import (
 
 var _ = Describe("CNIDel", func() {
 	var (
-		logger        *lagertest.TestLogger
-		datastore     *fakes.Store
-		deletor       *fakes.Deletor
-		handler       http.Handler
-		request       *http.Request
-		osLocker      *fakes.OSThreadLocker
-		unmarshaler   *fakes.Unmarshaler
-		networkMapper *fakes.NetworkMapper
-		sandboxRepo   *fakes.Repository
-		payload       models.CNIDelPayload
+		logger      *lagertest.TestLogger
+		handler     http.Handler
+		controller  *fakes.DelController
+		request     *http.Request
+		unmarshaler *fakes.Unmarshaler
+		marshaler   *fakes.Marshaler
+		payload     models.CNIDelPayload
 	)
 
 	var setPayload = func() {
@@ -47,30 +42,19 @@ var _ = Describe("CNIDel", func() {
 	}
 
 	BeforeEach(func() {
-		osLocker = &fakes.OSThreadLocker{}
-
 		unmarshaler = &fakes.Unmarshaler{}
 		unmarshaler.UnmarshalStub = json.Unmarshal
-
+		marshaler = &fakes.Marshaler{}
+		marshaler.MarshalStub = json.Marshal
 		logger = lagertest.NewTestLogger("test")
-		datastore = &fakes.Store{}
-		deletor = &fakes.Deletor{}
-		networkMapper = &fakes.NetworkMapper{}
-		networkMapper.GetVNIReturns(42, nil)
-
-		sandboxRepo = &fakes.Repository{}
+		controller = &fakes.DelController{}
 
 		deleteHandler := &handlers.CNIDel{
-			Unmarshaler:    unmarshaler,
-			Logger:         logger,
-			Datastore:      datastore,
-			Deletor:        deletor,
-			OSThreadLocker: osLocker,
-			SandboxRepo:    sandboxRepo,
-			NetworkMapper:  networkMapper,
+			Marshaler:   marshaler,
+			Unmarshaler: unmarshaler,
+			Logger:      logger,
+			Controller:  controller,
 		}
-
-		sandboxRepo.GetReturns(namespace.NewNamespace("/some/sandbox/repo/path"), nil)
 
 		handler, request = rataWrap(deleteHandler, "POST", "/cni/del", rata.Params{})
 		payload = models.CNIDelPayload{
@@ -81,92 +65,64 @@ var _ = Describe("CNIDel", func() {
 		setPayload()
 	})
 
-	It("gets the network id from the datastore", func() {
+	Describe("parsing and validating input", func() {
+		Context("when the request body cannot be read", func() {
+			BeforeEach(func() {
+				request.Body = ioutil.NopCloser(&testsupport.BadReader{})
+			})
+
+			It("should log and respond with status 400", func() {
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(resp.Code).To(Equal(http.StatusBadRequest))
+				Expect(logger).To(gbytes.Say("cni-del.*body-read-failed"))
+			})
+		})
+
+		Context("when the request body is not valid JSON", func() {
+			BeforeEach(func() {
+				request.Body = ioutil.NopCloser(strings.NewReader(`{{{`))
+			})
+
+			It("should log and respond with status 400", func() {
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(resp.Code).To(Equal(http.StatusBadRequest))
+				Expect(logger).To(gbytes.Say("cni-del.*unmarshal-failed"))
+			})
+		})
+
+		DescribeTable("missing payload fields",
+			func(paramToRemove, jsonName string) {
+				field := reflect.ValueOf(&payload).Elem().FieldByName(paramToRemove)
+				if !field.IsValid() {
+					Fail("invalid test: payload does not have a field named " + paramToRemove)
+				}
+				field.Set(reflect.Zero(field.Type()))
+				setPayload()
+
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(resp.Code).To(Equal(http.StatusBadRequest))
+				Expect(logger).To(gbytes.Say(fmt.Sprintf(
+					"cni-del.bad-request.*missing-%s", jsonName)))
+			},
+			Entry("interface", "InterfaceName", "interface_name"),
+			Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
+			Entry("container_id", "ContainerID", "container_id"),
+		)
+
+	})
+
+	It("passes the payload to controller.Del", func() {
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)
 
-		Expect(datastore.GetCallCount()).To(Equal(1))
-		containerID := datastore.GetArgsForCall(0)
-		Expect(containerID).To(Equal("some-container-id"))
-	})
-
-	Context("when getting the record from the datastore fails", func() {
-		BeforeEach(func() {
-			datastore.GetReturns(models.Container{}, errors.New("some error"))
-		})
-
-		It("logs the error and responds with status code 500", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-			Expect(logger).To(gbytes.Say("datastore.get.*some error"))
-		})
-
-		It("does not proceed with deletion", func() {
-			Expect(networkMapper.GetVNICallCount()).To(Equal(0))
-			Expect(deletor.DeleteCallCount()).To(Equal(0))
-		})
-	})
-
-	It("uses the network id to get the VNI", func() {
-		datastore.GetReturns(models.Container{
-			NetworkID: "some-network-id",
-		}, nil)
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(networkMapper.GetVNICallCount()).To(Equal(1))
-		Expect(networkMapper.GetVNIArgsForCall(0)).To(Equal("some-network-id"))
-	})
-
-	Context("when getting the VNI fails", func() {
-		BeforeEach(func() {
-			networkMapper.GetVNIReturns(0, errors.New("some error"))
-		})
-
-		It("logs the error and responds with status code 500", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-			Expect(logger).To(gbytes.Say("network-mapper-get-vni.*some error"))
-		})
-
-		It("does not get the sandbox namespace or attempt to delete", func() {
-			Expect(sandboxRepo.GetCallCount()).To(Equal(0))
-			Expect(deletor.DeleteCallCount()).To(Equal(0))
-		})
-	})
-
-	It("computes the sandbox name from the VNI", func() {
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(sandboxRepo.GetCallCount()).To(Equal(1))
-		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("vni-42"))
-	})
-
-	It("deletes the container from the network", func() {
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(deletor.DeleteCallCount()).To(Equal(1))
-		Expect(deletor.DeleteArgsForCall(0)).To(Equal(container.DeletorConfig{
-			InterfaceName:   "some-interface-name",
-			ContainerNSPath: "/some/container/namespace/path",
-			SandboxNSPath:   "/some/sandbox/repo/path",
-			VxlanDeviceName: "vxlan42",
-		}))
-	})
-
-	It("deletes the container from the datastore", func() {
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(datastore.DeleteCallCount()).To(Equal(1))
-		containerID := datastore.DeleteArgsForCall(0)
-		Expect(containerID).To(Equal("some-container-id"))
+		Expect(controller.DelCallCount()).To(Equal(1))
+		Expect(controller.DelArgsForCall(0)).To(Equal(payload))
 	})
 
 	It("responds with status no content", func() {
@@ -176,125 +132,32 @@ var _ = Describe("CNIDel", func() {
 		Expect(resp.Code).To(Equal(http.StatusNoContent))
 	})
 
-	It("locks and unlocks the os thread", func() {
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
-		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
-	})
-
-	Context("when the request body cannot be read", func() {
+	Context("when the controller returns an error", func() {
 		BeforeEach(func() {
-			request.Body = ioutil.NopCloser(&testsupport.BadReader{})
+			controller.DelReturns(errors.New("tomato"))
 		})
 
-		It("should log and respond with status 400", func() {
+		It("should respond with code 500 and log the error", func() {
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, request)
 
-			Expect(resp.Code).To(Equal(http.StatusBadRequest))
-			Expect(logger).To(gbytes.Say("networks-delete-containers.*body-read-failed"))
-		})
-	})
-
-	Context("when the request body is not valid JSON", func() {
-		BeforeEach(func() {
-			request.Body = ioutil.NopCloser(strings.NewReader(`{{{`))
-		})
-
-		It("should log and respond with status 400", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(resp.Code).To(Equal(http.StatusBadRequest))
-			Expect(logger).To(gbytes.Say("networks-delete-containers.*unmarshal-failed"))
-		})
-	})
-
-	DescribeTable("missing payload fields",
-		func(paramToRemove, jsonName string) {
-			field := reflect.ValueOf(&payload).Elem().FieldByName(paramToRemove)
-			if !field.IsValid() {
-				Fail("invalid test: payload does not have a field named " + paramToRemove)
-			}
-			field.Set(reflect.Zero(field.Type()))
-			setPayload()
-
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(resp.Code).To(Equal(http.StatusBadRequest))
-			Expect(logger).To(gbytes.Say(fmt.Sprintf(
-				"networks-delete-containers.bad-request.*missing-%s", jsonName)))
-		},
-		Entry("interface", "InterfaceName", "interface_name"),
-		Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
-		Entry("container_id", "ContainerID", "container_id"),
-	)
-
-	Context("when the sandbox repo fails", func() {
-		BeforeEach(func() {
-			sandboxRepo.GetReturns(nil, errors.New("some-repo-error"))
-		})
-
-		It("should log and respond with status 500", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
+			Expect(logger).To(gbytes.Say("cni-del.controller-del.*tomato"))
+			Expect(resp.Body.String()).To(MatchJSON(`{ "error": "tomato" }`))
 			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-			Expect(logger).To(gbytes.Say("networks-delete-containers.sandbox-repo.*some-repo-error"))
-		})
-	})
-
-	Context("when deleting the container from the network fails", func() {
-		BeforeEach(func() {
-			deletor.DeleteReturns(errors.New("some-deletor-error"))
 		})
 
-		It("should log and respond with status 500", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
+		Context("when writing the error response fails", func() {
+			BeforeEach(func() {
+				marshaler.MarshalReturns(nil, errors.New("potato"))
+			})
+			It("should log both errors", func() {
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
 
-			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-			Expect(logger).To(gbytes.Say("networks-delete-containers.deletor.delete-failed.*some-deletor-error"))
-		})
-
-		It("should not remove the container from the datastore", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(datastore.DeleteCallCount()).To(Equal(0))
-		})
-
-		It("locks and unlocks the os thread", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
-			Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
-		})
-	})
-
-	Context("when deleting from the datastore fails", func() {
-		BeforeEach(func() {
-			datastore.DeleteReturns(errors.New("some-datastore-error"))
-		})
-
-		It("should log and respond with status 500", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-			Expect(logger).To(gbytes.Say("networks-delete-containers.datastore.delete-failed.*some-datastore-error"))
-		})
-
-		It("locks and unlocks the os thread", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
-			Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
+				Expect(logger).To(gbytes.Say("cni-del.controller-del.*tomato"))
+				Expect(logger).To(gbytes.Say("cni-del.marshal-error.*potato"))
+				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			})
 		})
 	})
 })

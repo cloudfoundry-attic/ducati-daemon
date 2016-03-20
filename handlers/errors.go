@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
@@ -10,12 +11,16 @@ type errorBody struct {
 	Error string `json:"error"`
 }
 
-func marshalError(logger Logger, resp http.ResponseWriter, m marshal.Marshaler, err error) {
+func marshalError(resp http.ResponseWriter, m marshal.Marshaler, err error) error {
 	marshaledError, err := m.Marshal(errorBody{Error: err.Error()})
 	if err != nil {
-		logger.Error("allocate-ip-error-marshaling", err)
-		return
+		return fmt.Errorf("marshal: %s", err)
 	}
 
-	resp.Write(marshaledError)
+	_, err = resp.Write(marshaledError)
+	if err != nil {
+		return fmt.Errorf("response write: %s", err)
+	}
+
+	return nil
 }

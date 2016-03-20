@@ -6,36 +6,27 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/container"
+	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
-	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
-	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
 )
 
-//go:generate counterfeiter -o ../fakes/creator.go --fake-name Creator . creator
-type creator interface {
-	Setup(container.CreatorConfig) (models.Container, error)
+//go:generate counterfeiter -o ../fakes/add_controller.go --fake-name AddController . addController
+type addController interface {
+	Add(models.CNIAddPayload) (*types.Result, error)
 }
 
 type CNIAdd struct {
-	Unmarshaler    marshal.Unmarshaler
-	Logger         lager.Logger
-	Datastore      store.Store
-	Creator        creator
-	OSThreadLocker ossupport.OSThreadLocker
-	Marshaler      marshal.Marshaler
-	IPAllocator    ipam.IPAllocator
-	NetworkMapper  ipam.NetworkMapper
+	Unmarshaler marshal.Unmarshaler
+	Logger      lager.Logger
+	Marshaler   marshal.Marshaler
+	Controller  addController
 }
 
 func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	h.OSThreadLocker.LockOSThread()
-	defer h.OSThreadLocker.UnlockOSThread()
-
-	logger := h.Logger.Session("networks-setup-containers")
+	logger := h.Logger.Session("cni-add")
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -76,16 +67,9 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vni, err := h.NetworkMapper.GetVNI(payload.NetworkID)
+	ipamResult, err := h.Controller.Add(payload)
 	if err != nil {
-		logger.Error("network-mapper-get-vni", err)
-		resp.WriteHeader(http.StatusInternalServerError)
-	}
-
-	ipamResult, err := h.IPAllocator.AllocateIP(payload.NetworkID, payload.ContainerID)
-	if err != nil {
-		logger.Error("allocate-ip", err)
-
+		logger.Error("controller-add", err)
 		switch err {
 		case ipam.NoMoreAddressesError:
 			resp.WriteHeader(http.StatusConflict)
@@ -93,30 +77,10 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 			resp.WriteHeader(http.StatusInternalServerError)
 		}
 
-		marshalError(logger, resp, h.Marshaler, err)
-		return
-	}
-
-	containerConfig := container.CreatorConfig{
-		NetworkID:       payload.NetworkID,
-		ContainerNsPath: payload.ContainerNamespace,
-		ContainerID:     payload.ContainerID,
-		InterfaceName:   payload.InterfaceName,
-		VNI:             vni,
-		IPAMResult:      ipamResult,
-	}
-
-	container, err := h.Creator.Setup(containerConfig)
-	if err != nil {
-		logger.Error("container-setup-failed", err)
-		resp.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	err = h.Datastore.Create(container)
-	if err != nil {
-		logger.Error("datastore-create-failed", err)
-		resp.WriteHeader(http.StatusInternalServerError)
+		err = marshalError(resp, h.Marshaler, err)
+		if err != nil {
+			logger.Error("marshal-error", err)
+		}
 		return
 	}
 
@@ -130,7 +94,7 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusCreated)
 	_, err = resp.Write(jsonBodyBytes)
 	if err != nil {
-		logger.Error("allocate-ip", fmt.Errorf("failed writing body: %s", err))
+		logger.Error("marshal-error", fmt.Errorf("failed writing body: %s", err))
 		return
 	}
 }

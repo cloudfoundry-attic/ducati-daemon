@@ -17,7 +17,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 
 	"github.com/appc/cni/pkg/types"
-	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
@@ -31,15 +30,10 @@ var _ = Describe("CNIAdd", func() {
 	var (
 		unmarshaler         *fakes.Unmarshaler
 		logger              *lagertest.TestLogger
-		datastore           *fakes.Store
-		ipamResult          *types.Result
-		creator             *fakes.Creator
+		controller          *fakes.AddController
 		handler             http.Handler
 		request             *http.Request
-		osLocker            *fakes.OSThreadLocker
 		marshaler           *fakes.Marshaler
-		ipAllocator         *fakes.IPAllocator
-		networkMapper       *fakes.NetworkMapper
 		expectedResultBytes []byte
 		payload             models.CNIAddPayload
 	)
@@ -51,68 +45,32 @@ var _ = Describe("CNIAdd", func() {
 	}
 
 	BeforeEach(func() {
-		osLocker = &fakes.OSThreadLocker{}
-
-		unmarshaler = &fakes.Unmarshaler{}
-		unmarshaler.UnmarshalStub = json.Unmarshal
-
 		logger = lagertest.NewTestLogger("test")
-		datastore = &fakes.Store{}
-		creator = &fakes.Creator{}
-
 		marshaler = &fakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
-
-		ipAllocator = &fakes.IPAllocator{}
-		networkMapper = &fakes.NetworkMapper{}
+		unmarshaler = &fakes.Unmarshaler{}
+		unmarshaler.UnmarshalStub = json.Unmarshal
+		controller = &fakes.AddController{}
 
 		setupHandler := &handlers.CNIAdd{
-			Unmarshaler:    unmarshaler,
-			Logger:         logger,
-			Datastore:      datastore,
-			Creator:        creator,
-			OSThreadLocker: osLocker,
-			Marshaler:      marshaler,
-			IPAllocator:    ipAllocator,
-			NetworkMapper:  networkMapper,
+			Logger:      logger,
+			Unmarshaler: unmarshaler,
+			Marshaler:   marshaler,
+			Controller:  controller,
 		}
 
-		ipamResult = &types.Result{
+		ipamResult := &types.Result{
 			IP4: &types.IPConfig{
 				IP: net.IPNet{
-					IP:   net.ParseIP("192.168.100.2"),
-					Mask: net.CIDRMask(24, 32),
+					IP: net.ParseIP("192.168.100.2"),
 				},
-				Gateway: net.ParseIP("192.168.100.1"),
-				Routes: []types.Route{{
-					Dst: net.IPNet{
-						IP:   net.ParseIP("192.168.1.5"),
-						Mask: net.CIDRMask(24, 32),
-					},
-					GW: net.ParseIP("192.168.1.1"),
-				}, {
-					Dst: net.IPNet{
-						IP:   net.ParseIP("192.168.2.5"),
-						Mask: net.CIDRMask(24, 32),
-					},
-					GW: net.ParseIP("192.168.1.99"),
-				}},
 			},
 		}
+		controller.AddReturns(ipamResult, nil)
 
 		var err error
 		expectedResultBytes, err = json.Marshal(ipamResult)
 		Expect(err).NotTo(HaveOccurred())
-
-		ipAllocator.AllocateIPReturns(ipamResult, nil)
-
-		creator.SetupReturns(models.Container{
-			ID:        "container-id",
-			NetworkID: "network-id-1",
-			MAC:       "00:00:00:00:00",
-			HostIP:    "10.12.100.4",
-			IP:        "192.168.160.3",
-		}, nil)
 
 		handler, request = rataWrap(setupHandler, "POST", "/cni/add", rata.Params{})
 		payload = models.CNIAddPayload{
@@ -125,69 +83,7 @@ var _ = Describe("CNIAdd", func() {
 		setPayload()
 	})
 
-	It("sets up the container network", func() {
-		networkMapper.GetVNIReturns(99, nil)
-
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(resp.Code).To(Equal(http.StatusCreated))
-		Expect(creator.SetupCallCount()).To(Equal(1))
-		Expect(creator.SetupArgsForCall(0)).To(Equal(container.CreatorConfig{
-			NetworkID:       "network-id-1",
-			ContainerNsPath: "/some/namespace/path",
-			ContainerID:     "container-id",
-			InterfaceName:   "interface-name",
-			IPAMResult:      ipamResult,
-			VNI:             99,
-		}))
-
-		Expect(datastore.CreateCallCount()).To(Equal(1))
-		Expect(datastore.CreateArgsForCall(0)).To(Equal(models.Container{
-			ID:        "container-id",
-			NetworkID: "network-id-1",
-			MAC:       "00:00:00:00:00",
-			HostIP:    "10.12.100.4",
-			IP:        "192.168.160.3",
-		}))
-	})
-
-	It("locks and unlocks the os thread", func() {
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
-		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
-	})
-
-	It("uses the network id to get the VNI", func() {
-		resp := httptest.NewRecorder()
-		handler.ServeHTTP(resp, request)
-
-		Expect(networkMapper.GetVNICallCount()).To(Equal(1))
-		Expect(networkMapper.GetVNIArgsForCall(0)).To(Equal("network-id-1"))
-	})
-
-	Context("when getting the VNI fails", func() {
-		BeforeEach(func() {
-			networkMapper.GetVNIReturns(0, errors.New("some error"))
-		})
-
-		It("logs the error and responds with status code 500", func() {
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-			Expect(logger).To(gbytes.Say("network-mapper-get-vni.*some error"))
-		})
-
-		It("does not attempt to allocate an IP or call create", func() {
-			Expect(ipAllocator.AllocateIPCallCount()).To(Equal(0))
-			Expect(creator.SetupCallCount()).To(Equal(0))
-		})
-	})
-
-	Context("when there are errors", func() {
+	Describe("parsing and validating input", func() {
 		Context("when the request body cannot be read", func() {
 			BeforeEach(func() {
 				request.Body = ioutil.NopCloser(&testsupport.BadReader{})
@@ -198,7 +94,7 @@ var _ = Describe("CNIAdd", func() {
 				handler.ServeHTTP(resp, request)
 
 				Expect(resp.Code).To(Equal(http.StatusBadRequest))
-				Expect(logger).To(gbytes.Say("networks-setup-containers.*body-read-failed"))
+				Expect(logger).To(gbytes.Say("cni-add.*body-read-failed"))
 			})
 		})
 
@@ -213,9 +109,9 @@ var _ = Describe("CNIAdd", func() {
 				handler.ServeHTTP(resp, request)
 
 				Expect(resp.Code).To(Equal(http.StatusBadRequest))
-				Expect(logger).To(gbytes.Say("networks-setup-containers.unmarshal-failed.*some-unmarshal-error"))
+				Expect(logger).To(gbytes.Say("cni-add.unmarshal-failed.*some-unmarshal-error"))
 
-				Expect(creator.SetupCallCount()).To(BeZero())
+				Expect(controller.AddCallCount()).To(BeZero())
 			})
 		})
 
@@ -233,116 +129,93 @@ var _ = Describe("CNIAdd", func() {
 
 				Expect(resp.Code).To(Equal(http.StatusBadRequest))
 				Expect(logger).To(gbytes.Say(fmt.Sprintf(
-					"networks-setup-containers.bad-request.*missing-%s", jsonName)))
+					"cni-add.bad-request.*missing-%s", jsonName)))
 			},
 			Entry("interface", "InterfaceName", "interface_name"),
 			Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
 			Entry("network_id", "NetworkID", "network_id"),
 			Entry("container_id", "ContainerID", "container_id"),
 		)
+	})
 
-		Context("when container creation fails", func() {
-			It("logs an error and 500s", func() {
-				creator.SetupReturns(models.Container{}, errors.New("some-container-setup-error"))
-				resp := httptest.NewRecorder()
-				handler.ServeHTTP(resp, request)
+	It("passes the payload to controller.Add", func() {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
 
-				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-				Expect(logger).To(gbytes.Say("networks-setup-containers.container-setup-failed.*some-container-setup-error"))
+		Expect(resp.Code).To(Equal(http.StatusCreated))
+		Expect(controller.AddCallCount()).To(Equal(1))
+		Expect(controller.AddArgsForCall(0)).To(Equal(payload))
+	})
 
-				Expect(datastore.CreateCallCount()).To(BeZero())
-			})
+	It("responds with the JSON encoding of the IPAM result", func() {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
+		Expect(resp.Body.String()).To(MatchJSON(expectedResultBytes))
+	})
+
+	Context("when the controller returns an ipam.NoMoreAddressesError", func() {
+		BeforeEach(func() {
+			controller.AddReturns(nil, ipam.NoMoreAddressesError)
 		})
 
-		Context("when datastore create fails", func() {
-			It("logs an error and 500s", func() {
-				datastore.CreateReturns(errors.New("some-datastore-create-error"))
+		It("should log and return a 409 status with JSON body encoding the error message", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Body.String()).To(MatchJSON(`{ "error": "no addresses available" }`))
+			Expect(logger).To(gbytes.Say(`cni-add.controller-add.*no addresses available`))
+			Expect(resp.Code).To(Equal(http.StatusConflict))
+		})
+	})
+
+	Context("when the controller returns any other error", func() {
+		BeforeEach(func() {
+			controller.AddReturns(nil, errors.New("tomato"))
+		})
+
+		It("should respond with code 500 and log the error", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(logger).To(gbytes.Say("cni-add.controller-add.*tomato"))
+			Expect(resp.Body.String()).To(MatchJSON(`{ "error": "tomato" }`))
+			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+		})
+
+		Context("when writing the error response fails", func() {
+			BeforeEach(func() {
+				marshaler.MarshalReturns(nil, errors.New("potato"))
+			})
+			It("should log both errors", func() {
 				resp := httptest.NewRecorder()
 				handler.ServeHTTP(resp, request)
 
+				Expect(logger).To(gbytes.Say("cni-add.controller-add.*tomato"))
+				Expect(logger).To(gbytes.Say("cni-add.marshal-error.*potato"))
 				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-				Expect(logger).To(gbytes.Say("networks-setup-containers.datastore-create-failed.*some-datastore-create-error"))
 			})
 		})
 	})
 
-	Describe("IP allocation", func() {
-		It("allocates an IP and returns the json ipamResult", func() {
+	Context("when marshaling the result fails", func() {
+		It("should return 500 and log the error", func() {
+			marshaler.MarshalReturns([]byte(`bad`), errors.New("banana"))
+
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, request)
 
-			Expect(ipAllocator.AllocateIPCallCount()).To(Equal(1))
-			Expect(resp.Body.String()).To(MatchJSON(expectedResultBytes))
-
-			Expect(marshaler.MarshalCallCount()).To(Equal(1))
-			Expect(resp.Code).To(Equal(http.StatusCreated))
-
-			networkID, containerID := ipAllocator.AllocateIPArgsForCall(0)
-			Expect(networkID).To(Equal("network-id-1"))
-			Expect(containerID).To(Equal("container-id"))
+			Expect(logger).To(gbytes.Say("cni-add.marshal-result.*banana"))
+			Expect(resp.Body.String()).To(BeEmpty())
+			Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 		})
+	})
 
-		Context("when things go wrong", func() {
-			Context("when the allocator returns a NoMoreAddressesError", func() {
-				It("should log and return a 409 status with JSON body encoding the error message", func() {
-					ipAllocator.AllocateIPReturns(nil, ipam.NoMoreAddressesError)
-					resp := httptest.NewRecorder()
-					handler.ServeHTTP(resp, request)
+	Context("when writing the response body fails", func() {
+		It("should log the error", func() {
+			badResponseWriter := &badResponseWriter{}
+			handler.ServeHTTP(badResponseWriter, request)
 
-					Expect(resp.Body.String()).To(MatchJSON(`{ "error": "no addresses available" }`))
-					Expect(logger).To(gbytes.Say(`networks-setup-containers.allocate-ip.*no addresses available`))
-					Expect(resp.Code).To(Equal(http.StatusConflict))
-				})
-
-				Context("when marshaling the error fails", func() {
-					BeforeEach(func() {
-						ipAllocator.AllocateIPReturns(nil, ipam.NoMoreAddressesError)
-						marshaler.MarshalReturns([]byte(`bad`), errors.New("banana"))
-					})
-
-					It("should log the error", func() {
-						resp := httptest.NewRecorder()
-						handler.ServeHTTP(resp, request)
-
-						Expect(resp.Body.String()).To(BeEmpty())
-						Expect(logger).To(gbytes.Say("allocate-ip-error-marshaling.*banana"))
-						Expect(resp.Code).To(Equal(http.StatusConflict))
-					})
-				})
-			})
-
-			Context("when the allocator errors in some other fashion", func() {
-				It("should return 500 and log the error", func() {
-					ipAllocator.AllocateIPReturns(nil, errors.New("tomato"))
-					resp := httptest.NewRecorder()
-					handler.ServeHTTP(resp, request)
-
-					Expect(logger).To(gbytes.Say("networks-setup-containers.allocate-ip.*tomato"))
-					Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-				})
-			})
-		})
-
-		Context("when marshaling the result fails", func() {
-			It("should return 500 and log the error", func() {
-				marshaler.MarshalReturns([]byte(`bad`), errors.New("banana"))
-
-				resp := httptest.NewRecorder()
-				handler.ServeHTTP(resp, request)
-
-				Expect(logger).To(gbytes.Say("networks-setup-containers.marshal-result.*banana"))
-				Expect(resp.Body.String()).To(BeEmpty())
-				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
-			})
-		})
-
-		Context("when writing the response body fails", func() {
-			It("should log the error", func() {
-				badResponseWriter := &badResponseWriter{}
-				handler.ServeHTTP(badResponseWriter, request)
-
-				Expect(logger).To(gbytes.Say("networks-setup-containers.allocate-ip.*failed writing body: some bad writer"))
-			})
+			Expect(logger).To(gbytes.Say("cni-add.marshal-error.*failed writing body: some bad writer"))
 		})
 	})
 })

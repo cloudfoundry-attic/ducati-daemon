@@ -2,44 +2,28 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/container"
-	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
-	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
-	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
 )
 
-//go:generate counterfeiter -o ../fakes/deletor.go --fake-name Deletor . deletor
-type deletor interface {
-	Delete(deletorConfig container.DeletorConfig) error
-}
-
-type repository interface {
-	Get(string) (namespace.Namespace, error)
+//go:generate counterfeiter -o ../fakes/del_controller.go --fake-name DelController . delController
+type delController interface {
+	Del(models.CNIDelPayload) error
 }
 
 type CNIDel struct {
-	Unmarshaler    marshal.Unmarshaler
-	Logger         lager.Logger
-	Datastore      store.Store
-	Deletor        deletor
-	OSThreadLocker ossupport.OSThreadLocker
-	SandboxRepo    repository
-	NetworkMapper  ipam.NetworkMapper
+	Unmarshaler marshal.Unmarshaler
+	Marshaler   marshal.Marshaler
+	Logger      lager.Logger
+	Controller  delController
 }
 
 func (h *CNIDel) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
-	h.OSThreadLocker.LockOSThread()
-	defer h.OSThreadLocker.UnlockOSThread()
-
-	logger := h.Logger.Session("networks-delete-containers")
+	logger := h.Logger.Session("cni-del")
 
 	bodyBytes, err := ioutil.ReadAll(request.Body)
 	if err != nil {
@@ -74,46 +58,16 @@ func (h *CNIDel) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	dbRecord, err := h.Datastore.Get(payload.ContainerID)
+	err = h.Controller.Del(payload)
 	if err != nil {
-		logger.Error("datastore.get-failed", err)
+		logger.Error("controller-del", err)
 		resp.WriteHeader(http.StatusInternalServerError)
+
+		err = marshalError(resp, h.Marshaler, err)
+		if err != nil {
+			logger.Error("marshal-error", err)
+		}
 		return
-	}
-
-	vni, err := h.NetworkMapper.GetVNI(dbRecord.NetworkID)
-	if err != nil {
-		logger.Error("network-mapper-get-vni", err)
-		resp.WriteHeader(http.StatusInternalServerError)
-	}
-
-	sandboxName := fmt.Sprintf("vni-%d", vni)
-	sandboxNS, err := h.SandboxRepo.Get(sandboxName)
-	if err != nil {
-		logger.Error("sandbox-repo", err)
-		resp.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	deletorConfig := container.DeletorConfig{
-		InterfaceName:   payload.InterfaceName,
-		ContainerNSPath: payload.ContainerNamespace,
-		SandboxNSPath:   sandboxNS.Path(),
-		VxlanDeviceName: fmt.Sprintf("vxlan%d", vni),
-	}
-
-	err = h.Deletor.Delete(deletorConfig)
-	if err != nil {
-		logger.Error("deletor.delete-failed", err)
-		resp.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	err = h.Datastore.Delete(payload.ContainerID)
-	if err != nil {
-		logger.Error("datastore.delete-failed", err)
-		resp.WriteHeader(http.StatusInternalServerError)
-		return // untested
 	}
 
 	resp.WriteHeader(http.StatusNoContent)

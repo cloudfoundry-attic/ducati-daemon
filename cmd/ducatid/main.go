@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/ducati-daemon/cni"
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/db"
@@ -140,6 +141,22 @@ func main() {
 		Watcher:     missWatcher,
 	}
 
+	addController := &cni.AddController{
+		IPAllocator:    ipAllocator,
+		NetworkMapper:  networkMapper,
+		Creator:        creator,
+		Datastore:      dataStore,
+		OSThreadLocker: osThreadLocker,
+	}
+
+	delController := &cni.DelController{
+		Datastore:      dataStore,
+		Deletor:        deletor,
+		SandboxRepo:    sandboxRepo,
+		NetworkMapper:  networkMapper,
+		OSThreadLocker: osThreadLocker,
+	}
+
 	marshaler := marshal.MarshalFunc(json.Marshal)
 	unmarshaler := marshal.UnmarshalFunc(json.Unmarshal)
 
@@ -150,24 +167,17 @@ func main() {
 	}
 
 	rataHandlers["cni_add"] = &handlers.CNIAdd{
-		Unmarshaler:    unmarshaler,
-		Logger:         logger,
-		Datastore:      dataStore,
-		Creator:        creator,
-		OSThreadLocker: osThreadLocker,
-		IPAllocator:    ipAllocator,
-		Marshaler:      marshaler,
-		NetworkMapper:  networkMapper,
+		Logger:      logger,
+		Marshaler:   marshaler,
+		Unmarshaler: unmarshaler,
+		Controller:  addController,
 	}
 
 	rataHandlers["cni_del"] = &handlers.CNIDel{
-		Unmarshaler:    unmarshaler,
-		Logger:         logger,
-		Datastore:      dataStore,
-		Deletor:        deletor,
-		OSThreadLocker: osThreadLocker,
-		SandboxRepo:    sandboxRepo,
-		NetworkMapper:  networkMapper,
+		Logger:      logger,
+		Marshaler:   marshaler,
+		Unmarshaler: unmarshaler,
+		Controller:  delController,
 	}
 
 	routes := rata.Routes{
