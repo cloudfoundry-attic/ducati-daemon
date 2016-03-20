@@ -2,7 +2,7 @@ package models
 
 import "github.com/appc/cni/pkg/types"
 
-type NetworksSetupContainerPayload struct {
+type CNIAddPayload struct {
 	Args               string       `json:"args"`
 	ContainerNamespace string       `json:"container_namespace"`
 	InterfaceName      string       `json:"interface_name"`
@@ -11,7 +11,7 @@ type NetworksSetupContainerPayload struct {
 	ContainerID        string       `json:"container_id"`
 }
 
-type NetworksDeleteContainerPayload struct {
+type CNIDelPayload struct {
 	InterfaceName      string `json:"interface_name"`
 	ContainerNamespace string `json:"container_namespace"`
 	ContainerID        string `json:"container_id"`

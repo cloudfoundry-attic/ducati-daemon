@@ -137,11 +137,11 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("ContainerUp", func() {
-		var cniPayload models.NetworksSetupContainerPayload
+		var cniPayload models.CNIAddPayload
 		var returnedResult types.Result
 
 		BeforeEach(func() {
-			cniPayload = models.NetworksSetupContainerPayload{
+			cniPayload = models.CNIAddPayload{
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "interface-name",
@@ -288,10 +288,10 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("ContainerDown", func() {
-		var cniPayload models.NetworksDeleteContainerPayload
+		var cniPayload models.CNIDelPayload
 
 		BeforeEach(func() {
-			cniPayload = models.NetworksDeleteContainerPayload{
+			cniPayload = models.CNIDelPayload{
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "some-interface-name",
 				ContainerID:        "some-container-id",

@@ -26,7 +26,7 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-var _ = Describe("NetworksDeleteContainer", func() {
+var _ = Describe("CNIDel", func() {
 	var (
 		logger        *lagertest.TestLogger
 		datastore     *fakes.Store
@@ -37,7 +37,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		unmarshaler   *fakes.Unmarshaler
 		networkMapper *fakes.NetworkMapper
 		sandboxRepo   *fakes.Repository
-		payload       models.NetworksDeleteContainerPayload
+		payload       models.CNIDelPayload
 	)
 
 	var setPayload = func() {
@@ -60,7 +60,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 
 		sandboxRepo = &fakes.Repository{}
 
-		deleteHandler := &handlers.NetworksDeleteContainer{
+		deleteHandler := &handlers.CNIDel{
 			Unmarshaler:    unmarshaler,
 			Logger:         logger,
 			Datastore:      datastore,
@@ -73,7 +73,7 @@ var _ = Describe("NetworksDeleteContainer", func() {
 		sandboxRepo.GetReturns(namespace.NewNamespace("/some/sandbox/repo/path"), nil)
 
 		handler, request = rataWrap(deleteHandler, "POST", "/cni/del", rata.Params{})
-		payload = models.NetworksDeleteContainerPayload{
+		payload = models.CNIDelPayload{
 			InterfaceName:      "some-interface-name",
 			ContainerNamespace: "/some/container/namespace/path",
 			ContainerID:        "some-container-id",

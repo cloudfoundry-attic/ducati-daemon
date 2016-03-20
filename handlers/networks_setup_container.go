@@ -20,7 +20,7 @@ type creator interface {
 	Setup(container.CreatorConfig) (models.Container, error)
 }
 
-type NetworksSetupContainer struct {
+type CNIAdd struct {
 	Unmarshaler    marshal.Unmarshaler
 	Logger         lager.Logger
 	Datastore      store.Store
@@ -31,7 +31,7 @@ type NetworksSetupContainer struct {
 	NetworkMapper  ipam.NetworkMapper
 }
 
-func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	h.OSThreadLocker.LockOSThread()
 	defer h.OSThreadLocker.UnlockOSThread()
 
@@ -44,7 +44,7 @@ func (h *NetworksSetupContainer) ServeHTTP(resp http.ResponseWriter, req *http.R
 		return
 	}
 
-	var payload models.NetworksSetupContainerPayload
+	var payload models.CNIAddPayload
 	err = h.Unmarshaler.Unmarshal(bodyBytes, &payload)
 	if err != nil {
 		logger.Error("unmarshal-failed", err)

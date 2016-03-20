@@ -33,7 +33,7 @@ type DaemonClient struct {
 	HttpClient  *http.Client
 }
 
-func (d *DaemonClient) ContainerUp(payload models.NetworksSetupContainerPayload) (types.Result, error) {
+func (d *DaemonClient) ContainerUp(payload models.CNIAddPayload) (types.Result, error) {
 	postData, err := d.Marshaler.Marshal(payload)
 	if err != nil {
 		return types.Result{}, fmt.Errorf("failed to marshal cni payload: %s", err)
@@ -69,7 +69,7 @@ func (d *DaemonClient) ContainerUp(payload models.NetworksSetupContainerPayload)
 	return ipamResult, nil
 }
 
-func (d *DaemonClient) ContainerDown(payload models.NetworksDeleteContainerPayload) error {
+func (d *DaemonClient) ContainerDown(payload models.CNIDelPayload) error {
 	deleteData, err := d.Marshaler.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cni payload: %s", err)

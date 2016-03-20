@@ -33,8 +33,8 @@ var _ = Describe("Networks", func() {
 		sandboxRepo        namespace.Repository
 		containerNamespace namespace.Namespace
 
-		upSpec       models.NetworksSetupContainerPayload
-		downSpec     models.NetworksDeleteContainerPayload
+		upSpec       models.CNIAddPayload
+		downSpec     models.CNIDelPayload
 		daemonClient *client.DaemonClient
 	)
 
@@ -86,7 +86,7 @@ var _ = Describe("Networks", func() {
 		daemonClient = client.New("http://"+address, http.DefaultClient)
 
 		By("generating config and creating the request")
-		upSpec = models.NetworksSetupContainerPayload{
+		upSpec = models.CNIAddPayload{
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: containerNamespace.Path(),
 			InterfaceName:      "vx-eth0",
@@ -94,7 +94,7 @@ var _ = Describe("Networks", func() {
 			ContainerID:        containerID,
 		}
 
-		downSpec = models.NetworksDeleteContainerPayload{
+		downSpec = models.CNIDelPayload{
 			InterfaceName:      "vx-eth0",
 			ContainerNamespace: containerNamespace.Path(),
 			ContainerID:        containerID,

@@ -149,7 +149,7 @@ func main() {
 		Datastore: dataStore,
 	}
 
-	rataHandlers["networks_setup_container"] = &handlers.NetworksSetupContainer{
+	rataHandlers["cni_add"] = &handlers.CNIAdd{
 		Unmarshaler:    unmarshaler,
 		Logger:         logger,
 		Datastore:      dataStore,
@@ -160,7 +160,7 @@ func main() {
 		NetworkMapper:  networkMapper,
 	}
 
-	rataHandlers["networks_delete_container"] = &handlers.NetworksDeleteContainer{
+	rataHandlers["cni_del"] = &handlers.CNIDel{
 		Unmarshaler:    unmarshaler,
 		Logger:         logger,
 		Datastore:      dataStore,
@@ -172,8 +172,8 @@ func main() {
 
 	routes := rata.Routes{
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
-		{Name: "networks_setup_container", Method: "POST", Path: "/cni/add"},
-		{Name: "networks_delete_container", Method: "POST", Path: "/cni/del"},
+		{Name: "cni_add", Method: "POST", Path: "/cni/add"},
+		{Name: "cni_del", Method: "POST", Path: "/cni/del"},
 	}
 
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)

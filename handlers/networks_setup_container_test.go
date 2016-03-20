@@ -27,7 +27,7 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-var _ = Describe("NetworksSetupContainer", func() {
+var _ = Describe("CNIAdd", func() {
 	var (
 		unmarshaler         *fakes.Unmarshaler
 		logger              *lagertest.TestLogger
@@ -41,7 +41,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 		ipAllocator         *fakes.IPAllocator
 		networkMapper       *fakes.NetworkMapper
 		expectedResultBytes []byte
-		payload             models.NetworksSetupContainerPayload
+		payload             models.CNIAddPayload
 	)
 
 	var setPayload = func() {
@@ -66,7 +66,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 		ipAllocator = &fakes.IPAllocator{}
 		networkMapper = &fakes.NetworkMapper{}
 
-		setupHandler := &handlers.NetworksSetupContainer{
+		setupHandler := &handlers.CNIAdd{
 			Unmarshaler:    unmarshaler,
 			Logger:         logger,
 			Datastore:      datastore,
@@ -115,7 +115,7 @@ var _ = Describe("NetworksSetupContainer", func() {
 		}, nil)
 
 		handler, request = rataWrap(setupHandler, "POST", "/cni/add", rata.Params{})
-		payload = models.NetworksSetupContainerPayload{
+		payload = models.CNIAddPayload{
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",

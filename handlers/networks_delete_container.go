@@ -25,7 +25,7 @@ type repository interface {
 	Get(string) (namespace.Namespace, error)
 }
 
-type NetworksDeleteContainer struct {
+type CNIDel struct {
 	Unmarshaler    marshal.Unmarshaler
 	Logger         lager.Logger
 	Datastore      store.Store
@@ -35,7 +35,7 @@ type NetworksDeleteContainer struct {
 	NetworkMapper  ipam.NetworkMapper
 }
 
-func (h *NetworksDeleteContainer) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
+func (h *CNIDel) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	h.OSThreadLocker.LockOSThread()
 	defer h.OSThreadLocker.UnlockOSThread()
 
@@ -48,7 +48,7 @@ func (h *NetworksDeleteContainer) ServeHTTP(resp http.ResponseWriter, request *h
 		return
 	}
 
-	var payload models.NetworksDeleteContainerPayload
+	var payload models.CNIDelPayload
 	err = h.Unmarshaler.Unmarshal(bodyBytes, &payload)
 	if err != nil {
 		logger.Error("unmarshal-failed", err)
