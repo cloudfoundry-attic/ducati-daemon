@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/appc/cni/pkg/skel"
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
@@ -31,6 +32,34 @@ type DaemonClient struct {
 	Marshaler   marshal.Marshaler
 	Unmarshaler marshal.Unmarshaler
 	HttpClient  *http.Client
+}
+
+func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
+	var stdinStruct struct {
+		NetworkID string `json:"network_id"`
+	}
+	err := json.Unmarshal(input.StdinData, &stdinStruct)
+	if err != nil {
+		panic(err)
+	}
+	if stdinStruct.NetworkID == "" {
+		return types.Result{}, fmt.Errorf(`"network_id" field required."`)
+	}
+	return d.ContainerUp(models.CNIAddPayload{
+		ContainerID:        input.ContainerID,
+		ContainerNamespace: input.Netns,
+		InterfaceName:      input.IfName,
+		Args:               input.Args,
+		NetworkID:          stdinStruct.NetworkID,
+	})
+}
+
+func (d *DaemonClient) CNIDel(input *skel.CmdArgs) error {
+	return d.ContainerDown(models.CNIDelPayload{
+		ContainerID:        input.ContainerID,
+		ContainerNamespace: input.Netns,
+		InterfaceName:      input.IfName,
+	})
 }
 
 func (d *DaemonClient) ContainerUp(payload models.CNIAddPayload) (types.Result, error) {
