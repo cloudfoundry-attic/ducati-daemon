@@ -97,13 +97,6 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jsonBodyBytes, err := h.Marshaler.Marshal(ipamResult)
-	if err != nil {
-		logger.Error("allocate-ip", err)
-		resp.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	containerConfig := container.CreatorConfig{
 		NetworkID:       payload.NetworkID,
 		ContainerNsPath: payload.ContainerNamespace,
@@ -123,6 +116,13 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	err = h.Datastore.Create(container)
 	if err != nil {
 		logger.Error("datastore-create-failed", err)
+		resp.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	jsonBodyBytes, err := h.Marshaler.Marshal(ipamResult)
+	if err != nil {
+		logger.Error("marshal-result", err)
 		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}

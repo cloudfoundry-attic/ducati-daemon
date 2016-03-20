@@ -330,7 +330,7 @@ var _ = Describe("CNIAdd", func() {
 				resp := httptest.NewRecorder()
 				handler.ServeHTTP(resp, request)
 
-				Expect(logger).To(gbytes.Say("networks-setup-containers.allocate-ip.*banana"))
+				Expect(logger).To(gbytes.Say("networks-setup-containers.marshal-result.*banana"))
 				Expect(resp.Body.String()).To(BeEmpty())
 				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 			})
