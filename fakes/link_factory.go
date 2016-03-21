@@ -52,15 +52,6 @@ type LinkFactory struct {
 	existsReturns struct {
 		result1 bool
 	}
-	SetHardwareAddressStub        func(linkName string, hwAddr net.HardwareAddr) error
-	setHardwareAddressMutex       sync.RWMutex
-	setHardwareAddressArgsForCall []struct {
-		linkName string
-		hwAddr   net.HardwareAddr
-	}
-	setHardwareAddressReturns struct {
-		result1 error
-	}
 	HardwareAddressStub        func(linkName string) (net.HardwareAddr, error)
 	hardwareAddressMutex       sync.RWMutex
 	hardwareAddressArgsForCall []struct {
@@ -265,39 +256,6 @@ func (fake *LinkFactory) ExistsReturns(result1 bool) {
 	fake.ExistsStub = nil
 	fake.existsReturns = struct {
 		result1 bool
-	}{result1}
-}
-
-func (fake *LinkFactory) SetHardwareAddress(linkName string, hwAddr net.HardwareAddr) error {
-	fake.setHardwareAddressMutex.Lock()
-	fake.setHardwareAddressArgsForCall = append(fake.setHardwareAddressArgsForCall, struct {
-		linkName string
-		hwAddr   net.HardwareAddr
-	}{linkName, hwAddr})
-	fake.setHardwareAddressMutex.Unlock()
-	if fake.SetHardwareAddressStub != nil {
-		return fake.SetHardwareAddressStub(linkName, hwAddr)
-	} else {
-		return fake.setHardwareAddressReturns.result1
-	}
-}
-
-func (fake *LinkFactory) SetHardwareAddressCallCount() int {
-	fake.setHardwareAddressMutex.RLock()
-	defer fake.setHardwareAddressMutex.RUnlock()
-	return len(fake.setHardwareAddressArgsForCall)
-}
-
-func (fake *LinkFactory) SetHardwareAddressArgsForCall(i int) (string, net.HardwareAddr) {
-	fake.setHardwareAddressMutex.RLock()
-	defer fake.setHardwareAddressMutex.RUnlock()
-	return fake.setHardwareAddressArgsForCall[i].linkName, fake.setHardwareAddressArgsForCall[i].hwAddr
-}
-
-func (fake *LinkFactory) SetHardwareAddressReturns(result1 error) {
-	fake.SetHardwareAddressStub = nil
-	fake.setHardwareAddressReturns = struct {
-		result1 error
 	}{result1}
 }
 

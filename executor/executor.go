@@ -23,7 +23,6 @@ type LinkFactory interface {
 	CreateVxlan(name string, vni int) error
 	DeleteLinkByName(name string) error
 	Exists(name string) bool
-	SetHardwareAddress(linkName string, hwAddr net.HardwareAddr) error
 	HardwareAddress(linkName string) (net.HardwareAddr, error)
 	SetMaster(slave, master string) error
 	SetNamespace(intefaceName, namespace string) error
