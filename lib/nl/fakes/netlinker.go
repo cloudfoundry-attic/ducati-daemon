@@ -2,6 +2,7 @@
 package fakes
 
 import (
+	"net"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
@@ -74,6 +75,15 @@ type Netlinker struct {
 		master *netlink.Bridge
 	}
 	linkSetMasterReturns struct {
+		result1 error
+	}
+	LinkSetHardwareAddrStub        func(link netlink.Link, hwaddr net.HardwareAddr) error
+	linkSetHardwareAddrMutex       sync.RWMutex
+	linkSetHardwareAddrArgsForCall []struct {
+		link   netlink.Link
+		hwaddr net.HardwareAddr
+	}
+	linkSetHardwareAddrReturns struct {
 		result1 error
 	}
 	LinkByIndexStub        func(int) (netlink.Link, error)
@@ -381,6 +391,39 @@ func (fake *Netlinker) LinkSetMasterArgsForCall(i int) (netlink.Link, *netlink.B
 func (fake *Netlinker) LinkSetMasterReturns(result1 error) {
 	fake.LinkSetMasterStub = nil
 	fake.linkSetMasterReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Netlinker) LinkSetHardwareAddr(link netlink.Link, hwaddr net.HardwareAddr) error {
+	fake.linkSetHardwareAddrMutex.Lock()
+	fake.linkSetHardwareAddrArgsForCall = append(fake.linkSetHardwareAddrArgsForCall, struct {
+		link   netlink.Link
+		hwaddr net.HardwareAddr
+	}{link, hwaddr})
+	fake.linkSetHardwareAddrMutex.Unlock()
+	if fake.LinkSetHardwareAddrStub != nil {
+		return fake.LinkSetHardwareAddrStub(link, hwaddr)
+	} else {
+		return fake.linkSetHardwareAddrReturns.result1
+	}
+}
+
+func (fake *Netlinker) LinkSetHardwareAddrCallCount() int {
+	fake.linkSetHardwareAddrMutex.RLock()
+	defer fake.linkSetHardwareAddrMutex.RUnlock()
+	return len(fake.linkSetHardwareAddrArgsForCall)
+}
+
+func (fake *Netlinker) LinkSetHardwareAddrArgsForCall(i int) (netlink.Link, net.HardwareAddr) {
+	fake.linkSetHardwareAddrMutex.RLock()
+	defer fake.linkSetHardwareAddrMutex.RUnlock()
+	return fake.linkSetHardwareAddrArgsForCall[i].link, fake.linkSetHardwareAddrArgsForCall[i].hwaddr
+}
+
+func (fake *Netlinker) LinkSetHardwareAddrReturns(result1 error) {
+	fake.LinkSetHardwareAddrStub = nil
+	fake.linkSetHardwareAddrReturns = struct {
 		result1 error
 	}{result1}
 }

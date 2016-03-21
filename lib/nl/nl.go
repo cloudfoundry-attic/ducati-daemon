@@ -1,6 +1,7 @@
 package nl
 
 import (
+	"net"
 	"syscall"
 
 	"github.com/vishvananda/netlink"
@@ -24,6 +25,7 @@ type Netlinker interface {
 	LinkSetNsFd(link netlink.Link, fd int) error
 	AddrAdd(link netlink.Link, addr *netlink.Addr) error
 	LinkSetMaster(slave netlink.Link, master *netlink.Bridge) error
+	LinkSetHardwareAddr(link netlink.Link, hwaddr net.HardwareAddr) error
 	LinkByIndex(int) (netlink.Link, error)
 	RouteAdd(*netlink.Route) error
 	RouteList(netlink.Link, int) ([]netlink.Route, error)

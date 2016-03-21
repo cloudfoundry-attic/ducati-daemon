@@ -1,6 +1,8 @@
 package nl
 
 import (
+	"net"
+
 	"github.com/vishvananda/netlink"
 	vish_nl "github.com/vishvananda/netlink/nl"
 )
@@ -35,6 +37,10 @@ func (*nl) AddrAdd(link netlink.Link, addr *netlink.Addr) error {
 
 func (*nl) LinkSetMaster(slave netlink.Link, master *netlink.Bridge) error {
 	return netlink.LinkSetMaster(slave, master)
+}
+
+func (*nl) LinkSetHardwareAddr(link netlink.Link, hwaddr net.HardwareAddr) error {
+	return netlink.LinkSetHardwareAddr(link, hwaddr)
 }
 
 func (*nl) RouteAdd(route *netlink.Route) error {

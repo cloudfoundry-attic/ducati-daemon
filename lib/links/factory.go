@@ -107,6 +107,20 @@ func (f *Factory) ListLinks() ([]netlink.Link, error) {
 	return f.Netlinker.LinkList()
 }
 
+func (f *Factory) SetHardwareAddress(linkName string, hwAddr net.HardwareAddr) error {
+	link, err := f.FindLink(linkName)
+	if err != nil {
+		return fmt.Errorf("find link: %s", err)
+	}
+
+	err = f.Netlinker.LinkSetHardwareAddr(link, hwAddr)
+	if err != nil {
+		return fmt.Errorf("set hw addr: %s", err)
+	}
+
+	return nil
+}
+
 func (f *Factory) SetMaster(slave, master string) error {
 	link, err := f.FindLink(master)
 	if err != nil {
