@@ -235,59 +235,6 @@ var _ = Describe("Factory", func() {
 			})
 		})
 
-		Describe("SetHardwareAddress", func() {
-			var (
-				hardwareAddr net.HardwareAddr
-				foundLink    *netlink.Dummy
-			)
-
-			BeforeEach(func() {
-				hardwareAddr, _ = net.ParseMAC("01:02:03:04:05:06")
-				foundLink = &netlink.Dummy{}
-				netlinker.LinkByNameReturns(foundLink, nil)
-			})
-
-			It("finds the link by name", func() {
-				err := factory.SetHardwareAddress("link-name", hardwareAddr)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
-				Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("link-name"))
-			})
-
-			It("sets the hardware address of the link", func() {
-				err := factory.SetHardwareAddress("link-name", hardwareAddr)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(netlinker.LinkSetHardwareAddrCallCount()).To(Equal(1))
-				link, hwAddr := netlinker.LinkSetHardwareAddrArgsForCall(0)
-				Expect(link).To(BeIdenticalTo(foundLink))
-				Expect(hwAddr).To(Equal(hardwareAddr))
-			})
-
-			Context("when finding the link fails", func() {
-				BeforeEach(func() {
-					netlinker.LinkByNameReturns(nil, errors.New("nope!"))
-				})
-
-				It("returns a meaningful error", func() {
-					err := factory.SetHardwareAddress("link-name", hardwareAddr)
-					Expect(err).To(MatchError("find link: nope!"))
-				})
-			})
-
-			Context("when setting the hardware address fails", func() {
-				BeforeEach(func() {
-					netlinker.LinkSetHardwareAddrReturns(errors.New("boom!"))
-				})
-
-				It("returns a meaningful error", func() {
-					err := factory.SetHardwareAddress("link-name", hardwareAddr)
-					Expect(err).To(MatchError("set hw addr: boom!"))
-				})
-			})
-		})
-
 		Describe("SetMaster", func() {
 			var master, slave netlink.Link
 			var masterErr, slaveErr error
