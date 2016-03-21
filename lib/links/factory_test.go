@@ -237,17 +237,20 @@ var _ = Describe("Factory", func() {
 
 		Describe("SetMaster", func() {
 			var master, slave netlink.Link
+			var masterErr, slaveErr error
 
 			BeforeEach(func() {
 				master = &netlink.Bridge{}
 				slave = &netlink.Dummy{}
+				masterErr = nil
+				slaveErr = nil
 
 				netlinker.LinkByNameStub = func(name string) (netlink.Link, error) {
 					switch name {
 					case "master":
-						return master, nil
+						return master, masterErr
 					case "slave":
-						return slave, nil
+						return slave, slaveErr
 					default:
 						return nil, errors.New("unknown")
 					}
@@ -268,18 +271,18 @@ var _ = Describe("Factory", func() {
 				Expect(m).To(Equal(master))
 			})
 
-			Context("when finding the link fails", func() {
+			Context("when finding the master link fails", func() {
 				BeforeEach(func() {
-					netlinker.LinkByNameReturns(nil, errors.New("can't find it"))
+					masterErr = errors.New("potato")
 				})
 
-				It("returns the error", func() {
-					err := factory.DeleteLinkByName("test-link")
-					Expect(err).To(MatchError("can't find it"))
+				It("wraps and returns the error", func() {
+					err := factory.SetMaster("slave", "master")
+					Expect(err).To(MatchError("failed to find master: potato"))
 				})
 			})
 
-			Context("when a bridge is not used as the master", func() {
+			Context("when the master is not a bridge", func() {
 				BeforeEach(func() {
 					master = &netlink.Dummy{}
 				})
@@ -288,6 +291,18 @@ var _ = Describe("Factory", func() {
 					err := factory.SetMaster("slave", "master")
 					Expect(err).To(MatchError("master must be a bridge"))
 				})
+			})
+
+			Context("when finding the slave link fails", func() {
+				BeforeEach(func() {
+					slaveErr = errors.New("po-tah-toe")
+				})
+
+				It("wraps and returns the error", func() {
+					err := factory.SetMaster("slave", "master")
+					Expect(err).To(MatchError("failed to find slave: po-tah-toe"))
+				})
+
 			})
 
 			Context("when enslaving fails", func() {

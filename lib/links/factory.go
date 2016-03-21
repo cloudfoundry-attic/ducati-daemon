@@ -110,7 +110,7 @@ func (f *Factory) ListLinks() ([]netlink.Link, error) {
 func (f *Factory) SetMaster(slave, master string) error {
 	link, err := f.FindLink(master)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find master: %s", err)
 	}
 
 	bridge, ok := link.(*netlink.Bridge)
@@ -120,7 +120,7 @@ func (f *Factory) SetMaster(slave, master string) error {
 
 	link, err = f.FindLink(slave)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find slave: %s", err)
 	}
 
 	err = f.Netlinker.LinkSetMaster(link, bridge)
