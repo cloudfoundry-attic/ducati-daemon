@@ -79,7 +79,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		fakeNetlinker.NeighDeserializeReturns(&netlink.Neigh{
 			LinkIndex:    1,
 			Family:       2,
-			State:        3,
+			State:        netlink.NUD_STALE,
 			Type:         4,
 			Flags:        5,
 			IP:           net.ParseIP("1.2.3.4"),
@@ -92,12 +92,62 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		Eventually(neighChan).Should(Receive(Equal(&watcher.Neigh{
 			LinkIndex:    1,
 			Family:       2,
-			State:        3,
+			State:        netlink.NUD_STALE,
 			Type:         4,
 			Flags:        5,
 			IP:           net.ParseIP("1.2.3.4"),
 			HardwareAddr: someMac,
 		})))
+	})
+
+	Describe("message filtering", func() {
+		var neigh *netlink.Neigh
+
+		BeforeEach(func() {
+			someMac, _ := net.ParseMAC("01:02:03:04:05:06")
+
+			neigh = &netlink.Neigh{
+				LinkIndex:    1,
+				Family:       2,
+				State:        3,
+				Type:         4,
+				Flags:        5,
+				IP:           net.ParseIP("1.2.3.4"),
+				HardwareAddr: someMac,
+			}
+
+			fakeNetlinker.NeighDeserializeReturns(neigh, nil)
+		})
+
+		Context("when message does not have a destination IP", func() {
+			It("will not be forwarded to neigh chan", func() {
+				neigh.IP = nil
+				err := mySubscriber.Subscribe(neighChan, doneChan)
+				Expect(err).NotTo(HaveOccurred())
+
+				Consistently(neighChan).ShouldNot(Receive())
+			})
+		})
+
+		Context("when message does have dest IP and a hardware address and its neigh state is NOT stale", func() {
+			It("will not be forwarded to neigh chan", func() {
+				neigh.State = netlink.NUD_REACHABLE
+				err := mySubscriber.Subscribe(neighChan, doneChan)
+				Expect(err).NotTo(HaveOccurred())
+
+				Consistently(neighChan).ShouldNot(Receive())
+			})
+		})
+
+		Context("when message does have dest IP and a hardware address and its neigh state is stale", func() {
+			It("will be forwarded to neigh chan", func() {
+				neigh.State = netlink.NUD_STALE
+				err := mySubscriber.Subscribe(neighChan, doneChan)
+				Expect(err).NotTo(HaveOccurred())
+
+				Eventually(neighChan).Should(Receive())
+			})
+		})
 	})
 
 	Context("when a message is sent on the done channel", func() {

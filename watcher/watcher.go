@@ -93,10 +93,6 @@ func (w *missWatcher) StartMonitor(ns namespace.Executor, vxlanName string) erro
 
 	go func() {
 		for neigh := range subChan {
-			if neigh.IP == nil || neigh.HardwareAddr != nil {
-				continue
-			}
-
 			unresolvedMisses <- Neighbor{
 				SandboxName: ns.Name(),
 				Neigh:       *neigh,

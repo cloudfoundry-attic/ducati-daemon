@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
@@ -139,21 +138,6 @@ var _ = Describe("Watcher", func() {
 			It("subscriber does not get called", func() {
 				missWatcher.StartMonitor(ns, vxlanLinkName)
 				Consistently(sub.SubscribeCallCount).Should(Equal(0))
-			})
-		})
-
-		Context("when the miss message doesn't have a destination IP", func() {
-			It("does not forward it to the firehose", func() {
-				sub.SubscribeStub = func(subChan chan<- *watcher.Neigh, done <-chan struct{}) error {
-					go func() {
-						subChan <- &watcher.Neigh{State: 42}
-					}()
-					return nil
-				}
-
-				missWatcher.StartMonitor(ns, vxlanLinkName)
-
-				Consistently(logger).ShouldNot(gbytes.Say("test"))
 			})
 		})
 

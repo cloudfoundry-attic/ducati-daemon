@@ -10,18 +10,6 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func convertNeigh(input *netlink.Neigh) *watcher.Neigh {
-	return &watcher.Neigh{
-		LinkIndex:    input.LinkIndex,
-		Family:       input.Family,
-		State:        input.State,
-		Type:         input.Type,
-		Flags:        input.Flags,
-		IP:           input.IP,
-		HardwareAddr: input.HardwareAddr,
-	}
-}
-
 type netlinker interface {
 	Subscribe(int, ...uint) (nl.NLSocket, error)
 	NeighDeserialize([]byte) (*netlink.Neigh, error)
@@ -60,11 +48,29 @@ func (s *Subscriber) Subscribe(neighChan chan<- *watcher.Neigh, doneChan <-chan 
 					s.Logger.Error("neighbor deserialize", err)
 					return
 				}
+
+				if n.IP == nil || (n.HardwareAddr != nil && n.State != netlink.NUD_STALE) {
+					continue
+				}
+
 				neigh := convertNeigh(n)
+
 				neighChan <- neigh
 			}
 		}
 	}()
 
 	return nil
+}
+
+func convertNeigh(input *netlink.Neigh) *watcher.Neigh {
+	return &watcher.Neigh{
+		LinkIndex:    input.LinkIndex,
+		Family:       input.Family,
+		State:        input.State,
+		Type:         input.Type,
+		Flags:        input.Flags,
+		IP:           input.IP,
+		HardwareAddr: input.HardwareAddr,
+	}
 }
