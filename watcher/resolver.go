@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
+	"github.com/vishvananda/netlink"
 )
 
 //go:generate counterfeiter -o ../fakes/resolver.go --fake-name Resolver . resolver
@@ -48,7 +49,7 @@ func (d *Resolver) ResolveMisses(misses <-chan Neighbor, knownNeighbors chan<- N
 		}
 
 		if !found {
-			continue
+			msg.Neigh.State = netlink.NUD_FAILED
 		}
 
 		d.Logger.Info("resolved", lager.Data{

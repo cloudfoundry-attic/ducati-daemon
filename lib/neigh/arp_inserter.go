@@ -44,7 +44,9 @@ func (a *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Exe
 func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watcher.Neighbor) {
 	for msg := range resolvedChan {
 		neigh := reverseConvert(msg.Neigh)
-		neigh.State = netlink.NUD_REACHABLE
+		if neigh.State == netlink.NUD_STALE {
+			neigh.State = netlink.NUD_REACHABLE
+		}
 
 		err := a.Netlinker.SetNeigh(neigh)
 		if err != nil {
