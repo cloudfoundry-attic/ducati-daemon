@@ -12,6 +12,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/nu7hatch/gouuid"
@@ -28,7 +29,6 @@ var _ = Describe("Networks", func() {
 		networkID   string
 		containerID string
 		vni         int
-		sandboxName string
 
 		sandboxRepo        namespace.Repository
 		containerRepo      namespace.Repository
@@ -59,7 +59,6 @@ var _ = Describe("Networks", func() {
 		containerNamespace, err = containerRepo.Create(guid.String())
 		Expect(err).NotTo(HaveOccurred())
 
-		vni = GinkgoParallelNode() // necessary to avoid test pollution in parallel
 		configFilePath := writeConfigFile(config.Daemon{
 			ListenHost:     "127.0.0.1",
 			ListenPort:     4001 + GinkgoParallelNode(),
@@ -68,16 +67,19 @@ var _ = Describe("Networks", func() {
 			HostAddress:    "10.11.12.13",
 			SandboxDir:     sandboxRepoDir,
 			Database:       testDatabase.AsDaemonConfig(),
-			VNI:            vni,
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 
-		networkID = fmt.Sprintf("some-network-id-%x", rand.Int())
+		// GinkgoParallelNode() necessary to avoid test pollution in parallel
+		networkID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
-		sandboxName = fmt.Sprintf("vni-%d", vni)
+
+		networkMapper := &ipam.FixedNetworkMapper{}
+		vni, err = networkMapper.GetVNI(networkID)
+		Expect(err).NotTo(HaveOccurred())
 
 		var serverIsAvailable = func() error {
 			return VerifyTCPConnection(address)

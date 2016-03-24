@@ -12,6 +12,7 @@ import (
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/nu7hatch/gouuid"
@@ -69,7 +70,6 @@ var _ = Describe("Networks", func() {
 
 		hostAddress = "10.11.12.13"
 
-		vni = GinkgoParallelNode() // necessary to avoid test pollution in parallel
 		configFilePath := writeConfigFile(config.Daemon{
 			ListenHost:     "127.0.0.1",
 			ListenPort:     4001 + GinkgoParallelNode(),
@@ -78,15 +78,20 @@ var _ = Describe("Networks", func() {
 			SandboxDir:     sandboxRepoDir,
 			Database:       testDatabase.AsDaemonConfig(),
 			HostAddress:    hostAddress,
-			VNI:            vni,
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
 		session, err = gexec.Start(ducatiCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 
-		networkID = fmt.Sprintf("some-network-id-%x", rand.Int())
+		// GinkgoParallelNode() necessary to avoid test pollution in parallel
+		networkID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
+
+		networkMapper := &ipam.FixedNetworkMapper{}
+		vni, err = networkMapper.GetVNI(networkID)
+		Expect(err).NotTo(HaveOccurred())
+
 		sandboxName = fmt.Sprintf("vni-%d", vni)
 	})
 

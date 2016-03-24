@@ -19,7 +19,6 @@ const fixtureJSON = `
 	"local_subnet": "192.168.${index}.0/16",
 	"overlay_network": "192.168.0.0/16",
 	"sandbox_dir": "/var/vcap/data/ducati/sandbox",
-	"vni": 128,
 	"database": {
 	  "host": "10.244.16.9",
 	  "port": 5432,
@@ -42,7 +41,6 @@ var _ = Describe("Daemon config", func() {
 			LocalSubnet:    "192.168.${index}.0/16",
 			OverlayNetwork: "192.168.0.0/16",
 			SandboxDir:     "/var/vcap/data/ducati/sandbox",
-			VNI:            128,
 			Database: config.Database{
 				Host:     "10.244.16.9",
 				Port:     5432,
@@ -100,7 +98,6 @@ var _ = Describe("Daemon config", func() {
 				DatabaseURL:    dbURL,
 				SandboxRepoDir: "/var/vcap/data/ducati/sandbox",
 				HostAddress:    net.ParseIP("10.244.16.3"),
-				VNI:            128,
 			}))
 		})
 	})
@@ -115,7 +112,6 @@ var _ = Describe("Daemon config", func() {
 				LocalSubnet:    "192.168.${index}.0/24",
 				OverlayNetwork: "192.168.0.0/16",
 				SandboxDir:     "/some/sandbox/repo/path",
-				VNI:            128,
 				Database: config.Database{
 					Host:     "some-host",
 					Port:     1234,
@@ -141,7 +137,6 @@ var _ = Describe("Daemon config", func() {
 			Entry("missing LocalSubnet", `missing required config "local_subnet"`, func() { conf.LocalSubnet = "" }),
 			Entry("missing OverlayNetwork", `missing required config "overlay_network"`, func() { conf.OverlayNetwork = "" }),
 			Entry("missing SandboxDir", `missing required config "sandbox_dir"`, func() { conf.SandboxDir = "" }),
-			Entry("missing VNI", `missing required config "vni"`, func() { conf.VNI = 0 }),
 			Entry("missing Database Host", `missing required config "database.host"`, func() { conf.Database.Host = "" }),
 			Entry("missing Database Port", `missing required config "database.port"`, func() { conf.Database.Port = 0 }),
 			Entry("missing Database Username", `missing required config "database.username"`, func() { conf.Database.Username = "" }),
@@ -169,7 +164,6 @@ var _ = Describe("Daemon config", func() {
 				LocalSubnet:    "192.168.${index}.0/24",
 				OverlayNetwork: "192.168.0.0/16",
 				SandboxDir:     "/some/sandbox/repo/path",
-				VNI:            128,
 				Database: config.Database{
 					Host:     "some-host",
 					Port:     1234,
@@ -205,7 +199,6 @@ var _ = Describe("Daemon config", func() {
 				DatabaseURL:    "postgres://some-username:some-password@some-host:1234/some-database-name?sslmode=some-ssl-mode",
 				SandboxRepoDir: "/some/sandbox/repo/path",
 				HostAddress:    net.ParseIP("10.244.16.3"),
-				VNI:            128,
 			}))
 		})
 

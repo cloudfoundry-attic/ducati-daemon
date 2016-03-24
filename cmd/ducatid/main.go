@@ -121,7 +121,7 @@ func main() {
 		resolver,
 		arpInserter,
 	)
-	networkMapper := &ipam.FixedNetworkMapper{VNI: conf.VNI}
+	networkMapper := &ipam.FixedNetworkMapper{}
 
 	hostNamespace, err := namespaceOpener.OpenPath("/proc/self/ns/net")
 	if err != nil {
