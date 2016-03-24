@@ -25,7 +25,7 @@ var _ = Describe("ExecuteInNamespace", func() {
 		command.StringReturns("some-command")
 
 		namespace = &fakes.Namespace{}
-		namespace.PathReturns("/some/namespace")
+		namespace.NameReturns("namespace-name")
 
 		namespace.ExecuteStub = func(callback func(*os.File) error) error {
 			Expect(command.ExecuteCallCount()).To(Equal(0))
@@ -81,7 +81,7 @@ var _ = Describe("ExecuteInNamespace", func() {
 
 	Describe("String", func() {
 		It("describes itself", func() {
-			Expect(inNamespace.String()).To(Equal("ip netns exec /some/namespace some-command"))
+			Expect(inNamespace.String()).To(Equal("ip netns exec namespace-name some-command"))
 		})
 	})
 })

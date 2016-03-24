@@ -65,10 +65,11 @@ var _ = Describe("NamespaceRepo", func() {
 		It("creates a namespace in the repository", func() {
 			ns, err := repo.Create("test-ns")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ns.Name()).To(Equal("test-ns"))
 
 			nsPath := filepath.Join(repoDir, "test-ns")
 			defer unix.Unmount(nsPath, unix.MNT_DETACH)
+
+			Expect(ns.Name()).To(Equal(nsPath))
 
 			var repoStat unix.Stat_t
 			err = unix.Stat(nsPath, &repoStat)
@@ -76,7 +77,6 @@ var _ = Describe("NamespaceRepo", func() {
 
 			var namespaceInode string
 			callback := func(_ *os.File) error {
-				// Stat of "/proc/self/ns/net" seemed to be flakey
 				output, err := exec.Command("stat", "-L", "-c", "%i", "/proc/self/ns/net").CombinedOutput()
 				namespaceInode = strings.TrimSpace(string(output))
 				return err
@@ -92,7 +92,7 @@ var _ = Describe("NamespaceRepo", func() {
 			nsName := filepath.Base(repoDir)
 			ns, err := repo.Create(nsName)
 			Expect(err).NotTo(HaveOccurred())
-			defer ns.Destroy()
+			defer repo.Destroy(ns)
 
 			output, err := exec.Command("ip", "netns", "list").CombinedOutput()
 			Expect(err).NotTo(HaveOccurred())
@@ -140,16 +140,29 @@ var _ = Describe("NamespaceRepo", func() {
 		})
 
 		Context("when the namespace file exists", func() {
+			var nsPath string
+
 			BeforeEach(func() {
+				var err error
 				f, err := os.Create(filepath.Join(repoDir, "test-ns"))
 				Expect(err).NotTo(HaveOccurred())
+
+				nsPath = f.Name()
 				Expect(f.Close()).To(Succeed())
 			})
 
 			It("returns the namespace", func() {
 				ns, err := repo.Get("test-ns")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(ns.Name()).To(Equal("test-ns"))
+				Expect(ns.Name()).To(Equal(nsPath))
+			})
+
+			It("keeps the file descriptor open", func() {
+				ns, err := repo.Get("test-ns")
+				Expect(err).NotTo(HaveOccurred())
+
+				netns := ns.(*namespace.Netns)
+				Expect(int(netns.Fd())).To(BeNumerically(">", 0))
 			})
 		})
 	})

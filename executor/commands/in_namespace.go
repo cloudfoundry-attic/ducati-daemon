@@ -25,5 +25,5 @@ func (i InNamespace) Execute(context executor.Context) error {
 }
 
 func (i InNamespace) String() string {
-	return fmt.Sprintf("ip netns exec %s %s", i.Namespace.Path(), i.Command)
+	return fmt.Sprintf("ip netns exec %s %s", i.Namespace.Name(), i.Command)
 }

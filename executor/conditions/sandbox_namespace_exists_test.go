@@ -5,7 +5,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/conditions"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -29,7 +28,7 @@ var _ = Describe("SandboxNamespaceExists", func() {
 
 	Context("when the namespace exists", func() {
 		BeforeEach(func() {
-			repo.GetReturns(namespace.NewNamespace("some-sandbox"), nil)
+			repo.GetReturns(&fakes.Namespace{}, nil)
 		})
 
 		It("returns true", func() {

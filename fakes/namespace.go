@@ -23,25 +23,6 @@ type Namespace struct {
 	nameReturns     struct {
 		result1 string
 	}
-	DestroyStub        func() error
-	destroyMutex       sync.RWMutex
-	destroyArgsForCall []struct{}
-	destroyReturns     struct {
-		result1 error
-	}
-	OpenStub        func() (*os.File, error)
-	openMutex       sync.RWMutex
-	openArgsForCall []struct{}
-	openReturns     struct {
-		result1 *os.File
-		result2 error
-	}
-	PathStub        func() string
-	pathMutex       sync.RWMutex
-	pathArgsForCall []struct{}
-	pathReturns     struct {
-		result1 string
-	}
 }
 
 func (fake *Namespace) Execute(arg1 func(*os.File) error) error {
@@ -96,79 +77,6 @@ func (fake *Namespace) NameCallCount() int {
 func (fake *Namespace) NameReturns(result1 string) {
 	fake.NameStub = nil
 	fake.nameReturns = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *Namespace) Destroy() error {
-	fake.destroyMutex.Lock()
-	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct{}{})
-	fake.destroyMutex.Unlock()
-	if fake.DestroyStub != nil {
-		return fake.DestroyStub()
-	} else {
-		return fake.destroyReturns.result1
-	}
-}
-
-func (fake *Namespace) DestroyCallCount() int {
-	fake.destroyMutex.RLock()
-	defer fake.destroyMutex.RUnlock()
-	return len(fake.destroyArgsForCall)
-}
-
-func (fake *Namespace) DestroyReturns(result1 error) {
-	fake.DestroyStub = nil
-	fake.destroyReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Namespace) Open() (*os.File, error) {
-	fake.openMutex.Lock()
-	fake.openArgsForCall = append(fake.openArgsForCall, struct{}{})
-	fake.openMutex.Unlock()
-	if fake.OpenStub != nil {
-		return fake.OpenStub()
-	} else {
-		return fake.openReturns.result1, fake.openReturns.result2
-	}
-}
-
-func (fake *Namespace) OpenCallCount() int {
-	fake.openMutex.RLock()
-	defer fake.openMutex.RUnlock()
-	return len(fake.openArgsForCall)
-}
-
-func (fake *Namespace) OpenReturns(result1 *os.File, result2 error) {
-	fake.OpenStub = nil
-	fake.openReturns = struct {
-		result1 *os.File
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Namespace) Path() string {
-	fake.pathMutex.Lock()
-	fake.pathArgsForCall = append(fake.pathArgsForCall, struct{}{})
-	fake.pathMutex.Unlock()
-	if fake.PathStub != nil {
-		return fake.PathStub()
-	} else {
-		return fake.pathReturns.result1
-	}
-}
-
-func (fake *Namespace) PathCallCount() int {
-	fake.pathMutex.RLock()
-	defer fake.pathMutex.RUnlock()
-	return len(fake.pathArgsForCall)
-}
-
-func (fake *Namespace) PathReturns(result1 string) {
-	fake.PathStub = nil
-	fake.pathReturns = struct {
 		result1 string
 	}{result1}
 }

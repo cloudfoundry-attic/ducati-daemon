@@ -50,8 +50,8 @@ func (c *DelController) Del(payload models.CNIDelPayload) error {
 
 	deletorConfig := container.DeletorConfig{
 		InterfaceName:   payload.InterfaceName,
+		SandboxNS:       sandboxNS,
 		ContainerNSPath: payload.ContainerNamespace,
-		SandboxNSPath:   sandboxNS.Path(),
 		VxlanDeviceName: fmt.Sprintf("vxlan%d", vni),
 	}
 

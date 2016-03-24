@@ -43,6 +43,7 @@ var _ = Describe("Networks", func() {
 		hostAddress string
 
 		sandboxRepo        namespace.Repository
+		containerRepo      namespace.Repository
 		containerNamespace namespace.Namespace
 	)
 
@@ -57,7 +58,7 @@ var _ = Describe("Networks", func() {
 		containerRepoDir, err := ioutil.TempDir("", "containers")
 		Expect(err).NotTo(HaveOccurred())
 
-		containerRepo, err := namespace.NewRepository(containerRepoDir)
+		containerRepo, err = namespace.NewRepository(containerRepoDir)
 		Expect(err).NotTo(HaveOccurred())
 
 		guid, err := uuid.NewV4()
@@ -92,7 +93,7 @@ var _ = Describe("Networks", func() {
 	AfterEach(func() {
 		session.Interrupt()
 		Eventually(session, DEFAULT_TIMEOUT).Should(gexec.Exit(0))
-		containerNamespace.Destroy()
+		Expect(containerRepo.Destroy(containerNamespace)).To(Succeed())
 	})
 
 	var serverIsAvailable = func() error {
@@ -124,7 +125,7 @@ var _ = Describe("Networks", func() {
 			By("generating config and creating the request")
 			upSpec = models.CNIAddPayload{
 				Args:               "FOO=BAR;ABC=123",
-				ContainerNamespace: containerNamespace.Path(),
+				ContainerNamespace: containerNamespace.Name(),
 				InterfaceName:      "vx-eth0",
 				NetworkID:          networkID,
 				ContainerID:        containerID,
@@ -132,7 +133,7 @@ var _ = Describe("Networks", func() {
 
 			downSpec = models.CNIDelPayload{
 				InterfaceName:      "vx-eth0",
-				ContainerNamespace: containerNamespace.Path(),
+				ContainerNamespace: containerNamespace.Name(),
 				ContainerID:        containerID,
 			}
 

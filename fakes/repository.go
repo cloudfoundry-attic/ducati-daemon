@@ -26,6 +26,14 @@ type Repository struct {
 		result1 namespace.Namespace
 		result2 error
 	}
+	DestroyStub        func(ns namespace.Namespace) error
+	destroyMutex       sync.RWMutex
+	destroyArgsForCall []struct {
+		ns namespace.Namespace
+	}
+	destroyReturns struct {
+		result1 error
+	}
 	PathOfStub        func(path string) string
 	pathOfMutex       sync.RWMutex
 	pathOfArgsForCall []struct {
@@ -100,6 +108,38 @@ func (fake *Repository) CreateReturns(result1 namespace.Namespace, result2 error
 		result1 namespace.Namespace
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *Repository) Destroy(ns namespace.Namespace) error {
+	fake.destroyMutex.Lock()
+	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct {
+		ns namespace.Namespace
+	}{ns})
+	fake.destroyMutex.Unlock()
+	if fake.DestroyStub != nil {
+		return fake.DestroyStub(ns)
+	} else {
+		return fake.destroyReturns.result1
+	}
+}
+
+func (fake *Repository) DestroyCallCount() int {
+	fake.destroyMutex.RLock()
+	defer fake.destroyMutex.RUnlock()
+	return len(fake.destroyArgsForCall)
+}
+
+func (fake *Repository) DestroyArgsForCall(i int) namespace.Namespace {
+	fake.destroyMutex.RLock()
+	defer fake.destroyMutex.RUnlock()
+	return fake.destroyArgsForCall[i].ns
+}
+
+func (fake *Repository) DestroyReturns(result1 error) {
+	fake.DestroyStub = nil
+	fake.destroyReturns = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *Repository) PathOf(path string) string {

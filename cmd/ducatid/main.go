@@ -100,6 +100,8 @@ func main() {
 	osThreadLocker := &ossupport.OSLocker{}
 	namedMutex := &locks.NamedMutex{}
 
+	namespaceOpener := &namespace.PathOpener{}
+
 	subscriber := &subscriber.Subscriber{
 		Logger:    logger.Session("subscriber"),
 		Netlinker: nl.Netlink,
@@ -121,24 +123,30 @@ func main() {
 	)
 	networkMapper := &ipam.FixedNetworkMapper{VNI: conf.VNI}
 
+	hostNamespace, err := namespaceOpener.OpenPath("/proc/self/ns/net")
+	if err != nil {
+		log.Fatalf("unable to open host namespace: %s", err) // not tested
+	}
 	commandBuilder := &container.CommandBuilder{
-		SandboxRepo:   sandboxRepo,
 		MissWatcher:   missWatcher,
-		HostNamespace: namespace.NewNamespace("/proc/self/ns/net"),
+		HostNamespace: hostNamespace,
 	}
 	executor := executor.New(addressManager, routeManager, linkFactory, sandboxRepo)
 	creator := &container.Creator{
-		Executor:       executor,
-		SandboxRepo:    sandboxRepo,
-		NamedLocker:    namedMutex,
-		Watcher:        missWatcher,
-		CommandBuilder: commandBuilder,
-		HostIP:         conf.HostAddress,
+		Executor:        executor,
+		SandboxRepo:     sandboxRepo,
+		NamedLocker:     namedMutex,
+		Watcher:         missWatcher,
+		CommandBuilder:  commandBuilder,
+		HostIP:          conf.HostAddress,
+		NamespaceOpener: namespaceOpener,
 	}
 	deletor := &container.Deletor{
-		Executor:    executor,
-		NamedLocker: namedMutex,
-		Watcher:     missWatcher,
+		Executor:          executor,
+		NamedLocker:       namedMutex,
+		Watcher:           missWatcher,
+		SandboxRepository: sandboxRepo,
+		NamespaceOpener:   namespaceOpener,
 	}
 
 	addController := &cni.AddController{
@@ -203,6 +211,6 @@ func main() {
 
 	err = <-monitor.Wait()
 	if err != nil {
-		panic(err)
+		log.Fatalf("daemon terminated: %s", err)
 	}
 }

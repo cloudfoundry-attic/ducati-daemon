@@ -1,6 +1,8 @@
 package container
 
 import (
+	"fmt"
+
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -9,33 +11,41 @@ import (
 )
 
 type Deletor struct {
-	Executor    executor.Executor
-	NamedLocker locks.NamedLocker
-	Watcher     watcher.MissWatcher
+	Executor          executor.Executor
+	NamedLocker       locks.NamedLocker
+	Watcher           watcher.MissWatcher
+	SandboxRepository namespace.Repository
+	NamespaceOpener   namespace.Opener
 }
 
 type DeletorConfig struct {
 	InterfaceName   string
 	ContainerNSPath string
-	SandboxNSPath   string
+	SandboxNS       namespace.Namespace
 	VxlanDeviceName string
 }
 
 func (d *Deletor) Delete(deletorConfig DeletorConfig) error {
-	err := d.Executor.Execute(
+	containerNS, err := d.NamespaceOpener.OpenPath(deletorConfig.ContainerNSPath)
+	if err != nil {
+		return fmt.Errorf("open container netns: %s", err)
+	}
+
+	err = d.Executor.Execute(
 		commands.All(
 			commands.InNamespace{
-				Namespace: namespace.NewNamespace(deletorConfig.ContainerNSPath),
+				Namespace: containerNS,
 				Command: commands.DeleteLink{
 					LinkName: deletorConfig.InterfaceName,
 				},
 			},
 
 			commands.CleanupSandbox{
-				Namespace:       namespace.NewNamespace(deletorConfig.SandboxNSPath),
-				NamedLocker:     d.NamedLocker,
-				Watcher:         d.Watcher,
-				VxlanDeviceName: deletorConfig.VxlanDeviceName,
+				Namespace:         deletorConfig.SandboxNS,
+				SandboxRepository: d.SandboxRepository,
+				NamedLocker:       d.NamedLocker,
+				Watcher:           d.Watcher,
+				VxlanDeviceName:   deletorConfig.VxlanDeviceName,
 			},
 		),
 	)

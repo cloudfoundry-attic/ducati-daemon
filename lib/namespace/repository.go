@@ -1,11 +1,13 @@
 package namespace
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -13,6 +15,7 @@ import (
 type Repository interface {
 	Get(name string) (Namespace, error)
 	Create(name string) (Namespace, error)
+	Destroy(ns Namespace) error
 	PathOf(path string) string
 }
 
@@ -39,27 +42,23 @@ func (r *repository) Get(name string) (Namespace, error) {
 	if err != nil {
 		return nil, err
 	}
-	file.Close()
 
-	return NewNamespace(file.Name()), nil
+	return &Netns{file}, nil
+}
+
+func (r *repository) PathOf(path string) string {
+	return filepath.Join(r.root, path)
 }
 
 func (r *repository) Create(name string) (Namespace, error) {
-	file, err := r.create(name)
-	if err != nil {
-		return nil, err
-	}
-	file.Close()
-
 	tempName := fmt.Sprintf("ns-%.08x", random())
-	err = exec.Command("ip", "netns", "add", tempName).Run()
+	err := exec.Command("ip", "netns", "add", tempName).Run()
 	if err != nil {
-		os.Remove(file.Name())
 		return nil, err
 	}
 
 	netnsPath := filepath.Join("/var/run/netns", tempName)
-	err = bindMountFile(netnsPath, file.Name())
+	bindMountedFile, err := bindMountFile(netnsPath, r.PathOf(name))
 	if err != nil {
 		return nil, err
 	}
@@ -69,19 +68,24 @@ func (r *repository) Create(name string) (Namespace, error) {
 		return nil, err
 	}
 
-	return NewNamespace(file.Name()), nil
+	return &Netns{File: bindMountedFile}, nil
 }
 
-func (r *repository) PathOf(path string) string {
-	return filepath.Join(r.root, path)
+func (r *repository) Destroy(namespace Namespace) error {
+	ns, ok := namespace.(*Netns)
+	if !ok {
+		return errors.New("namespace is not a Netns")
+	}
+
+	if !strings.HasPrefix(ns.Name(), r.root) {
+		return fmt.Errorf("namespace outside of repository: %s", ns.Name())
+	}
+
+	return unlinkNetworkNamespace(ns.File.Name())
 }
 
 func (r *repository) open(name string) (*os.File, error) {
 	return os.Open(filepath.Join(r.root, name))
-}
-
-func (r *repository) create(name string) (*os.File, error) {
-	return os.OpenFile(filepath.Join(r.root, name), os.O_CREATE|os.O_EXCL, 0644)
 }
 
 func random() uint32 {

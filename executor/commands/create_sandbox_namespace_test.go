@@ -5,7 +5,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,7 +26,8 @@ var _ = Describe("CreateSandboxNamespace", func() {
 			Name: "my-namespace",
 		}
 
-		repository.CreateReturns(namespace.NewNamespace("/some/path"), nil)
+		ns := &fakes.Namespace{}
+		repository.CreateReturns(ns, nil)
 	})
 
 	It("creates the namespace in the repository", func() {

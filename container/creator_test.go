@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 
@@ -17,37 +16,43 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Setup", func() {
+var _ = Describe("Creator", func() {
 	var (
-		creator           container.Creator
-		ex                *fakes.Executor
-		containerMAC      net.HardwareAddr
-		ipamResult        *types.Result
-		config            container.CreatorConfig
-		sandboxRepository *fakes.Repository
-		sandboxNS         namespace.Namespace
-		namedLocker       *fakes.NamedLocker
-		missWatcher       watcher.MissWatcher
-		commandBuilder    *fakes.CommandBuilder
+		creator         container.Creator
+		ex              *fakes.Executor
+		containerMAC    net.HardwareAddr
+		containerNS     *fakes.Namespace
+		ipamResult      *types.Result
+		config          container.CreatorConfig
+		sandboxRepo     *fakes.Repository
+		sandboxNS       *fakes.Namespace
+		namedLocker     *fakes.NamedLocker
+		missWatcher     watcher.MissWatcher
+		commandBuilder  *fakes.CommandBuilder
+		namespaceOpener *fakes.Opener
 	)
 
 	BeforeEach(func() {
 		ex = &fakes.Executor{}
-		sandboxRepository = &fakes.Repository{}
+		sandboxRepo = &fakes.Repository{}
 		namedLocker = &fakes.NamedLocker{}
 		missWatcher = &fakes.MissWatcher{}
 		commandBuilder = &fakes.CommandBuilder{}
+		containerNS = &fakes.Namespace{NameStub: func() string { return "container ns sentinel" }}
+		namespaceOpener = &fakes.Opener{}
+		namespaceOpener.OpenPathReturns(containerNS, nil)
 		creator = container.Creator{
-			Executor:       ex,
-			SandboxRepo:    sandboxRepository,
-			NamedLocker:    namedLocker,
-			Watcher:        missWatcher,
-			CommandBuilder: commandBuilder,
-			HostIP:         net.ParseIP("10.11.12.13"),
+			Executor:        ex,
+			SandboxRepo:     sandboxRepo,
+			NamedLocker:     namedLocker,
+			Watcher:         missWatcher,
+			CommandBuilder:  commandBuilder,
+			NamespaceOpener: namespaceOpener,
+			HostIP:          net.ParseIP("10.11.12.13"),
 		}
 
-		var err error
 		macAddress := "01:02:03:04:05:06"
+		var err error
 		containerMAC, err = net.ParseMAC(macAddress)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -74,11 +79,11 @@ var _ = Describe("Setup", func() {
 			},
 		}
 
-		sandboxNS = namespace.NewNamespace("/some/sandbox/namespace")
-		sandboxRepository.PathOfReturns("/some/sandbox/namespace")
+		sandboxNS = &fakes.Namespace{NameStub: func() string { return "sandbox ns sentinel" }}
+		sandboxRepo.GetReturns(sandboxNS, nil)
 		ex.ExecuteStub = func(command executor.Command) error {
 			switch ex.ExecuteCallCount() {
-			case 2:
+			case 3:
 				nsCommand := command.(commands.InNamespace)
 				getCommand := nsCommand.Command.(*commands.GetHardwareAddress)
 				getCommand.Result = containerMAC
@@ -88,12 +93,29 @@ var _ = Describe("Setup", func() {
 
 		config = container.CreatorConfig{
 			NetworkID:       "some-crazy-network-id",
-			ContainerNsPath: "/some/container/namespace",
+			ContainerNsPath: "/some/container/ns/path",
 			ContainerID:     "123456789012345",
 			InterfaceName:   "container-link",
 			VNI:             99,
 			IPAMResult:      ipamResult,
 		}
+	})
+
+	It("should open the container NS", func() {
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(namespaceOpener.OpenPathCallCount()).To(Equal(1))
+		Expect(namespaceOpener.OpenPathArgsForCall(0)).To(Equal("/some/container/ns/path"))
+	})
+
+	Context("when opening the container NS fails", func() {
+		It("should return a meaningful error", func() {
+			namespaceOpener.OpenPathReturns(nil, errors.New("turnip"))
+
+			_, err := creator.Setup(config)
+			Expect(err).To(MatchError("open container netns: turnip"))
+		})
 	})
 
 	It("should return the info about the container", func() {
@@ -124,14 +146,39 @@ var _ = Describe("Setup", func() {
 
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(ex.ExecuteCallCount()).To(Equal(2))
+		Expect(ex.ExecuteCallCount()).To(Equal(3))
 
-		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
-		Expect(commandGroup[0]).To(Equal(createSandboxResult))
+		Expect(ex.ExecuteArgsForCall(0)).To(Equal(createSandboxResult))
 
 		sandboxName, vxlanDeviceName := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
 		Expect(sandboxName).To(Equal("vni-99"))
 		Expect(vxlanDeviceName).To(Equal("vxlan99"))
+	})
+
+	Context("when creating the sandbox errors", func() {
+		It("should return a meaningful error", func() {
+			ex.ExecuteReturns(errors.New("potato"))
+
+			_, err := creator.Setup(config)
+			Expect(err).To(MatchError("executing command: create sandbox: potato"))
+		})
+	})
+
+	It("should get the sandbox ns from the sandbox repo", func() {
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(sandboxRepo.GetCallCount()).To(Equal(1))
+		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("vni-99"))
+	})
+
+	Context("when getting the sandbox ns from the sandbox repo fails", func() {
+		It("should return a meaningful error", func() {
+			sandboxRepo.GetReturns(nil, errors.New("daikon"))
+
+			_, err := creator.Setup(config)
+			Expect(err).To(MatchError("get sandbox: daikon"))
+		})
 	})
 
 	It("should execute the IdempotentlyCreateVxlan command group", func() {
@@ -140,15 +187,16 @@ var _ = Describe("Setup", func() {
 
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(ex.ExecuteCallCount()).To(Equal(2))
+		Expect(ex.ExecuteCallCount()).To(Equal(3))
 
-		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
-		Expect(commandGroup[1]).To(Equal(createVxlanResult))
+		commandGroup := (ex.ExecuteArgsForCall(1)).(commands.Group)
+		Expect(commandGroup[0]).To(Equal(createVxlanResult))
 
-		vxlanName, vni, sandboxName := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
+		vxlanName, vni, sandboxName, sbNS := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
 		Expect(vxlanName).To(Equal("vxlan99"))
 		Expect(vni).To(Equal(99))
 		Expect(sandboxName).To(Equal("vni-99"))
+		Expect(sbNS).To(Equal(sandboxNS))
 	})
 
 	It("should execute the SetupVeth command group, including the route commands", func() {
@@ -161,15 +209,15 @@ var _ = Describe("Setup", func() {
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 
-		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
-		Expect(commandGroup[2]).To(Equal(setupContainerResult))
+		commandGroup := (ex.ExecuteArgsForCall(1)).(commands.Group)
+		Expect(commandGroup[1]).To(Equal(setupContainerResult))
 
-		containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommands := commandBuilder.SetupVethArgsForCall(0)
-		Expect(containerNS).To(Equal(namespace.NewNamespace("/some/container/namespace")))
+		contNS, sandboxLinkName, containerLinkName, address, sbNS, routeCommands := commandBuilder.SetupVethArgsForCall(0)
+		Expect(contNS).To(Equal(containerNS))
 		Expect(sandboxLinkName).To(Equal("123456789012345"))
 		Expect(containerLinkName).To(Equal("container-link"))
 		Expect(address).To(Equal(ipamResult.IP4.IP))
-		Expect(sandboxName).To(Equal("vni-99"))
+		Expect(sbNS).To(Equal(sandboxNS))
 		Expect(routeCommands).To(BeIdenticalTo(fakeRouteCommands))
 	})
 
@@ -181,14 +229,14 @@ var _ = Describe("Setup", func() {
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 
-		commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
-		Expect(commandGroup[3]).To(Equal(setupBridgeResult))
+		commandGroup := (ex.ExecuteArgsForCall(1)).(commands.Group)
+		Expect(commandGroup[2]).To(Equal(setupBridgeResult))
 
-		vxlanName, sandboxLinkName, sandboxName, bridgeName, ipamResult := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
+		vxlanName, sandboxLinkName, bridgeName, sbNS, ipamResult := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
 		Expect(vxlanName).To(Equal("vxlan99"))
 		Expect(sandboxLinkName).To(Equal("123456789012345"))
-		Expect(sandboxName).To(Equal("vni-99"))
 		Expect(bridgeName).To(Equal("vxlanbr99"))
+		Expect(sbNS).To(Equal(sandboxNS))
 		Expect(ipamResult).To(Equal(&types.Result{
 			IP4: &types.IPConfig{
 				IP: net.IPNet{
@@ -223,8 +271,8 @@ var _ = Describe("Setup", func() {
 			_, err := creator.Setup(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			commandGroup := (ex.ExecuteArgsForCall(0)).(commands.Group)
-			Expect(commandGroup[3]).To(Equal(setupBridgeResult))
+			commandGroup := (ex.ExecuteArgsForCall(1)).(commands.Group)
+			Expect(commandGroup[2]).To(Equal(setupBridgeResult))
 
 			_, sandboxLinkName, _, _, _ := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
 			Expect(sandboxLinkName).To(Equal("123456789012345"))
@@ -239,7 +287,7 @@ var _ = Describe("Setup", func() {
 			BeforeEach(func() {
 				ex.ExecuteStub = func(command executor.Command) error {
 					switch ex.ExecuteCallCount() {
-					case 1:
+					case 2:
 						return errors.New("some setup error")
 					}
 

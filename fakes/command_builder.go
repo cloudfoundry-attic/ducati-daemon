@@ -20,12 +20,13 @@ type CommandBuilder struct {
 	idempotentlyCreateSandboxReturns struct {
 		result1 executor.Command
 	}
-	IdempotentlyCreateVxlanStub        func(vxlanName string, vni int, sandboxName string) executor.Command
+	IdempotentlyCreateVxlanStub        func(vxlanName string, vni int, sandboxName string, sandboxNS namespace.Namespace) executor.Command
 	idempotentlyCreateVxlanMutex       sync.RWMutex
 	idempotentlyCreateVxlanArgsForCall []struct {
 		vxlanName   string
 		vni         int
 		sandboxName string
+		sandboxNS   namespace.Namespace
 	}
 	idempotentlyCreateVxlanReturns struct {
 		result1 executor.Command
@@ -39,26 +40,26 @@ type CommandBuilder struct {
 	addRoutesReturns struct {
 		result1 executor.Command
 	}
-	SetupVethStub        func(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command
+	SetupVethStub        func(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxNS namespace.Namespace, routeCommand executor.Command) executor.Command
 	setupVethMutex       sync.RWMutex
 	setupVethArgsForCall []struct {
 		containerNS       namespace.Namespace
 		sandboxLinkName   string
 		containerLinkName string
 		address           net.IPNet
-		sandboxName       string
+		sandboxNS         namespace.Namespace
 		routeCommand      executor.Command
 	}
 	setupVethReturns struct {
 		result1 executor.Command
 	}
-	IdempotentlySetupBridgeStub        func(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command
+	IdempotentlySetupBridgeStub        func(vxlanName, sandboxLinkName, bridgeName string, sandboxNS namespace.Namespace, ipamResult *types.Result) executor.Command
 	idempotentlySetupBridgeMutex       sync.RWMutex
 	idempotentlySetupBridgeArgsForCall []struct {
 		vxlanName       string
 		sandboxLinkName string
-		sandboxName     string
 		bridgeName      string
+		sandboxNS       namespace.Namespace
 		ipamResult      *types.Result
 	}
 	idempotentlySetupBridgeReturns struct {
@@ -99,16 +100,17 @@ func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 executor.Co
 	}{result1}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string) executor.Command {
+func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string, sandboxNS namespace.Namespace) executor.Command {
 	fake.idempotentlyCreateVxlanMutex.Lock()
 	fake.idempotentlyCreateVxlanArgsForCall = append(fake.idempotentlyCreateVxlanArgsForCall, struct {
 		vxlanName   string
 		vni         int
 		sandboxName string
-	}{vxlanName, vni, sandboxName})
+		sandboxNS   namespace.Namespace
+	}{vxlanName, vni, sandboxName, sandboxNS})
 	fake.idempotentlyCreateVxlanMutex.Unlock()
 	if fake.IdempotentlyCreateVxlanStub != nil {
-		return fake.IdempotentlyCreateVxlanStub(vxlanName, vni, sandboxName)
+		return fake.IdempotentlyCreateVxlanStub(vxlanName, vni, sandboxName, sandboxNS)
 	} else {
 		return fake.idempotentlyCreateVxlanReturns.result1
 	}
@@ -120,10 +122,10 @@ func (fake *CommandBuilder) IdempotentlyCreateVxlanCallCount() int {
 	return len(fake.idempotentlyCreateVxlanArgsForCall)
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlanArgsForCall(i int) (string, int, string) {
+func (fake *CommandBuilder) IdempotentlyCreateVxlanArgsForCall(i int) (string, int, string, namespace.Namespace) {
 	fake.idempotentlyCreateVxlanMutex.RLock()
 	defer fake.idempotentlyCreateVxlanMutex.RUnlock()
-	return fake.idempotentlyCreateVxlanArgsForCall[i].vxlanName, fake.idempotentlyCreateVxlanArgsForCall[i].vni, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxName
+	return fake.idempotentlyCreateVxlanArgsForCall[i].vxlanName, fake.idempotentlyCreateVxlanArgsForCall[i].vni, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxName, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxNS
 }
 
 func (fake *CommandBuilder) IdempotentlyCreateVxlanReturns(result1 executor.Command) {
@@ -166,19 +168,19 @@ func (fake *CommandBuilder) AddRoutesReturns(result1 executor.Command) {
 	}{result1}
 }
 
-func (fake *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command {
+func (fake *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxNS namespace.Namespace, routeCommand executor.Command) executor.Command {
 	fake.setupVethMutex.Lock()
 	fake.setupVethArgsForCall = append(fake.setupVethArgsForCall, struct {
 		containerNS       namespace.Namespace
 		sandboxLinkName   string
 		containerLinkName string
 		address           net.IPNet
-		sandboxName       string
+		sandboxNS         namespace.Namespace
 		routeCommand      executor.Command
-	}{containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommand})
+	}{containerNS, sandboxLinkName, containerLinkName, address, sandboxNS, routeCommand})
 	fake.setupVethMutex.Unlock()
 	if fake.SetupVethStub != nil {
-		return fake.SetupVethStub(containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommand)
+		return fake.SetupVethStub(containerNS, sandboxLinkName, containerLinkName, address, sandboxNS, routeCommand)
 	} else {
 		return fake.setupVethReturns.result1
 	}
@@ -190,10 +192,10 @@ func (fake *CommandBuilder) SetupVethCallCount() int {
 	return len(fake.setupVethArgsForCall)
 }
 
-func (fake *CommandBuilder) SetupVethArgsForCall(i int) (namespace.Namespace, string, string, net.IPNet, string, executor.Command) {
+func (fake *CommandBuilder) SetupVethArgsForCall(i int) (namespace.Namespace, string, string, net.IPNet, namespace.Namespace, executor.Command) {
 	fake.setupVethMutex.RLock()
 	defer fake.setupVethMutex.RUnlock()
-	return fake.setupVethArgsForCall[i].containerNS, fake.setupVethArgsForCall[i].sandboxLinkName, fake.setupVethArgsForCall[i].containerLinkName, fake.setupVethArgsForCall[i].address, fake.setupVethArgsForCall[i].sandboxName, fake.setupVethArgsForCall[i].routeCommand
+	return fake.setupVethArgsForCall[i].containerNS, fake.setupVethArgsForCall[i].sandboxLinkName, fake.setupVethArgsForCall[i].containerLinkName, fake.setupVethArgsForCall[i].address, fake.setupVethArgsForCall[i].sandboxNS, fake.setupVethArgsForCall[i].routeCommand
 }
 
 func (fake *CommandBuilder) SetupVethReturns(result1 executor.Command) {
@@ -203,18 +205,18 @@ func (fake *CommandBuilder) SetupVethReturns(result1 executor.Command) {
 	}{result1}
 }
 
-func (fake *CommandBuilder) IdempotentlySetupBridge(vxlanName string, sandboxLinkName string, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command {
+func (fake *CommandBuilder) IdempotentlySetupBridge(vxlanName string, sandboxLinkName string, bridgeName string, sandboxNS namespace.Namespace, ipamResult *types.Result) executor.Command {
 	fake.idempotentlySetupBridgeMutex.Lock()
 	fake.idempotentlySetupBridgeArgsForCall = append(fake.idempotentlySetupBridgeArgsForCall, struct {
 		vxlanName       string
 		sandboxLinkName string
-		sandboxName     string
 		bridgeName      string
+		sandboxNS       namespace.Namespace
 		ipamResult      *types.Result
-	}{vxlanName, sandboxLinkName, sandboxName, bridgeName, ipamResult})
+	}{vxlanName, sandboxLinkName, bridgeName, sandboxNS, ipamResult})
 	fake.idempotentlySetupBridgeMutex.Unlock()
 	if fake.IdempotentlySetupBridgeStub != nil {
-		return fake.IdempotentlySetupBridgeStub(vxlanName, sandboxLinkName, sandboxName, bridgeName, ipamResult)
+		return fake.IdempotentlySetupBridgeStub(vxlanName, sandboxLinkName, bridgeName, sandboxNS, ipamResult)
 	} else {
 		return fake.idempotentlySetupBridgeReturns.result1
 	}
@@ -226,10 +228,10 @@ func (fake *CommandBuilder) IdempotentlySetupBridgeCallCount() int {
 	return len(fake.idempotentlySetupBridgeArgsForCall)
 }
 
-func (fake *CommandBuilder) IdempotentlySetupBridgeArgsForCall(i int) (string, string, string, string, *types.Result) {
+func (fake *CommandBuilder) IdempotentlySetupBridgeArgsForCall(i int) (string, string, string, namespace.Namespace, *types.Result) {
 	fake.idempotentlySetupBridgeMutex.RLock()
 	defer fake.idempotentlySetupBridgeMutex.RUnlock()
-	return fake.idempotentlySetupBridgeArgsForCall[i].vxlanName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxLinkName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxName, fake.idempotentlySetupBridgeArgsForCall[i].bridgeName, fake.idempotentlySetupBridgeArgsForCall[i].ipamResult
+	return fake.idempotentlySetupBridgeArgsForCall[i].vxlanName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxLinkName, fake.idempotentlySetupBridgeArgsForCall[i].bridgeName, fake.idempotentlySetupBridgeArgsForCall[i].sandboxNS, fake.idempotentlySetupBridgeArgsForCall[i].ipamResult
 }
 
 func (fake *CommandBuilder) IdempotentlySetupBridgeReturns(result1 executor.Command) {

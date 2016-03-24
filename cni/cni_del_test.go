@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/cni"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 
 	. "github.com/onsi/ginkgo"
@@ -21,6 +20,7 @@ var _ = Describe("CniDel", func() {
 		osLocker      *fakes.OSThreadLocker
 		networkMapper *fakes.NetworkMapper
 		sandboxRepo   *fakes.Repository
+		sandboxNS     *fakes.Namespace
 		payload       models.CNIDelPayload
 	)
 
@@ -42,7 +42,8 @@ var _ = Describe("CniDel", func() {
 			NetworkMapper:  networkMapper,
 		}
 
-		sandboxRepo.GetReturns(namespace.NewNamespace("/some/sandbox/repo/path"), nil)
+		sandboxNS = &fakes.Namespace{NameStub: func() string { return "sandbox ns sentinel" }}
+		sandboxRepo.GetReturns(sandboxNS, nil)
 
 		payload = models.CNIDelPayload{
 			InterfaceName:      "some-interface-name",
@@ -134,7 +135,7 @@ var _ = Describe("CniDel", func() {
 		Expect(deletor.DeleteArgsForCall(0)).To(Equal(container.DeletorConfig{
 			InterfaceName:   "some-interface-name",
 			ContainerNSPath: "/some/container/namespace/path",
-			SandboxNSPath:   "/some/sandbox/repo/path",
+			SandboxNS:       sandboxNS,
 			VxlanDeviceName: "vxlan42",
 		}))
 	})

@@ -12,7 +12,6 @@ import (
 )
 
 type CommandBuilder struct {
-	SandboxRepo   namespace.Repository
 	MissWatcher   watcher.MissWatcher
 	HostNamespace namespace.Namespace
 }
@@ -34,9 +33,8 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 	vxlanName string,
 	vni int,
 	sandboxName string,
+	sandboxNS namespace.Namespace,
 ) executor.Command {
-	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
-	sandboxNS := namespace.NewNamespace(sandboxNSPath)
 
 	return commands.InNamespace{
 		Namespace: sandboxNS,
@@ -53,7 +51,7 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 							VNI:  vni,
 						},
 						commands.MoveLink{
-							Namespace: sandboxNSPath,
+							Namespace: sandboxNS.Name(),
 							Name:      vxlanName,
 						},
 					),
@@ -99,11 +97,9 @@ func (b *CommandBuilder) SetupVeth(
 	sandboxLinkName string,
 	containerLinkName string,
 	address net.IPNet,
-	sandboxName string,
+	sandboxNS namespace.Namespace,
 	routeCommand executor.Command,
 ) executor.Command {
-	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
-
 	return commands.InNamespace{
 		Namespace: containerNS,
 		Command: commands.Group(
@@ -116,7 +112,7 @@ func (b *CommandBuilder) SetupVeth(
 					},
 					commands.MoveLink{
 						Name:      sandboxLinkName,
-						Namespace: sandboxNSPath,
+						Namespace: sandboxNS.Name(),
 					},
 					commands.AddAddress{
 						InterfaceName: containerLinkName,
@@ -132,10 +128,11 @@ func (b *CommandBuilder) SetupVeth(
 	}
 }
 
-func (b *CommandBuilder) IdempotentlySetupBridge(vxlanName, sandboxLinkName, sandboxName string, bridgeName string, ipamResult *types.Result) executor.Command {
-	sandboxNSPath := b.SandboxRepo.PathOf(sandboxName)
-	sandboxNS := namespace.NewNamespace(sandboxNSPath)
-
+func (b *CommandBuilder) IdempotentlySetupBridge(
+	vxlanName, sandboxLinkName, bridgeName string,
+	sandboxNS namespace.Namespace,
+	ipamResult *types.Result,
+) executor.Command {
 	return commands.InNamespace{
 		Namespace: sandboxNS,
 		Command: commands.All(

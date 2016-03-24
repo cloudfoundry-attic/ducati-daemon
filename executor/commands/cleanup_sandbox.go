@@ -11,10 +11,11 @@ import (
 )
 
 type CleanupSandbox struct {
-	Namespace       namespace.Namespace
-	NamedLocker     locks.NamedLocker
-	Watcher         watcher.MissWatcher
-	VxlanDeviceName string
+	Namespace         namespace.Namespace
+	SandboxRepository namespace.Repository
+	NamedLocker       locks.NamedLocker
+	Watcher           watcher.MissWatcher
+	VxlanDeviceName   string
 }
 
 func (c CleanupSandbox) Execute(context executor.Context) error {
@@ -50,7 +51,7 @@ func (c CleanupSandbox) Execute(context executor.Context) error {
 			return fmt.Errorf("watcher stop monitor: %s", err)
 		}
 
-		err = c.Namespace.Destroy()
+		err = c.SandboxRepository.Destroy(c.Namespace)
 		if err != nil {
 			return fmt.Errorf("destroying sandbox %s: %s", sandboxName, err)
 		}

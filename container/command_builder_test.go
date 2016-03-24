@@ -17,11 +17,15 @@ import (
 
 var _ = Describe("CommandBuilder", func() {
 	Describe("IdempotentlyCreateSandbox", func() {
+		var b container.CommandBuilder
+
+		BeforeEach(func() {
+			b = container.CommandBuilder{}
+		})
+
 		It("should return a command group that idempotently creates the sandbox", func() {
-
-			b := container.CommandBuilder{}
-
 			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name", "some-vxlan-name")
+
 			Expect(cmd).To(Equal(
 				commands.Unless{
 					Condition: conditions.SandboxNamespaceExists{
@@ -37,21 +41,24 @@ var _ = Describe("CommandBuilder", func() {
 	})
 
 	Describe("IdempotentlyCreateVxlan", func() {
+		var (
+			sandboxNS *fakes.Namespace
+		)
+
 		It("should return a command group that idempotently creates the vxlan device", func() {
-			sandboxRepository := &fakes.Repository{}
-			fakePath := "/some/repo/path/some-sandbox-name"
-			sandboxRepository.PathOfReturns(fakePath)
-			sandboxNS := namespace.NewNamespace(fakePath)
-			hostNamespace := namespace.NewNamespace("/proc/self/ns/net")
+			hostNamespace := &fakes.Namespace{NameStub: func() string { return "host namespace sentinel" }}
+
+			sandboxNS = &fakes.Namespace{}
+			sandboxNS.NameReturns("/sandbox/repo/some-sandbox-name")
 
 			missWatcher := &fakes.MissWatcher{}
 			b := container.CommandBuilder{
-				SandboxRepo:   sandboxRepository,
 				HostNamespace: hostNamespace,
 				MissWatcher:   missWatcher,
 			}
 
-			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name")
+			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name", sandboxNS)
+
 			Expect(cmd).To(Equal(
 				commands.InNamespace{
 					Namespace: sandboxNS,
@@ -68,13 +75,13 @@ var _ = Describe("CommandBuilder", func() {
 										VNI:  1234,
 									},
 									commands.MoveLink{
-										Namespace: "/some/repo/path/some-sandbox-name",
+										Namespace: "/sandbox/repo/some-sandbox-name",
 										Name:      "some-vxlan-name",
 									},
 								),
 							},
 							commands.InNamespace{
-								Namespace: namespace.NewNamespace("/some/repo/path/some-sandbox-name"),
+								Namespace: sandboxNS,
 								Command: commands.SetLinkUp{
 									LinkName: "some-vxlan-name",
 								},
@@ -162,22 +169,20 @@ var _ = Describe("CommandBuilder", func() {
 
 	Describe("SetupVeth", func() {
 		var (
-			b             container.CommandBuilder
-			routeCommand  executor.Command
-			containerNS   namespace.Namespace
-			sandboxNSPath string
+			b            container.CommandBuilder
+			routeCommand executor.Command
+			containerNS  namespace.Namespace
+			sandboxNS    *fakes.Namespace
 		)
+
 		BeforeEach(func() {
-			sandboxRepository := &fakes.Repository{}
-			sandboxNSPath = "/some/repo/path/some-sandbox-name"
-			sandboxRepository.PathOfReturns(sandboxNSPath)
+			sandboxNS = &fakes.Namespace{}
+			sandboxNS.NameReturns("/some/sb/path")
 			routeCommand = commands.AddRoute{Interface: "something"}
 
-			b = container.CommandBuilder{
-				SandboxRepo: sandboxRepository,
-			}
+			b = container.CommandBuilder{}
 
-			containerNS = namespace.NewNamespace("/path/to/container/ns")
+			containerNS = &fakes.Namespace{NameStub: func() string { return "container ns sentinel" }}
 		})
 
 		It("should return a command group that sets up veth in container", func() {
@@ -185,8 +190,15 @@ var _ = Describe("CommandBuilder", func() {
 				IP:   net.ParseIP("192.168.2.5"),
 				Mask: net.CIDRMask(24, 32),
 			}
-			cmd := b.SetupVeth(containerNS, "sandbox-veth", "container-veth",
-				address, "some-sandbox-name", routeCommand)
+
+			cmd := b.SetupVeth(
+				containerNS,
+				"sandbox-veth",
+				"container-veth",
+				address,
+				sandboxNS,
+				routeCommand,
+			)
 
 			Expect(cmd).To(Equal(
 				commands.InNamespace{
@@ -201,7 +213,7 @@ var _ = Describe("CommandBuilder", func() {
 								},
 								commands.MoveLink{
 									Name:      "sandbox-veth",
-									Namespace: sandboxNSPath,
+									Namespace: "/some/sb/path",
 								},
 								commands.AddAddress{
 									InterfaceName: "container-veth",
@@ -221,14 +233,8 @@ var _ = Describe("CommandBuilder", func() {
 
 	Describe("IdempotentlySetupBridge", func() {
 		It("returns a command group that sets up the bridge", func() {
-			sandboxRepository := &fakes.Repository{}
-
-			sandboxNSPath := "/some/repo/path/some-sandbox-name"
-			sandboxRepository.PathOfReturns(sandboxNSPath)
-
-			b := container.CommandBuilder{
-				SandboxRepo: sandboxRepository,
-			}
+			sandboxNS := &fakes.Namespace{NameStub: func() string { return "sandbox ns sentinel" }}
+			b := container.CommandBuilder{}
 
 			ipamResult := &types.Result{
 				IP4: &types.IPConfig{
@@ -249,11 +255,11 @@ var _ = Describe("CommandBuilder", func() {
 				},
 			}
 
-			cmd := b.IdempotentlySetupBridge("some-vxlan-name", "some-link-name", "some-sandbox-name", "some-bridge-name", ipamResult)
+			cmd := b.IdempotentlySetupBridge("some-vxlan-name", "some-link-name", "some-bridge-name", sandboxNS, ipamResult)
 
 			Expect(cmd).To(Equal(
 				commands.InNamespace{
-					Namespace: namespace.NewNamespace("/some/repo/path/some-sandbox-name"),
+					Namespace: sandboxNS,
 					Command: commands.All(
 						commands.SetLinkUp{
 							LinkName: "some-link-name",
@@ -289,7 +295,6 @@ var _ = Describe("CommandBuilder", func() {
 					),
 				},
 			))
-
 		})
 	})
 })

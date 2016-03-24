@@ -19,6 +19,7 @@ var _ = Describe("CleanupSandbox", func() {
 		linkFactory           *fakes.LinkFactory
 		cleanupSandboxCommand commands.CleanupSandbox
 		missWatcher           *fakes.MissWatcher
+		sandboxRepository     *fakes.Repository
 	)
 
 	BeforeEach(func() {
@@ -29,12 +30,14 @@ var _ = Describe("CleanupSandbox", func() {
 		linkFactory = &fakes.LinkFactory{}
 		context.LinkFactoryReturns(linkFactory)
 		missWatcher = &fakes.MissWatcher{}
+		sandboxRepository = &fakes.Repository{}
 
 		cleanupSandboxCommand = commands.CleanupSandbox{
-			Namespace:       sandboxNS,
-			NamedLocker:     namedLocker,
-			Watcher:         missWatcher,
-			VxlanDeviceName: "some-vxlan",
+			Namespace:         sandboxNS,
+			SandboxRepository: sandboxRepository,
+			NamedLocker:       namedLocker,
+			Watcher:           missWatcher,
+			VxlanDeviceName:   "some-vxlan",
 		}
 
 		sandboxNS.ExecuteStub = func(callback func(ns *os.File) error) error {
@@ -72,6 +75,7 @@ var _ = Describe("CleanupSandbox", func() {
 		BeforeEach(func() {
 			linkFactory.VethDeviceCountReturns(0, errors.New("some error"))
 		})
+
 		It("wraps and returns an error", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).To(MatchError("in namespace some-sandbox-name: callback failed: counting veth devices: some error"))
@@ -87,7 +91,7 @@ var _ = Describe("CleanupSandbox", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sandboxNS.DestroyCallCount()).To(Equal(0))
+			Expect(sandboxRepository.DestroyCallCount()).To(Equal(0))
 		})
 
 		It("does NOT destroy the vxlan device", func() {
@@ -119,7 +123,8 @@ var _ = Describe("CleanupSandbox", func() {
 
 			It("does not attempt to destroy the namespace", func() {
 				cleanupSandboxCommand.Execute(context)
-				Expect(sandboxNS.DestroyCallCount()).To(Equal(0))
+
+				Expect(sandboxRepository.DestroyCallCount()).To(Equal(0))
 			})
 		})
 
@@ -149,12 +154,13 @@ var _ = Describe("CleanupSandbox", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sandboxNS.DestroyCallCount()).To(Equal(1))
+			Expect(sandboxRepository.DestroyCallCount()).To(Equal(1))
+			Expect(sandboxRepository.DestroyArgsForCall(0)).To(Equal(sandboxNS))
 		})
 
 		Context("when theres an error destroying namespace", func() {
 			BeforeEach(func() {
-				sandboxNS.DestroyReturns(errors.New("some-destroy-error"))
+				sandboxRepository.DestroyReturns(errors.New("some-destroy-error"))
 			})
 
 			It("wraps and propogates the error", func() {

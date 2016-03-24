@@ -1,9 +1,6 @@
 package namespace
 
-import (
-	"os"
-	"path/filepath"
-)
+import "os"
 
 type Executor interface {
 	Execute(func(*os.File) error) error
@@ -13,33 +10,26 @@ type Executor interface {
 //go:generate counterfeiter -o ../../fakes/namespace.go --fake-name Namespace . Namespace
 type Namespace interface {
 	Executor
-	Destroy() error
-	Open() (*os.File, error)
-	Path() string
 }
 
-type namespace struct {
-	path string
+type Netns struct {
+	*os.File
 }
 
-func NewNamespace(path string) Namespace {
-	return &namespace{
-		path: path,
+//go:generate counterfeiter -o ../../fakes/opener.go --fake-name Opener . Opener
+type Opener interface {
+	OpenPath(path string) (Namespace, error)
+}
+
+type PathOpener struct{}
+
+func (*PathOpener) OpenPath(path string) (Namespace, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
 	}
-}
 
-func (n *namespace) Name() string {
-	return filepath.Base(n.path)
-}
-
-func (n *namespace) Open() (*os.File, error) {
-	return os.Open(n.Path())
-}
-
-func (n *namespace) Path() string {
-	return n.path
-}
-
-func (n *namespace) Destroy() error {
-	return unlinkNetworkNamespace(n.path)
+	return &Netns{
+		File: file,
+	}, nil
 }
