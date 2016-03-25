@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/vishvananda/netlink"
 )
 
 type RouteManager struct {
-	Netlinker nl.Netlinker
+	Netlinker netlinker
 }
 
 func (rm *RouteManager) AddRoute(interfaceName string, network *net.IPNet, gateway net.IP) error {

@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/vishvananda/netlink"
 )
 
+type netlinker interface {
+	AddrAdd(link netlink.Link, addr *netlink.Addr) error
+	LinkByName(name string) (netlink.Link, error)
+	RouteAdd(*netlink.Route) error
+}
+
 type AddressManager struct {
-	Netlinker nl.Netlinker
+	Netlinker netlinker
 }
 
 func (am *AddressManager) AddAddress(interfaceName string, address *net.IPNet) error {

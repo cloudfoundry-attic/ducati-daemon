@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/vishvananda/netlink"
 	vnl "github.com/vishvananda/netlink/nl"
 )
@@ -15,8 +14,18 @@ const (
 	VxlanVethMTU = 1450
 )
 
+type netlinker interface {
+	LinkAdd(link netlink.Link) error
+	LinkByName(name string) (netlink.Link, error)
+	LinkDel(link netlink.Link) error
+	LinkList() ([]netlink.Link, error)
+	LinkSetMaster(slave netlink.Link, master *netlink.Bridge) error
+	LinkSetNsFd(link netlink.Link, fd int) error
+	LinkSetUp(link netlink.Link) error
+}
+
 type Factory struct {
-	Netlinker nl.Netlinker
+	Netlinker netlinker
 }
 
 func (f *Factory) CreateBridge(name string) error {
