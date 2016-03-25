@@ -22,8 +22,6 @@ var _ = Describe("Delete", func() {
 		containerNS       namespace.Namespace
 		sandboxNS         *fakes.Namespace
 		namespaceOpener   *fakes.Opener
-
-		deletorConfig container.DeletorConfig
 	)
 
 	BeforeEach(func() {
@@ -42,37 +40,31 @@ var _ = Describe("Delete", func() {
 			Watcher:           watcher,
 			NamespaceOpener:   namespaceOpener,
 		}
-
-		deletorConfig = container.DeletorConfig{
-			InterfaceName:   "some-interface-name",
-			ContainerNSPath: "/some/container/ns/path",
-			SandboxNS:       sandboxNS,
-			VxlanDeviceName: "some-vxlan",
-		}
 	})
 
 	It("should open the container namespace", func() {
-		err := deletor.Delete(deletorConfig)
+		err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(namespaceOpener.OpenPathCallCount()).To(Equal(1))
 		Expect(namespaceOpener.OpenPathArgsForCall(0)).To(Equal("/some/container/ns/path"))
 	})
 
 	Context("when opening the container namespace fails", func() {
-		It("should return a meaningful error", func() {
+		BeforeEach(func() {
 			namespaceOpener.OpenPathReturns(nil, errors.New("POTATO"))
+		})
 
-			err := deletor.Delete(deletorConfig)
+		It("should return a meaningful error", func() {
+			err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
 			Expect(err).To(MatchError("open container netns: POTATO"))
 		})
 	})
 
 	It("should construct the correct command sequence", func() {
-		err := deletor.Delete(deletorConfig)
+		err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(executor.ExecuteCallCount()).To(Equal(1))
-
 		Expect(executor.ExecuteArgsForCall(0)).To(Equal(
 			commands.All(
 				commands.InNamespace{
@@ -94,10 +86,12 @@ var _ = Describe("Delete", func() {
 	})
 
 	Context("when executing fails", func() {
-		It("should return the error", func() {
+		BeforeEach(func() {
 			executor.ExecuteReturns(errors.New("boom"))
+		})
 
-			err := deletor.Delete(deletorConfig)
+		It("should return the error", func() {
+			err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
 			Expect(err).To(MatchError("boom"))
 		})
 	})

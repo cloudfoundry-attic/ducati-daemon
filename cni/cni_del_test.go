@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/cni"
-	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 
@@ -132,12 +131,12 @@ var _ = Describe("CniDel", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(deletor.DeleteCallCount()).To(Equal(1))
-		Expect(deletor.DeleteArgsForCall(0)).To(Equal(container.DeletorConfig{
-			InterfaceName:   "some-interface-name",
-			ContainerNSPath: "/some/container/namespace/path",
-			SandboxNS:       sandboxNS,
-			VxlanDeviceName: "vxlan42",
-		}))
+
+		ifName, cnsPath, sbNS, vxName := deletor.DeleteArgsForCall(0)
+		Expect(ifName).To(Equal("some-interface-name"))
+		Expect(cnsPath).To(Equal("/some/container/namespace/path"))
+		Expect(sbNS).To(Equal(sandboxNS))
+		Expect(vxName).To(Equal("vxlan42"))
 	})
 
 	Context("when deleting the container from the network fails", func() {

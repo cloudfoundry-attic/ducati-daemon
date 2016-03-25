@@ -3,7 +3,6 @@ package cni
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
@@ -13,7 +12,7 @@ import (
 
 //go:generate counterfeiter -o ../fakes/deletor.go --fake-name Deletor . deletor
 type deletor interface {
-	Delete(deletorConfig container.DeletorConfig) error
+	Delete(interfaceName string, containerNSPath string, sandboxNS namespace.Namespace, vxlanDeviceName string) error
 }
 
 type repository interface {
@@ -48,14 +47,9 @@ func (c *DelController) Del(payload models.CNIDelPayload) error {
 		return fmt.Errorf("sandbox get: %s", err)
 	}
 
-	deletorConfig := container.DeletorConfig{
-		InterfaceName:   payload.InterfaceName,
-		SandboxNS:       sandboxNS,
-		ContainerNSPath: payload.ContainerNamespace,
-		VxlanDeviceName: fmt.Sprintf("vxlan%d", vni),
-	}
+	vxlanDeviceName := fmt.Sprintf("vxlan%d", vni)
 
-	err = c.Deletor.Delete(deletorConfig)
+	err = c.Deletor.Delete(payload.InterfaceName, payload.ContainerNamespace, sandboxNS, vxlanDeviceName)
 	if err != nil {
 		return fmt.Errorf("deletor: %s", err)
 	}

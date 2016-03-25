@@ -4,28 +4,34 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/container"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
 type Deletor struct {
-	DeleteStub        func(deletorConfig container.DeletorConfig) error
+	DeleteStub        func(interfaceName string, containerNSPath string, sandboxNS namespace.Namespace, vxlanDeviceName string) error
 	deleteMutex       sync.RWMutex
 	deleteArgsForCall []struct {
-		deletorConfig container.DeletorConfig
+		interfaceName   string
+		containerNSPath string
+		sandboxNS       namespace.Namespace
+		vxlanDeviceName string
 	}
 	deleteReturns struct {
 		result1 error
 	}
 }
 
-func (fake *Deletor) Delete(deletorConfig container.DeletorConfig) error {
+func (fake *Deletor) Delete(interfaceName string, containerNSPath string, sandboxNS namespace.Namespace, vxlanDeviceName string) error {
 	fake.deleteMutex.Lock()
 	fake.deleteArgsForCall = append(fake.deleteArgsForCall, struct {
-		deletorConfig container.DeletorConfig
-	}{deletorConfig})
+		interfaceName   string
+		containerNSPath string
+		sandboxNS       namespace.Namespace
+		vxlanDeviceName string
+	}{interfaceName, containerNSPath, sandboxNS, vxlanDeviceName})
 	fake.deleteMutex.Unlock()
 	if fake.DeleteStub != nil {
-		return fake.DeleteStub(deletorConfig)
+		return fake.DeleteStub(interfaceName, containerNSPath, sandboxNS, vxlanDeviceName)
 	} else {
 		return fake.deleteReturns.result1
 	}
@@ -37,10 +43,10 @@ func (fake *Deletor) DeleteCallCount() int {
 	return len(fake.deleteArgsForCall)
 }
 
-func (fake *Deletor) DeleteArgsForCall(i int) container.DeletorConfig {
+func (fake *Deletor) DeleteArgsForCall(i int) (string, string, namespace.Namespace, string) {
 	fake.deleteMutex.RLock()
 	defer fake.deleteMutex.RUnlock()
-	return fake.deleteArgsForCall[i].deletorConfig
+	return fake.deleteArgsForCall[i].interfaceName, fake.deleteArgsForCall[i].containerNSPath, fake.deleteArgsForCall[i].sandboxNS, fake.deleteArgsForCall[i].vxlanDeviceName
 }
 
 func (fake *Deletor) DeleteReturns(result1 error) {

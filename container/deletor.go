@@ -18,15 +18,13 @@ type Deletor struct {
 	NamespaceOpener   namespace.Opener
 }
 
-type DeletorConfig struct {
-	InterfaceName   string
-	ContainerNSPath string
-	SandboxNS       namespace.Namespace
-	VxlanDeviceName string
-}
-
-func (d *Deletor) Delete(deletorConfig DeletorConfig) error {
-	containerNS, err := d.NamespaceOpener.OpenPath(deletorConfig.ContainerNSPath)
+func (d *Deletor) Delete(
+	interfaceName string,
+	containerNSPath string,
+	sandboxNS namespace.Namespace,
+	vxlanDeviceName string,
+) error {
+	containerNS, err := d.NamespaceOpener.OpenPath(containerNSPath)
 	if err != nil {
 		return fmt.Errorf("open container netns: %s", err)
 	}
@@ -36,16 +34,16 @@ func (d *Deletor) Delete(deletorConfig DeletorConfig) error {
 			commands.InNamespace{
 				Namespace: containerNS,
 				Command: commands.DeleteLink{
-					LinkName: deletorConfig.InterfaceName,
+					LinkName: interfaceName,
 				},
 			},
 
 			commands.CleanupSandbox{
-				Namespace:         deletorConfig.SandboxNS,
+				Namespace:         sandboxNS,
 				SandboxRepository: d.SandboxRepository,
 				NamedLocker:       d.NamedLocker,
 				Watcher:           d.Watcher,
-				VxlanDeviceName:   deletorConfig.VxlanDeviceName,
+				VxlanDeviceName:   vxlanDeviceName,
 			},
 		),
 	)
