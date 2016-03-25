@@ -35,7 +35,7 @@ var _ = Describe("Watcher", func() {
 		resolver = &fakes.Resolver{}
 
 		arpInserter = &fakes.ARPInserter{}
-		arpInserter.HandleResolvedNeighborsStub = func(ready chan error, _ namespace.Executor, _ string, _ <-chan watcher.Neighbor) {
+		arpInserter.HandleResolvedNeighborsStub = func(ready chan error, _ namespace.Namespace, _ string, _ <-chan watcher.Neighbor) {
 			close(ready)
 		}
 
@@ -125,7 +125,7 @@ var _ = Describe("Watcher", func() {
 
 		Context("when SyncHandleResolvedNeighbors fails", func() {
 			BeforeEach(func() {
-				arpInserter.HandleResolvedNeighborsStub = func(ready chan error, _ namespace.Executor, _ string, _ <-chan watcher.Neighbor) {
+				arpInserter.HandleResolvedNeighborsStub = func(ready chan error, _ namespace.Namespace, _ string, _ <-chan watcher.Neighbor) {
 					ready <- errors.New("zuccini")
 				}
 			})

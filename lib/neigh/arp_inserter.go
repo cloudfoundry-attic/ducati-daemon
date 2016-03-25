@@ -6,20 +6,24 @@ import (
 	"syscall"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	"github.com/pivotal-golang/lager"
 	"github.com/vishvananda/netlink"
 )
 
+type netlinker interface {
+	LinkByName(name string) (netlink.Link, error)
+	SetNeigh(*netlink.Neigh) error
+}
+
 type ARPInserter struct {
 	Logger         lager.Logger
-	Netlinker      nl.Netlinker
+	Netlinker      netlinker
 	OSThreadLocker ossupport.OSThreadLocker
 }
 
-func (a *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Executor, vxlanDeviceName string, resolvedChan <-chan watcher.Neighbor) {
+func (a *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Namespace, vxlanDeviceName string, resolvedChan <-chan watcher.Neighbor) {
 	a.OSThreadLocker.LockOSThread()
 	defer a.OSThreadLocker.UnlockOSThread()
 

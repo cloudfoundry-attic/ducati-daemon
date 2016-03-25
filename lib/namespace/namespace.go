@@ -2,14 +2,10 @@ package namespace
 
 import "os"
 
-type Executor interface {
-	Execute(func(*os.File) error) error
-	Name() string
-}
-
 //go:generate counterfeiter -o ../../fakes/namespace.go --fake-name Namespace . Namespace
 type Namespace interface {
-	Executor
+	Execute(func(*os.File) error) error
+	Name() string
 	Fd() uintptr
 }
 

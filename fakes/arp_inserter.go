@@ -9,21 +9,21 @@ import (
 )
 
 type ARPInserter struct {
-	HandleResolvedNeighborsStub        func(ready chan error, ns namespace.Executor, vxlanName string, resolvedNeighbors <-chan watcher.Neighbor)
+	HandleResolvedNeighborsStub        func(ready chan error, ns namespace.Namespace, vxlanName string, resolvedNeighbors <-chan watcher.Neighbor)
 	handleResolvedNeighborsMutex       sync.RWMutex
 	handleResolvedNeighborsArgsForCall []struct {
 		ready             chan error
-		ns                namespace.Executor
+		ns                namespace.Namespace
 		vxlanName         string
 		resolvedNeighbors <-chan watcher.Neighbor
 	}
 }
 
-func (fake *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Executor, vxlanName string, resolvedNeighbors <-chan watcher.Neighbor) {
+func (fake *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Namespace, vxlanName string, resolvedNeighbors <-chan watcher.Neighbor) {
 	fake.handleResolvedNeighborsMutex.Lock()
 	fake.handleResolvedNeighborsArgsForCall = append(fake.handleResolvedNeighborsArgsForCall, struct {
 		ready             chan error
-		ns                namespace.Executor
+		ns                namespace.Namespace
 		vxlanName         string
 		resolvedNeighbors <-chan watcher.Neighbor
 	}{ready, ns, vxlanName, resolvedNeighbors})
@@ -39,7 +39,7 @@ func (fake *ARPInserter) HandleResolvedNeighborsCallCount() int {
 	return len(fake.handleResolvedNeighborsArgsForCall)
 }
 
-func (fake *ARPInserter) HandleResolvedNeighborsArgsForCall(i int) (chan error, namespace.Executor, string, <-chan watcher.Neighbor) {
+func (fake *ARPInserter) HandleResolvedNeighborsArgsForCall(i int) (chan error, namespace.Namespace, string, <-chan watcher.Neighbor) {
 	fake.handleResolvedNeighborsMutex.RLock()
 	defer fake.handleResolvedNeighborsMutex.RUnlock()
 	return fake.handleResolvedNeighborsArgsForCall[i].ready, fake.handleResolvedNeighborsArgsForCall[i].ns, fake.handleResolvedNeighborsArgsForCall[i].vxlanName, fake.handleResolvedNeighborsArgsForCall[i].resolvedNeighbors
