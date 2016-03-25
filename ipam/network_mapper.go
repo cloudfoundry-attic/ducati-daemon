@@ -2,8 +2,7 @@ package ipam
 
 import (
 	"crypto/sha1"
-	"encoding/hex"
-	"math/big"
+	"encoding/binary"
 )
 
 //go:generate counterfeiter -o ../fakes/network_mapper.go --fake-name NetworkMapper . NetworkMapper
@@ -13,13 +12,11 @@ type NetworkMapper interface {
 
 type FixedNetworkMapper struct{}
 
-func (m *FixedNetworkMapper) GetVNI(networkID string) (int, error) {
+func (*FixedNetworkMapper) GetVNI(networkID string) (int, error) {
 	digest := sha1.Sum([]byte(networkID))
+	digest[3] = 0
 
-	hexSha1 := hex.EncodeToString(digest[:20])[:5]
+	vni := binary.LittleEndian.Uint32(digest[:4])
 
-	vni := new(big.Int)
-	vni.SetString(hexSha1, 32)
-
-	return int(vni.Uint64()), nil
+	return int(vni), nil
 }

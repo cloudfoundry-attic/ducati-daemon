@@ -1,32 +1,48 @@
 package ipam_test
 
 import (
+	"fmt"
+	"math/rand"
+
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("NetworkMapper", func() {
-	var networkMapper ipam.NetworkMapper
+	var networkMapper *ipam.FixedNetworkMapper
 
-	BeforeEach(func() {
-		networkMapper = &ipam.FixedNetworkMapper{}
-	})
+	Describe("GetVNI using a real digester", func() {
+		BeforeEach(func() {
+			networkMapper = &ipam.FixedNetworkMapper{}
+			rand.Seed(config.GinkgoConfig.RandomSeed)
+		})
 
-	Describe("GetVNI", func() {
-		It("consistently digests the same input string into a <15 digit int", func() {
-			vni, err := networkMapper.GetVNI("network-id-1")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(vni).To(Equal(13936832))
+		It("generates VNIs less than 2^24", func() {
+			for i := 0; i < 1000; i++ {
+				j := rand.Int63()
+				networkID := fmt.Sprintf("some-test-network-%x", j)
+				vni, err := networkMapper.GetVNI(networkID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(vni).To(BeNumerically("<", 1<<24))
+			}
+		})
 
-			vni, err = networkMapper.GetVNI("network-id-2")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(vni).To(Equal(12823693))
+		It("usually does not collide (this test will fail on 3% of random seeds)", func() {
+			vniCounts := make(map[int]int)
+			for i := 0; i < 1000; i++ {
+				j := rand.Int()
+				networkID := fmt.Sprintf("network-%x", j)
+				vni, err := networkMapper.GetVNI(networkID)
+				Expect(err).NotTo(HaveOccurred())
+				vniCounts[vni] += 1
+			}
 
-			vni, err = networkMapper.GetVNI("network-id-1")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(vni).To(Equal(13936832))
+			for _, v := range vniCounts {
+				Expect(v).To(BeNumerically("<=", 1))
+			}
 		})
 	})
 })
