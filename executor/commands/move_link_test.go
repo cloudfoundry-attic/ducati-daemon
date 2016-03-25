@@ -18,12 +18,17 @@ var _ = Describe("MoveLink", func() {
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
+
 		linkFactory = &fakes.LinkFactory{}
 		context.LinkFactoryReturns(linkFactory)
 
+		ns := &fakes.Namespace{}
+		ns.FdReturns(999)
+		ns.NameReturns("target-namespace")
+
 		setLinkNamespace = commands.MoveLink{
 			Name:      "link-name",
-			Namespace: "some-namespace-path",
+			Namespace: ns,
 		}
 	})
 
@@ -32,9 +37,9 @@ var _ = Describe("MoveLink", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(linkFactory.SetNamespaceCallCount()).To(Equal(1))
-		name, ns := linkFactory.SetNamespaceArgsForCall(0)
+		name, fd := linkFactory.SetNamespaceArgsForCall(0)
 		Expect(name).To(Equal("link-name"))
-		Expect(ns).To(Equal("some-namespace-path"))
+		Expect(fd).To(BeEquivalentTo(999))
 	})
 
 	Context("when moving the link fails", func() {
@@ -48,7 +53,7 @@ var _ = Describe("MoveLink", func() {
 
 	Describe("String", func() {
 		It("describes itself", func() {
-			Expect(setLinkNamespace.String()).To(Equal("ip link set dev link-name netns some-namespace-path"))
+			Expect(setLinkNamespace.String()).To(Equal("ip link set dev link-name netns target-namespace"))
 		})
 	})
 })

@@ -51,7 +51,7 @@ func (b *CommandBuilder) IdempotentlyCreateVxlan(
 							VNI:  vni,
 						},
 						commands.MoveLink{
-							Namespace: sandboxNS.Name(),
+							Namespace: sandboxNS,
 							Name:      vxlanName,
 						},
 					),
@@ -112,7 +112,7 @@ func (b *CommandBuilder) SetupVeth(
 					},
 					commands.MoveLink{
 						Name:      sandboxLinkName,
-						Namespace: sandboxNS.Name(),
+						Namespace: sandboxNS,
 					},
 					commands.AddAddress{
 						InterfaceName: containerLinkName,

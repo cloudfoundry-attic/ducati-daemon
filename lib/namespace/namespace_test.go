@@ -54,7 +54,7 @@ var _ = Describe("Namespace", func() {
 
 			var namespaceInode string
 			closure := func(f *os.File) error {
-				// Stat of "/proc/self/ns/net" seemed to be flakey
+				// Stat of "/proc/self/ns/net" flakey due to fs caching
 				output, err := exec.Command("stat", "-L", "-c", "%i", "/proc/self/ns/net").CombinedOutput()
 				namespaceInode = strings.TrimSpace(string(output))
 				return err
@@ -105,6 +105,25 @@ var _ = Describe("Namespace", func() {
 				_, err := opener.OpenPath(tempFile.Name())
 				Expect(err).To(MatchError(HavePrefix(fmt.Sprintf("open %s:", tempFile.Name()))))
 			})
+		})
+	})
+
+	Describe("Fd", func() {
+		It("returns the file descriptor of the open namespace", func() {
+			opener := &namespace.PathOpener{}
+			temp, err := ioutil.TempFile("", "whatever")
+			Expect(err).NotTo(HaveOccurred())
+			temp.Close()
+			defer os.Remove(temp.Name())
+
+			ns, err := opener.OpenPath(temp.Name())
+			Expect(err).NotTo(HaveOccurred())
+
+			netns, ok := ns.(*namespace.Netns)
+			Expect(ok).To(BeTrue())
+
+			Expect(ns.Fd()).To(Equal(netns.Fd()))
+			Expect(int(ns.Fd())).To(BeNumerically(">", 0))
 		})
 	})
 })

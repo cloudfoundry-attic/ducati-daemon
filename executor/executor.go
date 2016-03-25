@@ -25,7 +25,7 @@ type LinkFactory interface {
 	Exists(name string) bool
 	HardwareAddress(linkName string) (net.HardwareAddr, error)
 	SetMaster(slave, master string) error
-	SetNamespace(intefaceName, namespace string) error
+	SetNamespace(intefaceName string, fd uintptr) error
 	SetUp(name string) error
 	VethDeviceCount() (int, error)
 }

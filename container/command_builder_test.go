@@ -41,9 +41,7 @@ var _ = Describe("CommandBuilder", func() {
 	})
 
 	Describe("IdempotentlyCreateVxlan", func() {
-		var (
-			sandboxNS *fakes.Namespace
-		)
+		var sandboxNS *fakes.Namespace
 
 		It("should return a command group that idempotently creates the vxlan device", func() {
 			hostNamespace := &fakes.Namespace{NameStub: func() string { return "host namespace sentinel" }}
@@ -75,7 +73,7 @@ var _ = Describe("CommandBuilder", func() {
 										VNI:  1234,
 									},
 									commands.MoveLink{
-										Namespace: "/sandbox/repo/some-sandbox-name",
+										Namespace: sandboxNS,
 										Name:      "some-vxlan-name",
 									},
 								),
@@ -213,7 +211,7 @@ var _ = Describe("CommandBuilder", func() {
 								},
 								commands.MoveLink{
 									Name:      "sandbox-veth",
-									Namespace: "/some/sb/path",
+									Namespace: sandboxNS,
 								},
 								commands.AddAddress{
 									InterfaceName: "container-veth",

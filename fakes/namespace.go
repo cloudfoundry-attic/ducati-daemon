@@ -23,6 +23,12 @@ type Namespace struct {
 	nameReturns     struct {
 		result1 string
 	}
+	FdStub        func() uintptr
+	fdMutex       sync.RWMutex
+	fdArgsForCall []struct{}
+	fdReturns     struct {
+		result1 uintptr
+	}
 }
 
 func (fake *Namespace) Execute(arg1 func(*os.File) error) error {
@@ -78,6 +84,30 @@ func (fake *Namespace) NameReturns(result1 string) {
 	fake.NameStub = nil
 	fake.nameReturns = struct {
 		result1 string
+	}{result1}
+}
+
+func (fake *Namespace) Fd() uintptr {
+	fake.fdMutex.Lock()
+	fake.fdArgsForCall = append(fake.fdArgsForCall, struct{}{})
+	fake.fdMutex.Unlock()
+	if fake.FdStub != nil {
+		return fake.FdStub()
+	} else {
+		return fake.fdReturns.result1
+	}
+}
+
+func (fake *Namespace) FdCallCount() int {
+	fake.fdMutex.RLock()
+	defer fake.fdMutex.RUnlock()
+	return len(fake.fdArgsForCall)
+}
+
+func (fake *Namespace) FdReturns(result1 uintptr) {
+	fake.FdStub = nil
+	fake.fdReturns = struct {
+		result1 uintptr
 	}{result1}
 }
 

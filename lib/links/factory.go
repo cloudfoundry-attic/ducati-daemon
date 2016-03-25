@@ -3,7 +3,6 @@ package links
 import (
 	"fmt"
 	"net"
-	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/vishvananda/netlink"
@@ -131,19 +130,13 @@ func (f *Factory) SetMaster(slave, master string) error {
 	return nil
 }
 
-func (f *Factory) SetNamespace(linkName, namespace string) error {
+func (f *Factory) SetNamespace(linkName string, fd uintptr) error {
 	link, err := f.FindLink(linkName)
 	if err != nil {
 		return fmt.Errorf("failed to find link: %s", err)
 	}
 
-	file, err := os.Open(namespace)
-	if err != nil {
-		return fmt.Errorf("failed to open namespace: %s", err)
-	}
-	defer file.Close() // not tested
-
-	err = f.Netlinker.LinkSetNsFd(link, int(file.Fd()))
+	err = f.Netlinker.LinkSetNsFd(link, int(fd))
 	if err != nil {
 		return fmt.Errorf("failed to set link namespace: %s", err)
 	}

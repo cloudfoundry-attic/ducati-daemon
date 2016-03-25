@@ -70,11 +70,11 @@ type LinkFactory struct {
 	setMasterReturns struct {
 		result1 error
 	}
-	SetNamespaceStub        func(intefaceName, namespace string) error
+	SetNamespaceStub        func(intefaceName string, fd uintptr) error
 	setNamespaceMutex       sync.RWMutex
 	setNamespaceArgsForCall []struct {
 		intefaceName string
-		namespace    string
+		fd           uintptr
 	}
 	setNamespaceReturns struct {
 		result1 error
@@ -325,15 +325,15 @@ func (fake *LinkFactory) SetMasterReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *LinkFactory) SetNamespace(intefaceName string, namespace string) error {
+func (fake *LinkFactory) SetNamespace(intefaceName string, fd uintptr) error {
 	fake.setNamespaceMutex.Lock()
 	fake.setNamespaceArgsForCall = append(fake.setNamespaceArgsForCall, struct {
 		intefaceName string
-		namespace    string
-	}{intefaceName, namespace})
+		fd           uintptr
+	}{intefaceName, fd})
 	fake.setNamespaceMutex.Unlock()
 	if fake.SetNamespaceStub != nil {
-		return fake.SetNamespaceStub(intefaceName, namespace)
+		return fake.SetNamespaceStub(intefaceName, fd)
 	} else {
 		return fake.setNamespaceReturns.result1
 	}
@@ -345,10 +345,10 @@ func (fake *LinkFactory) SetNamespaceCallCount() int {
 	return len(fake.setNamespaceArgsForCall)
 }
 
-func (fake *LinkFactory) SetNamespaceArgsForCall(i int) (string, string) {
+func (fake *LinkFactory) SetNamespaceArgsForCall(i int) (string, uintptr) {
 	fake.setNamespaceMutex.RLock()
 	defer fake.setNamespaceMutex.RUnlock()
-	return fake.setNamespaceArgsForCall[i].intefaceName, fake.setNamespaceArgsForCall[i].namespace
+	return fake.setNamespaceArgsForCall[i].intefaceName, fake.setNamespaceArgsForCall[i].fd
 }
 
 func (fake *LinkFactory) SetNamespaceReturns(result1 error) {

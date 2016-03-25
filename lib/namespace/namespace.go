@@ -10,6 +10,7 @@ type Executor interface {
 //go:generate counterfeiter -o ../../fakes/namespace.go --fake-name Namespace . Namespace
 type Namespace interface {
 	Executor
+	Fd() uintptr
 }
 
 type Netns struct {

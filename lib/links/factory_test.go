@@ -2,9 +2,7 @@ package links_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"net"
-	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/links"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl/fakes"
@@ -319,41 +317,24 @@ var _ = Describe("Factory", func() {
 
 		Describe("SetNamespace", func() {
 			var link netlink.Link
-			var namespacePath string
 
 			BeforeEach(func() {
 				link = &netlink.Dummy{}
 				netlinker.LinkByNameReturns(link, nil)
-
-				tempFile, err := ioutil.TempFile("", "set-namespace")
-				Expect(err).NotTo(HaveOccurred())
-
-				_, err = tempFile.Write([]byte("hello"))
-				Expect(err).NotTo(HaveOccurred())
-
-				namespacePath = tempFile.Name()
-				tempFile.Close()
 			})
 
 			It("associates the link with a file descriptor", func() {
-				netlinker.LinkSetNsFdStub = func(l netlink.Link, fd int) error {
-					Expect(l).To(Equal(link))
-
-					f := os.NewFile(uintptr(fd), "name")
-					payload, err := ioutil.ReadAll(f)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(payload).To(Equal([]byte("hello")))
-
-					return nil
-				}
-
-				err := factory.SetNamespace("link-name", namespacePath)
+				err := factory.SetNamespace("link-name", 99)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
 				Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("link-name"))
 
 				Expect(netlinker.LinkSetNsFdCallCount()).To(Equal(1))
+
+				l, fd := netlinker.LinkSetNsFdArgsForCall(0)
+				Expect(l).To(Equal(link))
+				Expect(fd).To(Equal(99))
 			})
 
 			Context("when finding the link fails", func() {
@@ -362,19 +343,8 @@ var _ = Describe("Factory", func() {
 				})
 
 				It("returns a meaningful error", func() {
-					err := factory.SetNamespace("link-name", namespacePath)
+					err := factory.SetNamespace("link-name", 99)
 					Expect(err).To(MatchError("failed to find link: no link for you"))
-				})
-			})
-
-			Context("when opening the namespace fails", func() {
-				BeforeEach(func() {
-					namespacePath = "some junk path name that is bogus"
-				})
-
-				It("returns a meaningful error", func() {
-					err := factory.SetNamespace("link-name", namespacePath)
-					Expect(err).To(MatchError(HavePrefix("failed to open namespace: open")))
 				})
 			})
 
@@ -384,7 +354,7 @@ var _ = Describe("Factory", func() {
 				})
 
 				It("returns a meaningful error", func() {
-					err := factory.SetNamespace("link-name", namespacePath)
+					err := factory.SetNamespace("link-name", 99)
 					Expect(err).To(MatchError("failed to set link namespace: what namespace?"))
 				})
 			})
