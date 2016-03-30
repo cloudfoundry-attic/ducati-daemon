@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -27,11 +28,17 @@ func New(baseURL string, httpClient *http.Client) *DaemonClient {
 	}
 }
 
+//go:generate counterfeiter -o ../fakes/http_client.go --fake-name HTTPClient . httpClient
+type httpClient interface {
+	Post(url string, contentType string, body io.Reader) (*http.Response, error)
+	Get(url string) (*http.Response, error)
+}
+
 type DaemonClient struct {
 	BaseURL     string
 	Marshaler   marshal.Marshaler
 	Unmarshaler marshal.Unmarshaler
-	HttpClient  *http.Client
+	HttpClient  httpClient
 }
 
 func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
@@ -117,6 +124,31 @@ func (d *DaemonClient) ContainerDown(payload models.CNIDelPayload) error {
 	return nil
 }
 
+func (d *DaemonClient) GetContainer(containerID string) (models.Container, error) {
+	url := d.buildURL("containers", containerID)
+	resp, err := d.HttpClient.Get(url)
+	if err != nil {
+		return models.Container{}, fmt.Errorf("failed to perform request: %s", err)
+	}
+
+	if statusError := checkStatus("GetContainer", resp.StatusCode, http.StatusOK); statusError != nil {
+		return models.Container{}, statusError
+	}
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return models.Container{}, fmt.Errorf("reading response: %s", err)
+	}
+
+	var container models.Container
+	err = d.Unmarshaler.Unmarshal(respBytes, &container)
+	if err != nil {
+		return models.Container{}, fmt.Errorf("failed to unmarshal container: %s", err)
+	}
+
+	return container, nil
+}
+
 func (d *DaemonClient) ListNetworkContainers(networkID string) ([]models.Container, error) {
 	url := d.buildURL("networks", networkID)
 	resp, err := d.HttpClient.Get(url)
@@ -131,7 +163,7 @@ func (d *DaemonClient) ListNetworkContainers(networkID string) ([]models.Contain
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return []models.Container{}, nil // not tested
+		return []models.Container{}, fmt.Errorf("reading response: %s", err)
 	}
 
 	var containers []models.Container

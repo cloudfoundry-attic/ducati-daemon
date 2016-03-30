@@ -51,6 +51,7 @@ var _ = Describe("Client", func() {
 		}
 
 		marshaler.MarshalStub = json.Marshal
+		unmarshaler.UnmarshalStub = json.Unmarshal
 	})
 
 	AfterEach(func() {
@@ -94,6 +95,98 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("GetContainer", func() {
+		var expectedContainer models.Container
+
+		BeforeEach(func() {
+			expectedContainer = models.Container{
+				ID:     "some-id",
+				IP:     "192.168.1.9",
+				MAC:    "HH:HH:HH:HH:HH",
+				HostIP: "10.0.0.0",
+			}
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/containers/some-container-id"),
+				ghttp.RespondWithJSONEncoded(http.StatusOK, expectedContainer),
+			))
+		})
+
+		It("returns the container for a given container ID", func() {
+			container, err := c.GetContainer("some-container-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+			Expect(unmarshaler.UnmarshalCallCount()).To(Equal(1))
+			Expect(container).To(Equal(expectedContainer))
+		})
+
+		It("uses the provided HTTP client", func() {
+			_, err := c.GetContainer("some-container-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/containers/some-container-id"))
+		})
+
+		Context("when an error occurs", func() {
+			Context("when request cannot be performed", func() {
+				It("returns an error", func() {
+					c = client.DaemonClient{
+						BaseURL:    "%%%%",
+						Marshaler:  marshaler,
+						HttpClient: httpClient,
+					}
+
+					_, err := c.GetContainer("some-container-id")
+					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
+				})
+			})
+
+			Context("when the endpoint responds with the wrong status", func() {
+				BeforeEach(func() {
+					server.SetHandler(0, ghttp.RespondWith(http.StatusTeapot, nil))
+				})
+
+				It("should return and error", func() {
+					_, err := c.GetContainer("some-container-id")
+					Expect(err).To(MatchError(`unexpected status code on GetContainer: expected 200 but got 418`))
+				})
+			})
+
+			Context("when reading the response body fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.GetReturns(&http.Response{
+						StatusCode: 200,
+						Body:       &testsupport.BadReader{},
+					}, nil)
+					c = client.DaemonClient{
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
+					_, err := c.GetContainer("some-container-id")
+					Expect(err).To(MatchError("reading response: banana"))
+				})
+			})
+
+			Context("when unmarhalling fails", func() {
+				BeforeEach(func() {
+					unmarshaler.UnmarshalReturns(errors.New("something went wrong"))
+				})
+
+				It("should return an error", func() {
+					_, err := c.GetContainer("some-container-id")
+					Expect(err).To(MatchError("failed to unmarshal container: something went wrong"))
+				})
+			})
+
+		})
+	})
+
 	Describe("ListNetworkContainers", func() {
 		var expectedContainers []models.Container
 
@@ -117,7 +210,6 @@ var _ = Describe("Client", func() {
 				ghttp.RespondWithJSONEncoded(http.StatusOK, expectedContainers),
 			))
 
-			unmarshaler.UnmarshalStub = json.Unmarshal
 		})
 
 		It("should GET /networks/:network_id", func() {
@@ -141,8 +233,9 @@ var _ = Describe("Client", func() {
 			Context("when the request cannot be performed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
-						BaseURL:   "%%%%",
-						Marshaler: marshaler,
+						BaseURL:    "%%%%",
+						Marshaler:  marshaler,
+						HttpClient: httpClient,
 					}
 
 					_, err := c.ListNetworkContainers("some-network-id")
@@ -158,6 +251,26 @@ var _ = Describe("Client", func() {
 				It("should return and error", func() {
 					_, err := c.ListNetworkContainers("some-network-id")
 					Expect(err).To(MatchError(`unexpected status code on ListNetworkContainers: expected 200 but got 418`))
+				})
+			})
+
+			Context("when reading the response body fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.GetReturns(&http.Response{
+						StatusCode: 200,
+						Body:       &testsupport.BadReader{},
+					}, nil)
+					c = client.DaemonClient{
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
+					_, err := c.ListNetworkContainers("some-network-id")
+					Expect(err).To(MatchError("reading response: banana"))
 				})
 			})
 
@@ -246,8 +359,9 @@ var _ = Describe("Client", func() {
 			Context("when the request cannot be performed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
-						BaseURL:   "%%%%",
-						Marshaler: marshaler,
+						BaseURL:    "%%%%",
+						Marshaler:  marshaler,
+						HttpClient: httpClient,
 					}
 
 					_, err := c.ContainerUp(cniPayload)
@@ -370,8 +484,9 @@ var _ = Describe("Client", func() {
 			Context("when the request cannot be performed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
-						BaseURL:   "%%%%",
-						Marshaler: marshaler,
+						BaseURL:    "%%%%",
+						Marshaler:  marshaler,
+						HttpClient: httpClient,
 					}
 
 					err := c.ContainerDown(cniPayload)
