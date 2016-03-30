@@ -43,7 +43,7 @@ func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
 		panic(err)
 	}
 	if stdinStruct.NetworkID == "" {
-		return types.Result{}, fmt.Errorf(`"network_id" field required."`)
+		stdinStruct.NetworkID = "legacy"
 	}
 	return d.ContainerUp(models.CNIAddPayload{
 		ContainerID:        input.ContainerID,

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/appc/cni/pkg/skel"
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
@@ -54,6 +55,43 @@ var _ = Describe("Client", func() {
 
 	AfterEach(func() {
 		server.Close()
+	})
+
+	Describe("CNIAdd", func() {
+		var cniPayload models.CNIAddPayload
+
+		BeforeEach(func() {
+			cniPayload = models.CNIAddPayload{
+				Args:               "FOO=BAR;ABC=123",
+				ContainerNamespace: "/some/namespace/path",
+				InterfaceName:      "interface-name",
+				NetworkID:          "legacy",
+				ContainerID:        "some-container-id",
+			}
+
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/cni/add"),
+				ghttp.VerifyJSONRepresenting(cniPayload),
+				ghttp.VerifyHeaderKV("Content-type", "application/json"),
+				ghttp.RespondWithJSONEncoded(http.StatusCreated, types.Result{}),
+			))
+		})
+
+		Context("when netowrk spec is not provided", func() {
+			It("sets the NetworkID to 'legacy'", func() {
+				_, err := c.CNIAdd(&skel.CmdArgs{
+					ContainerID: "some-container-id",
+					Netns:       "/some/namespace/path",
+					IfName:      "interface-name",
+					Args:        "FOO=BAR;ABC=123",
+					StdinData:   []byte(`{"network_id": ""}`),
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(marshaler.MarshalCallCount()).To(Equal(1))
+				Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
+			})
+		})
 	})
 
 	Describe("ListNetworkContainers", func() {
