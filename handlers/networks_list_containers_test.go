@@ -76,7 +76,7 @@ var _ = Describe("GET /networks/:network_id", func() {
 
 	Context("when marshaling fails", func() {
 		BeforeEach(func() {
-			marshaler.MarshalReturns(nil, errors.New("bang"))
+			marshaler.MarshalReturns([]byte("some-junk"), errors.New("bang"))
 		})
 
 		It("responds with a 500", func() {

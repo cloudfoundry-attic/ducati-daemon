@@ -168,6 +168,12 @@ func main() {
 	marshaler := marshal.MarshalFunc(json.Marshal)
 	unmarshaler := marshal.UnmarshalFunc(json.Unmarshal)
 
+	rataHandlers["get_container"] = &handlers.GetContainer{
+		Marshaler: marshaler,
+		Logger:    logger,
+		Datastore: dataStore,
+	}
+
 	rataHandlers["networks_list_containers"] = &handlers.NetworksListContainers{
 		Marshaler: marshaler,
 		Logger:    logger,
@@ -189,6 +195,7 @@ func main() {
 	}
 
 	routes := rata.Routes{
+		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
 		{Name: "cni_add", Method: "POST", Path: "/cni/add"},
 		{Name: "cni_del", Method: "POST", Path: "/cni/del"},

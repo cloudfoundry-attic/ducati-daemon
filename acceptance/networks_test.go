@@ -170,12 +170,20 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("responds to POST to /cni/add", func() {
+		It("makes container metadata available on the list network containers endpoint", func() {
 			containers, err := daemonClient.ListNetworkContainers(networkID)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(containers).To(HaveLen(1))
 			Expect(containers[0].HostIP).To(Equal(hostAddress))
+		})
+
+		It("makes container metadata available on get container endpoint", func() {
+			container, err := daemonClient.GetContainer(containerID)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(container.HostIP).To(Equal(hostAddress))
+			Expect(container.NetworkID).To(Equal(networkID))
 		})
 
 		It("moves a vxlan adapter into the sandbox", func() {
