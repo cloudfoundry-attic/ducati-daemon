@@ -142,7 +142,18 @@ var _ = Describe("Client", func() {
 				})
 			})
 
-			Context("when the endpoint responds with the wrong status", func() {
+			Context("when the endpoint responds with status 404", func() {
+				BeforeEach(func() {
+					server.SetHandler(0, ghttp.RespondWith(http.StatusNotFound, nil))
+				})
+
+				It("should return a client.RecordNotFound error", func() {
+					_, err := c.GetContainer("some-container-id")
+					Expect(err).To(Equal(client.RecordNotFoundError))
+				})
+			})
+
+			Context("when the endpoint responds with an unexpected status code", func() {
 				BeforeEach(func() {
 					server.SetHandler(0, ghttp.RespondWith(http.StatusTeapot, nil))
 				})

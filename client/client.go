@@ -131,8 +131,13 @@ func (d *DaemonClient) GetContainer(containerID string) (models.Container, error
 		return models.Container{}, fmt.Errorf("failed to perform request: %s", err)
 	}
 
-	if statusError := checkStatus("GetContainer", resp.StatusCode, http.StatusOK); statusError != nil {
-		return models.Container{}, statusError
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return models.Container{}, RecordNotFoundError
+	default:
+		if statusError := checkStatus("GetContainer", resp.StatusCode, http.StatusOK); statusError != nil {
+			return models.Container{}, statusError
+		}
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
