@@ -8,7 +8,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"net/url"
+	"path"
 
 	"github.com/appc/cni/pkg/skel"
 	"github.com/appc/cni/pkg/types"
@@ -75,7 +76,10 @@ func (d *DaemonClient) ContainerUp(payload models.CNIAddPayload) (types.Result, 
 		return types.Result{}, fmt.Errorf("failed to marshal cni payload: %s", err)
 	}
 
-	url := d.buildURL("cni", "add")
+	url, err := d.buildURL("cni", "add")
+	if err != nil {
+		return types.Result{}, fmt.Errorf("build url: %s", err)
+	}
 	resp, err := d.HttpClient.Post(url, "application/json", bytes.NewReader(postData))
 	if err != nil {
 		return types.Result{}, fmt.Errorf("failed to perform request: %s", err)
@@ -111,7 +115,10 @@ func (d *DaemonClient) ContainerDown(payload models.CNIDelPayload) error {
 		return fmt.Errorf("failed to marshal cni payload: %s", err)
 	}
 
-	url := d.buildURL("cni", "del")
+	url, err := d.buildURL("cni", "del")
+	if err != nil {
+		return fmt.Errorf("build url: %s", err)
+	}
 	resp, err := d.HttpClient.Post(url, "application/json", bytes.NewReader(deleteData))
 	if err != nil {
 		return fmt.Errorf("failed to perform request: %s", err)
@@ -125,7 +132,10 @@ func (d *DaemonClient) ContainerDown(payload models.CNIDelPayload) error {
 }
 
 func (d *DaemonClient) GetContainer(containerID string) (models.Container, error) {
-	url := d.buildURL("containers", containerID)
+	url, err := d.buildURL("containers", containerID)
+	if err != nil {
+		return models.Container{}, fmt.Errorf("build url: %s", err)
+	}
 	resp, err := d.HttpClient.Get(url)
 	if err != nil {
 		return models.Container{}, fmt.Errorf("failed to perform request: %s", err)
@@ -155,7 +165,10 @@ func (d *DaemonClient) GetContainer(containerID string) (models.Container, error
 }
 
 func (d *DaemonClient) ListNetworkContainers(networkID string) ([]models.Container, error) {
-	url := d.buildURL("networks", networkID)
+	url, err := d.buildURL("networks", networkID)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("build url: %s", err)
+	}
 	resp, err := d.HttpClient.Get(url)
 	if err != nil {
 		return []models.Container{}, fmt.Errorf("failed to perform request: %s", err)
@@ -188,8 +201,14 @@ func checkStatus(method string, receivedStatus, expectedStatus int) error {
 	return nil
 }
 
-func (d *DaemonClient) buildURL(routeElements ...string) string {
-	return d.BaseURL + "/" + strings.Join(routeElements, "/")
+func (d *DaemonClient) buildURL(routeElements ...string) (string, error) {
+	parsedURL, err := url.Parse(d.BaseURL)
+	if err != nil {
+		return "", err
+	}
+	pathElements := append([]string{parsedURL.Path}, routeElements...)
+	parsedURL.Path = path.Join(pathElements...)
+	return parsedURL.String(), nil
 }
 
 //go:generate counterfeiter -o ../fakes/round_tripper.go --fake-name RoundTripper . roundTripper

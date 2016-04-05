@@ -78,8 +78,31 @@ var _ = Describe("Client", func() {
 			))
 		})
 
-		Context("when netowrk spec is not provided", func() {
+		Context("when network spec is not provided", func() {
 			It("sets the NetworkID to 'legacy'", func() {
+				_, err := c.CNIAdd(&skel.CmdArgs{
+					ContainerID: "some-container-id",
+					Netns:       "/some/namespace/path",
+					IfName:      "interface-name",
+					Args:        "FOO=BAR;ABC=123",
+					StdinData:   []byte(`{"network_id": ""}`),
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(marshaler.MarshalCallCount()).To(Equal(1))
+				Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
+			})
+		})
+
+		Context("when the server URL has a trailing slash", func() {
+			It("works as if no slash was appended", func() {
+				c = client.DaemonClient{
+					BaseURL:     server.URL() + "/",
+					Marshaler:   marshaler,
+					Unmarshaler: unmarshaler,
+					HttpClient:  httpClient,
+				}
+
 				_, err := c.CNIAdd(&skel.CmdArgs{
 					ContainerID: "some-container-id",
 					Netns:       "/some/namespace/path",
@@ -128,8 +151,29 @@ var _ = Describe("Client", func() {
 			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/containers/some-container-id"))
 		})
 
+		Context("when the server URL has a trailing slash", func() {
+			It("works as if no slash was appended", func() {
+				c = client.DaemonClient{
+					BaseURL:     server.URL() + "/",
+					Marshaler:   marshaler,
+					Unmarshaler: unmarshaler,
+					HttpClient:  httpClient,
+				}
+
+				container, err := c.GetContainer("some-container-id")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(server.ReceivedRequests()).Should(HaveLen(1))
+				Expect(unmarshaler.UnmarshalCallCount()).To(Equal(1))
+				Expect(container).To(Equal(expectedContainer))
+
+				Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+				Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/containers/some-container-id"))
+			})
+		})
+
 		Context("when an error occurs", func() {
-			Context("when request cannot be performed", func() {
+			Context("when the URL is malformed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
 						BaseURL:    "%%%%",
@@ -138,7 +182,24 @@ var _ = Describe("Client", func() {
 					}
 
 					_, err := c.GetContainer("some-container-id")
-					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
+					Expect(err).To(MatchError(ContainSubstring("build url: parse")))
+				})
+			})
+
+			Context("when the request fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.GetReturns(nil, errors.New("get fail"))
+					c = client.DaemonClient{
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
+					_, err := c.GetContainer("some-container-id")
+					Expect(err).To(MatchError(ContainSubstring("get fail")))
 				})
 			})
 
@@ -240,8 +301,29 @@ var _ = Describe("Client", func() {
 			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/networks/some-network-id"))
 		})
 
+		Context("when the server URL has a trailing slash", func() {
+			It("works as if no slash was appended", func() {
+				c = client.DaemonClient{
+					BaseURL:     server.URL() + "/",
+					Marshaler:   marshaler,
+					Unmarshaler: unmarshaler,
+					HttpClient:  httpClient,
+				}
+
+				containers, err := c.ListNetworkContainers("some-network-id")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(server.ReceivedRequests()).Should(HaveLen(1))
+				Expect(unmarshaler.UnmarshalCallCount()).To(Equal(1))
+				Expect(containers).To(ConsistOf(expectedContainers))
+
+				Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+				Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/networks/some-network-id"))
+			})
+		})
+
 		Context("when an error occurs", func() {
-			Context("when the request cannot be performed", func() {
+			Context("when the URL is malformed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
 						BaseURL:    "%%%%",
@@ -249,8 +331,25 @@ var _ = Describe("Client", func() {
 						HttpClient: httpClient,
 					}
 
+					_, err := c.GetContainer("some-container-id")
+					Expect(err).To(MatchError(ContainSubstring("build url: parse")))
+				})
+			})
+
+			Context("when the request fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.GetReturns(nil, errors.New("get fail"))
+					c = client.DaemonClient{
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
 					_, err := c.ListNetworkContainers("some-network-id")
-					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
+					Expect(err).To(MatchError(ContainSubstring("get fail")))
 				})
 			})
 
@@ -357,6 +456,29 @@ var _ = Describe("Client", func() {
 			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/cni/add"))
 		})
 
+		Context("when the server URL has a trailing slash", func() {
+			It("works as if no slash was appended", func() {
+				c = client.DaemonClient{
+					BaseURL:     server.URL() + "/",
+					Marshaler:   marshaler,
+					Unmarshaler: unmarshaler,
+					HttpClient:  httpClient,
+				}
+
+				unmarshaler.UnmarshalStub = json.Unmarshal
+
+				receivedResult, err := c.ContainerUp(cniPayload)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(receivedResult).To(Equal(returnedResult))
+				Expect(server.ReceivedRequests()).Should(HaveLen(1))
+				Expect(marshaler.MarshalCallCount()).To(Equal(1))
+				Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
+				Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+				Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/cni/add"))
+			})
+		})
+
 		Context("when an error occurs", func() {
 			Context("when the payload fails to marshal", func() {
 				It("returns an error", func() {
@@ -367,7 +489,7 @@ var _ = Describe("Client", func() {
 				})
 			})
 
-			Context("when the request cannot be performed", func() {
+			Context("when the URL is malformed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
 						BaseURL:    "%%%%",
@@ -376,7 +498,25 @@ var _ = Describe("Client", func() {
 					}
 
 					_, err := c.ContainerUp(cniPayload)
-					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
+					Expect(err).To(MatchError(ContainSubstring("build url: parse")))
+				})
+			})
+
+			Context("when the request fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.PostReturns(nil, errors.New("post fail"))
+					c = client.DaemonClient{
+						Marshaler:  marshaler,
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
+					_, err := c.ContainerUp(cniPayload)
+					Expect(err).To(MatchError(ContainSubstring("post fail")))
 				})
 			})
 
@@ -482,6 +622,24 @@ var _ = Describe("Client", func() {
 			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/cni/del"))
 		})
 
+		Context("when the server URL has a trailing slash", func() {
+			It("works as if no slash was appended", func() {
+				c = client.DaemonClient{
+					BaseURL:     server.URL() + "/",
+					Marshaler:   marshaler,
+					Unmarshaler: unmarshaler,
+					HttpClient:  httpClient,
+				}
+
+				Expect(c.ContainerDown(cniPayload)).To(Succeed())
+				Expect(server.ReceivedRequests()).Should(HaveLen(1))
+				Expect(marshaler.MarshalCallCount()).To(Equal(1))
+				Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
+				Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+				Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/cni/del"))
+			})
+		})
+
 		Context("when an error occurs", func() {
 			Context("when the payload fails to marshal", func() {
 				It("returns an error", func() {
@@ -492,7 +650,7 @@ var _ = Describe("Client", func() {
 				})
 			})
 
-			Context("when the request cannot be performed", func() {
+			Context("when the URL is malformed", func() {
 				It("returns an error", func() {
 					c = client.DaemonClient{
 						BaseURL:    "%%%%",
@@ -501,7 +659,25 @@ var _ = Describe("Client", func() {
 					}
 
 					err := c.ContainerDown(cniPayload)
-					Expect(err).To(MatchError(ContainSubstring("failed to perform request: parse")))
+					Expect(err).To(MatchError(ContainSubstring("build url: parse")))
+				})
+			})
+
+			Context("when the request fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.PostReturns(nil, errors.New("post fail"))
+					c = client.DaemonClient{
+						Marshaler:  marshaler,
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
+					err := c.ContainerDown(cniPayload)
+					Expect(err).To(MatchError(ContainSubstring("post fail")))
 				})
 			})
 
