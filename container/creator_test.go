@@ -3,6 +3,7 @@ package container_test
 import (
 	"errors"
 	"net"
+	"regexp"
 
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
@@ -214,7 +215,7 @@ var _ = Describe("Creator", func() {
 
 		contNS, sandboxLinkName, containerLinkName, address, sbNS, routeCommands := commandBuilder.SetupVethArgsForCall(0)
 		Expect(contNS).To(Equal(containerNS))
-		Expect(sandboxLinkName).To(Equal("123456789012345"))
+		Expect(sandboxLinkName).To(Equal("MXGEYC3M7HCW4KR"))
 		Expect(containerLinkName).To(Equal("container-link"))
 		Expect(address).To(Equal(ipamResult.IP4.IP))
 		Expect(sbNS).To(Equal(sandboxNS))
@@ -234,7 +235,7 @@ var _ = Describe("Creator", func() {
 
 		vxlanName, sandboxLinkName, bridgeName, sbNS, ipamResult := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
 		Expect(vxlanName).To(Equal("vxlan99"))
-		Expect(sandboxLinkName).To(Equal("123456789012345"))
+		Expect(sandboxLinkName).To(Equal("MXGEYC3M7HCW4KR"))
 		Expect(bridgeName).To(Equal("vxlanbr99"))
 		Expect(sbNS).To(Equal(sandboxNS))
 		Expect(ipamResult).To(Equal(&types.Result{
@@ -263,22 +264,51 @@ var _ = Describe("Creator", func() {
 
 	Context("when the container ID is very long", func() {
 		It("keeps the sandbox link name short", func() {
-			setupBridgeResult := &fakes.Command{}
-
-			commandBuilder.IdempotentlySetupBridgeReturns(setupBridgeResult)
 			config.ContainerID = "1234567890123456789"
 
 			_, err := creator.Setup(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			commandGroup := (ex.ExecuteArgsForCall(1)).(commands.Group)
-			Expect(commandGroup[2]).To(Equal(setupBridgeResult))
+			_, sandboxLinkName, _, _, _, _ := commandBuilder.SetupVethArgsForCall(0)
+			Expect(sandboxLinkName).To(HaveLen(15))
 
-			_, sandboxLinkName, _, _, _ := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
-			Expect(sandboxLinkName).To(Equal("123456789012345"))
+			_, sandboxLinkName, _, _, _ = commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
+			Expect(sandboxLinkName).To(HaveLen(15))
+		})
+	})
 
-			_, sandboxLinkName, _, _, _, _ = commandBuilder.SetupVethArgsForCall(0)
-			Expect(sandboxLinkName).To(Equal("123456789012345"))
+	It("sets the sandbox link name using only alphanumeric characters", func() {
+		config.ContainerID = "1234567890123456789"
+
+		_, err := creator.Setup(config)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, sandboxLinkName, _, _, _, _ := commandBuilder.SetupVethArgsForCall(0)
+
+		matches, err := regexp.MatchString("^[a-zA-Z0-9]*$", sandboxLinkName)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(matches).To(BeTrue())
+	})
+
+	Context("when there are two container IDs with the same prefix", func() {
+		It("gives them different sandbox link names", func() {
+			config.ContainerID = "1234567890123456789"
+
+			_, err := creator.Setup(config)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, sandboxLinkName1, _, _, _ := commandBuilder.IdempotentlySetupBridgeArgsForCall(0)
+			_, sandboxLinkName1, _, _, _, _ = commandBuilder.SetupVethArgsForCall(0)
+
+			config.ContainerID = "1234567890123456798"
+
+			_, err = creator.Setup(config)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, sandboxLinkName2, _, _, _ := commandBuilder.IdempotentlySetupBridgeArgsForCall(1)
+			_, sandboxLinkName2, _, _, _, _ = commandBuilder.SetupVethArgsForCall(1)
+
+			Expect(sandboxLinkName1).NotTo(Equal(sandboxLinkName2))
 		})
 	})
 

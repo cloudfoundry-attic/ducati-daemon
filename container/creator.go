@@ -1,6 +1,8 @@
 package container
 
 import (
+	"crypto/sha1"
+	"encoding/base32"
 	"fmt"
 	"net"
 
@@ -41,6 +43,12 @@ type CreatorConfig struct {
 	IPAMResult      *types.Result
 }
 
+func NameSandboxLink(containerID string) string {
+	const maxLength = 15
+	hash := sha1.Sum([]byte(containerID))
+	return string(base32.StdEncoding.EncodeToString(hash[:])[:maxLength])
+}
+
 func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	vxlanName := fmt.Sprintf("vxlan%d", config.VNI)
 	sandboxName := fmt.Sprintf("vni-%d", config.VNI)
@@ -51,10 +59,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 		return models.Container{}, fmt.Errorf("open container netns: %s", err)
 	}
 
-	sandboxLinkName := config.ContainerID
-	if len(sandboxLinkName) > 15 {
-		sandboxLinkName = sandboxLinkName[:15]
-	}
+	sandboxLinkName := NameSandboxLink(config.ContainerID)
 
 	var routeCommands = c.CommandBuilder.AddRoutes(config.InterfaceName, config.IPAMResult.IP4)
 

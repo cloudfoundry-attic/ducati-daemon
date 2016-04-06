@@ -12,9 +12,11 @@ import (
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
+	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -315,7 +317,8 @@ var _ = Describe("Networks", func() {
 
 			By("checking that the sandbox has a veth device")
 			err = sandboxNS.Execute(func(_ *os.File) error {
-				link, err := netlink.LinkByName("some-container-")
+				expectedLinkName := container.NameSandboxLink(containerID)
+				link, err := netlink.LinkByName(expectedLinkName)
 				Expect(err).NotTo(HaveOccurred())
 
 				bridge, ok := link.(*netlink.Veth)
