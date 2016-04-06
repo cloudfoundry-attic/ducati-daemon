@@ -40,6 +40,9 @@ func (h *CNIDel) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	logger = logger.WithData(lager.Data{"payload": payload})
+	defer logger.Info("container-del-complete")
+
 	if payload.InterfaceName == "" {
 		logger.Error("bad-request", errors.New("missing-interface_name"))
 		resp.WriteHeader(http.StatusBadRequest)

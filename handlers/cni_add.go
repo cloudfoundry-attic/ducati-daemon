@@ -43,6 +43,9 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	logger = logger.WithData(lager.Data{"payload": payload})
+	defer logger.Info("container-add-complete")
+
 	if payload.InterfaceName == "" {
 		logger.Error("bad-request", errors.New("missing-interface_name"))
 		resp.WriteHeader(http.StatusBadRequest)
