@@ -142,11 +142,38 @@ var _ = Describe("CleanupSandbox", func() {
 		})
 
 		Context("when there is an error destroying vxlan device", func() {
-			It("wraps and returns the error", func() {
+			BeforeEach(func() {
 				linkFactory.DeleteLinkByNameReturns(errors.New("some-error"))
+			})
 
-				err := cleanupSandboxCommand.Execute(context)
-				Expect(err).To(MatchError("in namespace some-sandbox-name: callback failed: destroying vxlan some-vxlan: some-error"))
+			It("checks if the link still exists", func() {
+				cleanupSandboxCommand.Execute(context)
+				Expect(linkFactory.ExistsCallCount()).To(Equal(1))
+
+				linkName := linkFactory.ExistsArgsForCall(0)
+				Expect(linkName).To(Equal(cleanupSandboxCommand.VxlanDeviceName))
+			})
+
+			Context("when the link no longer exists", func() {
+				BeforeEach(func() {
+					linkFactory.ExistsReturns(false)
+				})
+
+				It("returns without an error", func() {
+					err := cleanupSandboxCommand.Execute(context)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when the link still exists", func() {
+				BeforeEach(func() {
+					linkFactory.ExistsReturns(true)
+				})
+
+				It("wraps and returns the original error", func() {
+					err := cleanupSandboxCommand.Execute(context)
+					Expect(err).To(MatchError("in namespace some-sandbox-name: callback failed: destroying vxlan some-vxlan: some-error"))
+				})
 			})
 		})
 

@@ -35,7 +35,9 @@ func (c CleanupSandbox) Execute(context executor.Context) error {
 		if vethLinkCount == 0 {
 			err = context.LinkFactory().DeleteLinkByName(c.VxlanDeviceName)
 			if err != nil {
-				return fmt.Errorf("destroying vxlan %s: %s", c.VxlanDeviceName, err)
+				if context.LinkFactory().Exists(c.VxlanDeviceName) {
+					return fmt.Errorf("destroying vxlan %s: %s", c.VxlanDeviceName, err)
+				}
 			}
 		}
 
