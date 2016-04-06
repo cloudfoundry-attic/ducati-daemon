@@ -44,21 +44,24 @@ type DaemonClient struct {
 
 func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
 	var stdinStruct struct {
-		NetworkID string `json:"network_id"`
+		Network models.NetworkPayload `json:"network"`
 	}
 	err := json.Unmarshal(input.StdinData, &stdinStruct)
 	if err != nil {
 		panic(err)
 	}
-	if stdinStruct.NetworkID == "" {
-		stdinStruct.NetworkID = "legacy"
+	if stdinStruct.Network.ID == "" {
+		stdinStruct.Network.ID = "legacy"
 	}
+
+	network := models.NetworkPayload{ID: stdinStruct.Network.ID}
+
 	return d.ContainerUp(models.CNIAddPayload{
 		ContainerID:        input.ContainerID,
 		ContainerNamespace: input.Netns,
 		InterfaceName:      input.IfName,
 		Args:               input.Args,
-		NetworkID:          stdinStruct.NetworkID,
+		Network:            network,
 	})
 }
 

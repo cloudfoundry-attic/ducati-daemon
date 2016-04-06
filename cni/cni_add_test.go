@@ -82,7 +82,7 @@ var _ = Describe("CniAdd", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
-			NetworkID:          "network-id-1",
+			Network:            models.NetworkPayload{ID: "network-id-1"},
 			ContainerID:        "container-id",
 		}
 	})

@@ -37,7 +37,7 @@ var _ = Describe("Networks", func() {
 	var (
 		session     *gexec.Session
 		address     string
-		networkID   string
+		network     models.NetworkPayload
 		containerID string
 		vni         int
 		sandboxName string
@@ -85,11 +85,11 @@ var _ = Describe("Networks", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// GinkgoParallelNode() necessary to avoid test pollution in parallel
-		networkID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
+		network.ID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
 
 		networkMapper := &ipam.FixedNetworkMapper{}
-		vni, err = networkMapper.GetVNI(networkID)
+		vni, err = networkMapper.GetVNI(network.ID)
 		Expect(err).NotTo(HaveOccurred())
 
 		sandboxName = fmt.Sprintf("vni-%d", vni)
@@ -132,7 +132,7 @@ var _ = Describe("Networks", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Name(),
 				InterfaceName:      "vx-eth0",
-				NetworkID:          networkID,
+				Network:            network,
 				ContainerID:        containerID,
 			}
 
@@ -153,7 +153,7 @@ var _ = Describe("Networks", func() {
 			Expect(daemonClient.ContainerDown(downSpec)).To(Succeed())
 
 			By("checking that containers have been removed")
-			containers, err := daemonClient.ListNetworkContainers(networkID)
+			containers, err := daemonClient.ListNetworkContainers(network.ID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(0))
 
@@ -171,7 +171,7 @@ var _ = Describe("Networks", func() {
 		})
 
 		It("makes container metadata available on the list network containers endpoint", func() {
-			containers, err := daemonClient.ListNetworkContainers(networkID)
+			containers, err := daemonClient.ListNetworkContainers(network.ID)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(containers).To(HaveLen(1))
@@ -183,7 +183,7 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(container.HostIP).To(Equal(hostAddress))
-			Expect(container.NetworkID).To(Equal(networkID))
+			Expect(container.NetworkID).To(Equal(network.ID))
 		})
 
 		It("moves a vxlan adapter into the sandbox", func() {

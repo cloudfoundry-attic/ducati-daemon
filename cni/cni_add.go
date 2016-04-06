@@ -28,18 +28,18 @@ func (c *AddController) Add(payload models.CNIAddPayload) (*types.Result, error)
 	c.OSThreadLocker.LockOSThread()
 	defer c.OSThreadLocker.UnlockOSThread()
 
-	vni, err := c.NetworkMapper.GetVNI(payload.NetworkID)
+	vni, err := c.NetworkMapper.GetVNI(payload.Network.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get vni: %s", err)
 	}
 
-	ipamResult, err := c.IPAllocator.AllocateIP(payload.NetworkID, payload.ContainerID)
+	ipamResult, err := c.IPAllocator.AllocateIP(payload.Network.ID, payload.ContainerID)
 	if err != nil {
 		return nil, err
 	}
 
 	containerConfig := container.CreatorConfig{
-		NetworkID:       payload.NetworkID,
+		NetworkID:       payload.Network.ID,
 		ContainerNsPath: payload.ContainerNamespace,
 		ContainerID:     payload.ContainerID,
 		InterfaceName:   payload.InterfaceName,

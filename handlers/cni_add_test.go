@@ -77,7 +77,7 @@ var _ = Describe("CNIAdd", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
-			NetworkID:          "network-id-1",
+			Network:            models.NetworkPayload{ID: "network-id-1"},
 			ContainerID:        "container-id",
 		}
 		setPayload()
@@ -133,8 +133,26 @@ var _ = Describe("CNIAdd", func() {
 			},
 			Entry("interface", "InterfaceName", "interface_name"),
 			Entry("container_namespace_path", "ContainerNamespace", "container_namespace"),
-			Entry("network_id", "NetworkID", "network_id"),
 			Entry("container_id", "ContainerID", "container_id"),
+		)
+
+		DescribeTable("missing payload fields",
+			func(paramToRemove, jsonName string) {
+				field := reflect.ValueOf(&payload.Network).Elem().FieldByName(paramToRemove)
+				if !field.IsValid() {
+					Fail("invalid test: payload does not have a field named " + paramToRemove)
+				}
+				field.Set(reflect.Zero(field.Type()))
+				setPayload()
+
+				resp := httptest.NewRecorder()
+				handler.ServeHTTP(resp, request)
+
+				Expect(resp.Code).To(Equal(http.StatusBadRequest))
+				Expect(logger).To(gbytes.Say(fmt.Sprintf(
+					"cni-add.bad-request.*missing-%s", jsonName)))
+			},
+			Entry("network id", "ID", "network_id"),
 		)
 	})
 

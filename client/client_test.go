@@ -66,7 +66,7 @@ var _ = Describe("Client", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "interface-name",
-				NetworkID:          "legacy",
+				Network:            models.NetworkPayload{ID: "legacy"},
 				ContainerID:        "some-container-id",
 			}
 
@@ -79,13 +79,13 @@ var _ = Describe("Client", func() {
 		})
 
 		Context("when network spec is not provided", func() {
-			It("sets the NetworkID to 'legacy'", func() {
+			It("sets the Network.ID to 'legacy'", func() {
 				_, err := c.CNIAdd(&skel.CmdArgs{
 					ContainerID: "some-container-id",
 					Netns:       "/some/namespace/path",
 					IfName:      "interface-name",
 					Args:        "FOO=BAR;ABC=123",
-					StdinData:   []byte(`{"network_id": ""}`),
+					StdinData:   []byte(`{"network": {"network_id": ""}}`),
 				})
 				Expect(err).NotTo(HaveOccurred())
 
@@ -108,7 +108,7 @@ var _ = Describe("Client", func() {
 					Netns:       "/some/namespace/path",
 					IfName:      "interface-name",
 					Args:        "FOO=BAR;ABC=123",
-					StdinData:   []byte(`{"network_id": ""}`),
+					StdinData:   []byte(`{"network": {"network_id": ""}}`),
 				})
 				Expect(err).NotTo(HaveOccurred())
 
@@ -406,7 +406,7 @@ var _ = Describe("Client", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "interface-name",
-				NetworkID:          "some-network-id",
+				Network:            models.NetworkPayload{ID: "some-network-id"},
 				ContainerID:        "some-container-id",
 			}
 

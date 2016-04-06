@@ -26,7 +26,7 @@ var _ = Describe("Networks", func() {
 	var (
 		session     *gexec.Session
 		address     string
-		networkID   string
+		network     models.NetworkPayload
 		containerID string
 		vni         int
 
@@ -74,11 +74,11 @@ var _ = Describe("Networks", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// GinkgoParallelNode() necessary to avoid test pollution in parallel
-		networkID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
+		network.ID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
 
 		networkMapper := &ipam.FixedNetworkMapper{}
-		vni, err = networkMapper.GetVNI(networkID)
+		vni, err = networkMapper.GetVNI(network.ID)
 		Expect(err).NotTo(HaveOccurred())
 
 		var serverIsAvailable = func() error {
@@ -93,7 +93,7 @@ var _ = Describe("Networks", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: containerNamespace.Name(),
 			InterfaceName:      "vx-eth0",
-			NetworkID:          networkID,
+			Network:            network,
 			ContainerID:        containerID,
 		}
 

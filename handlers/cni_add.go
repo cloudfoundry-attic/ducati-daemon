@@ -49,7 +49,7 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if payload.NetworkID == "" {
+	if payload.Network.ID == "" {
 		logger.Error("bad-request", errors.New("missing-network_id"))
 		resp.WriteHeader(http.StatusBadRequest)
 		return
