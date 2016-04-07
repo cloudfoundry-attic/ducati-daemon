@@ -567,6 +567,18 @@ var _ = Describe("Client", func() {
 				})
 			})
 
+			Context("when the http response code is a 400 Bad Request", func() {
+				It("should return a AlreadyOnNetworkError", func() {
+					server.SetHandler(0, ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/cni/add"),
+						ghttp.RespondWith(http.StatusBadRequest, `{ "error": "boom" }`),
+					))
+
+					_, err := c.ContainerUp(cniPayload)
+					Expect(err).To(BeIdenticalTo(ipam.AlreadyOnNetworkError))
+				})
+			})
+
 			Context("when the http response code is unexpected", func() {
 				It("should return an error", func() {
 					server.SetHandler(0, ghttp.CombineHandlers(

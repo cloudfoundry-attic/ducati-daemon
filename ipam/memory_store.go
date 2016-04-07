@@ -43,3 +43,12 @@ func (s *inMemoryStore) ReleaseByID(id string) error {
 
 	return nil
 }
+
+func (s *inMemoryStore) Contains(id string) bool {
+	for _, idInStore := range s.allocated {
+		if idInStore == id {
+			return true
+		}
+	}
+	return false
+}

@@ -90,6 +90,8 @@ func (d *DaemonClient) ContainerUp(payload models.CNIAddPayload) (types.Result, 
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
+	case http.StatusBadRequest:
+		return types.Result{}, ipam.AlreadyOnNetworkError
 	case http.StatusConflict:
 		return types.Result{}, ipam.NoMoreAddressesError
 	default:

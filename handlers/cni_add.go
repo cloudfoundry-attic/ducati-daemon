@@ -74,6 +74,8 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		logger.Error("controller-add", err)
 		switch err {
+		case ipam.AlreadyOnNetworkError:
+			resp.WriteHeader(http.StatusBadRequest)
 		case ipam.NoMoreAddressesError:
 			resp.WriteHeader(http.StatusConflict)
 		default:

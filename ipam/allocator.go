@@ -14,9 +14,11 @@ import (
 type AllocatorStore interface {
 	Reserve(id string, ip net.IP) (bool, error)
 	ReleaseByID(id string) error
+	Contains(id string) bool
 }
 
 var NoMoreAddressesError = errors.New("no addresses available")
+var AlreadyOnNetworkError = errors.New("already on this network")
 
 //go:generate counterfeiter -o ../fakes/store_factory.go --fake-name StoreFactory . storeFactory
 type storeFactory interface {
@@ -70,6 +72,10 @@ func (a *allocator) AllocateIP(networkID, containerID string) (*types.Result, er
 	store, err := a.getStore(networkID)
 	if err != nil {
 		return nil, err
+	}
+
+	if store.Contains(containerID) {
+		return nil, AlreadyOnNetworkError
 	}
 
 	ip := config.IP.IP

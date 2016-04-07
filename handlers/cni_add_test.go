@@ -171,6 +171,20 @@ var _ = Describe("CNIAdd", func() {
 		Expect(resp.Body.String()).To(MatchJSON(expectedResultBytes))
 	})
 
+	Context("when the controller returns a AlreadyOnNetworkError", func() {
+		BeforeEach(func() {
+			controller.AddReturns(nil, ipam.AlreadyOnNetworkError)
+		})
+		It("should log and return a 400", func() {
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Body.String()).To(MatchJSON(`{ "error": "already on this network"}`))
+			Expect(logger).To(gbytes.Say(`cni-add.controller-add.*already on this network`))
+			Expect(resp.Code).To(Equal(http.StatusBadRequest))
+		})
+	})
+
 	Context("when the controller returns an ipam.NoMoreAddressesError", func() {
 		BeforeEach(func() {
 			controller.AddReturns(nil, ipam.NoMoreAddressesError)

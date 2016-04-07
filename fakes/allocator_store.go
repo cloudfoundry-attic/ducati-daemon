@@ -27,6 +27,14 @@ type AllocatorStore struct {
 	releaseByIDReturns struct {
 		result1 error
 	}
+	ContainsStub        func(id string) bool
+	containsMutex       sync.RWMutex
+	containsArgsForCall []struct {
+		id string
+	}
+	containsReturns struct {
+		result1 bool
+	}
 }
 
 func (fake *AllocatorStore) Reserve(id string, ip net.IP) (bool, error) {
@@ -92,6 +100,38 @@ func (fake *AllocatorStore) ReleaseByIDReturns(result1 error) {
 	fake.ReleaseByIDStub = nil
 	fake.releaseByIDReturns = struct {
 		result1 error
+	}{result1}
+}
+
+func (fake *AllocatorStore) Contains(id string) bool {
+	fake.containsMutex.Lock()
+	fake.containsArgsForCall = append(fake.containsArgsForCall, struct {
+		id string
+	}{id})
+	fake.containsMutex.Unlock()
+	if fake.ContainsStub != nil {
+		return fake.ContainsStub(id)
+	} else {
+		return fake.containsReturns.result1
+	}
+}
+
+func (fake *AllocatorStore) ContainsCallCount() int {
+	fake.containsMutex.RLock()
+	defer fake.containsMutex.RUnlock()
+	return len(fake.containsArgsForCall)
+}
+
+func (fake *AllocatorStore) ContainsArgsForCall(i int) string {
+	fake.containsMutex.RLock()
+	defer fake.containsMutex.RUnlock()
+	return fake.containsArgsForCall[i].id
+}
+
+func (fake *AllocatorStore) ContainsReturns(result1 bool) {
+	fake.ContainsStub = nil
+	fake.containsReturns = struct {
+		result1 bool
 	}{result1}
 }
 

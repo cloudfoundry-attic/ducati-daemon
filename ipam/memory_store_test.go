@@ -89,4 +89,15 @@ var _ = Describe("MemoryStore", func() {
 			})
 		})
 	})
+
+	Describe("Contains", func() {
+		It("tests whether a given container id has been allocated an ip", func() {
+			ok, err := store.Reserve("some-id", net.ParseIP("1.2.3.4"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeTrue())
+
+			Expect(store.Contains("some-id")).To(BeTrue())
+			Expect(store.Contains("some-other-id")).To(BeFalse())
+		})
+	})
 })

@@ -188,6 +188,13 @@ var _ = Describe("Networks", func() {
 			Expect(container.NetworkID).To(Equal(network.ID))
 		})
 
+		Context("when the ADD endpoint is called a second time with the same container ID", func() {
+			It("should return an error and not crash the system", func() {
+				_, err := daemonClient.ContainerUp(upSpec) // 2nd time we're calling this
+				Expect(err).To(MatchError(ipam.AlreadyOnNetworkError))
+			})
+		})
+
 		It("moves a vxlan adapter into the sandbox", func() {
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())

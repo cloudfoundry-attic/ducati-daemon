@@ -149,6 +149,17 @@ var _ = Describe("IP Address Management", func() {
 			})
 		})
 
+		Context("when calling the allocator with duplicate network and container", func() {
+			It("should return a meaningful error", func() {
+				store.ContainsReturns(false)
+				_, err := allocator.AllocateIP("network-id", "container-id")
+				Expect(err).NotTo(HaveOccurred())
+				store.ContainsReturns(true)
+				_, err = allocator.AllocateIP("network-id", "container-id")
+				Expect(err).To(Equal(ipam.AlreadyOnNetworkError))
+			})
+		})
+
 		Context("when the store factory fails to create a store", func() {
 			BeforeEach(func() {
 				storeFactory.CreateReturns(nil, errors.New("out of disk space"))
