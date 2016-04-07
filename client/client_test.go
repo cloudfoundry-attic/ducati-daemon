@@ -36,8 +36,7 @@ var _ = Describe("Client", func() {
 		unmarshaler = &fakes.Unmarshaler{}
 
 		roundTripper = &fakes.RoundTripper{}
-		transport := http.DefaultTransport
-		roundTripper.RoundTripStub = transport.RoundTrip
+		roundTripper.RoundTripStub = http.DefaultTransport.RoundTrip
 
 		httpClient = &http.Client{
 			Transport: roundTripper,
@@ -191,7 +190,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.GetReturns(nil, errors.New("get fail"))
+					mockHttpClient.DoReturns(nil, errors.New("get fail"))
 					c = client.DaemonClient{
 						HttpClient: mockHttpClient,
 					}
@@ -230,7 +229,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.GetReturns(&http.Response{
+					mockHttpClient.DoReturns(&http.Response{
 						StatusCode: 200,
 						Body:       &testsupport.BadReader{},
 					}, nil)
@@ -241,7 +240,7 @@ var _ = Describe("Client", func() {
 
 				It("should return an error", func() {
 					_, err := c.GetContainer("some-container-id")
-					Expect(err).To(MatchError("reading response: banana"))
+					Expect(err).To(MatchError("reading response body: banana"))
 				})
 			})
 
@@ -252,7 +251,7 @@ var _ = Describe("Client", func() {
 
 				It("should return an error", func() {
 					_, err := c.GetContainer("some-container-id")
-					Expect(err).To(MatchError("failed to unmarshal container: something went wrong"))
+					Expect(err).To(MatchError("failed to unmarshal result: something went wrong"))
 				})
 			})
 
@@ -319,7 +318,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.GetReturns(nil, errors.New("get fail"))
+					mockHttpClient.DoReturns(nil, errors.New("get fail"))
 					c = client.DaemonClient{
 						HttpClient: mockHttpClient,
 					}
@@ -336,7 +335,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.GetReturns(&http.Response{
+					mockHttpClient.DoReturns(&http.Response{
 						StatusCode: 200,
 						Body:       &testsupport.BadReader{},
 					}, nil)
@@ -347,7 +346,7 @@ var _ = Describe("Client", func() {
 
 				It("should return an error", func() {
 					_, err := c.ListContainers()
-					Expect(err).To(MatchError("reading response: banana"))
+					Expect(err).To(MatchError("reading response body: banana"))
 				})
 			})
 
@@ -358,7 +357,7 @@ var _ = Describe("Client", func() {
 
 				It("should return an error", func() {
 					_, err := c.ListContainers()
-					Expect(err).To(MatchError("failed to unmarshal containers: something went wrong"))
+					Expect(err).To(MatchError("failed to unmarshal result: something went wrong"))
 				})
 			})
 		})
@@ -446,7 +445,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.GetReturns(nil, errors.New("get fail"))
+					mockHttpClient.DoReturns(nil, errors.New("get fail"))
 					c = client.DaemonClient{
 						HttpClient: mockHttpClient,
 					}
@@ -474,7 +473,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.GetReturns(&http.Response{
+					mockHttpClient.DoReturns(&http.Response{
 						StatusCode: 200,
 						Body:       &testsupport.BadReader{},
 					}, nil)
@@ -485,7 +484,7 @@ var _ = Describe("Client", func() {
 
 				It("should return an error", func() {
 					_, err := c.ListNetworkContainers("some-network-id")
-					Expect(err).To(MatchError("reading response: banana"))
+					Expect(err).To(MatchError("reading response body: banana"))
 				})
 			})
 
@@ -496,7 +495,7 @@ var _ = Describe("Client", func() {
 
 				It("should return an error", func() {
 					_, err := c.ListNetworkContainers("some-network-id")
-					Expect(err).To(MatchError("failed to unmarshal containers: something went wrong"))
+					Expect(err).To(MatchError("failed to unmarshal result: something went wrong"))
 				})
 			})
 		})
@@ -590,7 +589,7 @@ var _ = Describe("Client", func() {
 					marshaler.MarshalReturns(nil, errors.New("explosion with marshal"))
 
 					_, err := c.ContainerUp(cniPayload)
-					Expect(err).To(MatchError("failed to marshal cni payload: explosion with marshal"))
+					Expect(err).To(MatchError("failed to marshal request: explosion with marshal"))
 				})
 			})
 
@@ -612,7 +611,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.PostReturns(nil, errors.New("post fail"))
+					mockHttpClient.DoReturns(nil, errors.New("post fail"))
 					c = client.DaemonClient{
 						Marshaler:  marshaler,
 						HttpClient: mockHttpClient,
@@ -701,7 +700,7 @@ var _ = Describe("Client", func() {
 					unmarshaler.UnmarshalReturns(errors.New("explosion with unmarshal"))
 
 					_, err := c.ContainerUp(cniPayload)
-					Expect(err).To(MatchError("failed to unmarshal IPAM result: explosion with unmarshal"))
+					Expect(err).To(MatchError("failed to unmarshal result: explosion with unmarshal"))
 				})
 			})
 		})
@@ -763,7 +762,7 @@ var _ = Describe("Client", func() {
 					marshaler.MarshalReturns(nil, errors.New("explosion with marshal"))
 
 					err := c.ContainerDown(cniPayload)
-					Expect(err).To(MatchError("failed to marshal cni payload: explosion with marshal"))
+					Expect(err).To(MatchError("failed to marshal request: explosion with marshal"))
 				})
 			})
 
@@ -785,7 +784,7 @@ var _ = Describe("Client", func() {
 
 				BeforeEach(func() {
 					mockHttpClient = &fakes.HTTPClient{}
-					mockHttpClient.PostReturns(nil, errors.New("post fail"))
+					mockHttpClient.DoReturns(nil, errors.New("post fail"))
 					c = client.DaemonClient{
 						Marshaler:  marshaler,
 						HttpClient: mockHttpClient,

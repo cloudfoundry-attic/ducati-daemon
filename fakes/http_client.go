@@ -2,97 +2,50 @@
 package fakes
 
 import (
-	"io"
 	"net/http"
 	"sync"
 )
 
 type HTTPClient struct {
-	PostStub        func(url string, contentType string, body io.Reader) (*http.Response, error)
-	postMutex       sync.RWMutex
-	postArgsForCall []struct {
-		url         string
-		contentType string
-		body        io.Reader
+	DoStub        func(req *http.Request) (resp *http.Response, err error)
+	doMutex       sync.RWMutex
+	doArgsForCall []struct {
+		req *http.Request
 	}
-	postReturns struct {
-		result1 *http.Response
-		result2 error
-	}
-	GetStub        func(url string) (*http.Response, error)
-	getMutex       sync.RWMutex
-	getArgsForCall []struct {
-		url string
-	}
-	getReturns struct {
+	doReturns struct {
 		result1 *http.Response
 		result2 error
 	}
 }
 
-func (fake *HTTPClient) Post(url string, contentType string, body io.Reader) (*http.Response, error) {
-	fake.postMutex.Lock()
-	fake.postArgsForCall = append(fake.postArgsForCall, struct {
-		url         string
-		contentType string
-		body        io.Reader
-	}{url, contentType, body})
-	fake.postMutex.Unlock()
-	if fake.PostStub != nil {
-		return fake.PostStub(url, contentType, body)
+func (fake *HTTPClient) Do(req *http.Request) (resp *http.Response, err error) {
+	fake.doMutex.Lock()
+	fake.doArgsForCall = append(fake.doArgsForCall, struct {
+		req *http.Request
+	}{req})
+	fake.doMutex.Unlock()
+	if fake.DoStub != nil {
+		return fake.DoStub(req)
 	} else {
-		return fake.postReturns.result1, fake.postReturns.result2
+		return fake.doReturns.result1, fake.doReturns.result2
 	}
 }
 
-func (fake *HTTPClient) PostCallCount() int {
-	fake.postMutex.RLock()
-	defer fake.postMutex.RUnlock()
-	return len(fake.postArgsForCall)
+func (fake *HTTPClient) DoCallCount() int {
+	fake.doMutex.RLock()
+	defer fake.doMutex.RUnlock()
+	return len(fake.doArgsForCall)
 }
 
-func (fake *HTTPClient) PostArgsForCall(i int) (string, string, io.Reader) {
-	fake.postMutex.RLock()
-	defer fake.postMutex.RUnlock()
-	return fake.postArgsForCall[i].url, fake.postArgsForCall[i].contentType, fake.postArgsForCall[i].body
+func (fake *HTTPClient) DoArgsForCall(i int) *http.Request {
+	fake.doMutex.RLock()
+	defer fake.doMutex.RUnlock()
+	return fake.doArgsForCall[i].req
 }
 
-func (fake *HTTPClient) PostReturns(result1 *http.Response, result2 error) {
-	fake.PostStub = nil
-	fake.postReturns = struct {
-		result1 *http.Response
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *HTTPClient) Get(url string) (*http.Response, error) {
-	fake.getMutex.Lock()
-	fake.getArgsForCall = append(fake.getArgsForCall, struct {
-		url string
-	}{url})
-	fake.getMutex.Unlock()
-	if fake.GetStub != nil {
-		return fake.GetStub(url)
-	} else {
-		return fake.getReturns.result1, fake.getReturns.result2
-	}
-}
-
-func (fake *HTTPClient) GetCallCount() int {
-	fake.getMutex.RLock()
-	defer fake.getMutex.RUnlock()
-	return len(fake.getArgsForCall)
-}
-
-func (fake *HTTPClient) GetArgsForCall(i int) string {
-	fake.getMutex.RLock()
-	defer fake.getMutex.RUnlock()
-	return fake.getArgsForCall[i].url
-}
-
-func (fake *HTTPClient) GetReturns(result1 *http.Response, result2 error) {
-	fake.GetStub = nil
-	fake.getReturns = struct {
+func (fake *HTTPClient) DoReturns(result1 *http.Response, result2 error) {
+	fake.DoStub = nil
+	fake.doReturns = struct {
 		result1 *http.Response
 		result2 error
 	}{result1, result2}
