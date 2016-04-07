@@ -180,6 +180,12 @@ func main() {
 		Datastore: dataStore,
 	}
 
+	rataHandlers["list_containers"] = &handlers.ListContainers{
+		Marshaler: marshaler,
+		Logger:    logger,
+		Datastore: dataStore,
+	}
+
 	rataHandlers["cni_add"] = &handlers.CNIAdd{
 		Logger:      logger,
 		Marshaler:   marshaler,
@@ -197,6 +203,7 @@ func main() {
 	routes := rata.Routes{
 		{Name: "get_container", Method: "GET", Path: "/containers/:container_id"},
 		{Name: "networks_list_containers", Method: "GET", Path: "/networks/:network_id"},
+		{Name: "list_containers", Method: "GET", Path: "/containers"},
 		{Name: "cni_add", Method: "POST", Path: "/cni/add"},
 		{Name: "cni_del", Method: "POST", Path: "/cni/del"},
 	}

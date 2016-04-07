@@ -259,6 +259,111 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("ListContainers", func() {
+		var expectedContainers []models.Container
+
+		BeforeEach(func() {
+			expectedContainers = []models.Container{
+				models.Container{
+					ID:        "some-id",
+					IP:        "192.168.1.9",
+					MAC:       "HH:HH:HH:HH:HH",
+					HostIP:    "10.0.0.0",
+					NetworkID: "foo",
+				},
+				models.Container{
+					ID:        "some-id",
+					IP:        "192.168.1.9",
+					MAC:       "HH:HH:HH:HH:HH",
+					HostIP:    "10.0.0.0",
+					NetworkID: "bar",
+				},
+			}
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/containers"),
+				ghttp.RespondWithJSONEncoded(http.StatusOK, expectedContainers),
+			))
+		})
+
+		It("should GET /containers", func() {
+			containers, err := c.ListContainers()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(server.ReceivedRequests()).Should(HaveLen(1))
+			Expect(unmarshaler.UnmarshalCallCount()).To(Equal(1))
+			Expect(containers).To(ConsistOf(expectedContainers))
+		})
+
+		It("uses the provided HTTP client", func() {
+			_, err := c.ListContainers()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripper.RoundTripArgsForCall(0).URL.Path).To(Equal("/containers"))
+		})
+
+		Context("when the endpoint responds with the wrong status", func() {
+			BeforeEach(func() {
+				server.SetHandler(0, ghttp.RespondWith(http.StatusTeapot, nil))
+			})
+
+			It("should return and error", func() {
+				_, err := c.ListContainers()
+				Expect(err).To(MatchError(`unexpected status code on ListContainers: expected 200 but got 418`))
+			})
+		})
+
+		Context("when errors occur", func() {
+			Context("the request fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.GetReturns(nil, errors.New("get fail"))
+					c = client.DaemonClient{
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
+					_, err := c.ListContainers()
+					Expect(err).To(MatchError(ContainSubstring("get fail")))
+				})
+			})
+
+			Context("when reading the response body fails", func() {
+				var mockHttpClient *fakes.HTTPClient
+
+				BeforeEach(func() {
+					mockHttpClient = &fakes.HTTPClient{}
+					mockHttpClient.GetReturns(&http.Response{
+						StatusCode: 200,
+						Body:       &testsupport.BadReader{},
+					}, nil)
+					c = client.DaemonClient{
+						HttpClient: mockHttpClient,
+					}
+				})
+
+				It("should return an error", func() {
+					_, err := c.ListContainers()
+					Expect(err).To(MatchError("reading response: banana"))
+				})
+			})
+
+			Context("when the response JSON cannot be unmarshaled", func() {
+				BeforeEach(func() {
+					unmarshaler.UnmarshalReturns(errors.New("something went wrong"))
+				})
+
+				It("should return an error", func() {
+					_, err := c.ListContainers()
+					Expect(err).To(MatchError("failed to unmarshal containers: something went wrong"))
+				})
+			})
+		})
+	})
+
 	Describe("ListNetworkContainers", func() {
 		var expectedContainers []models.Container
 
@@ -721,5 +826,4 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
-
 })

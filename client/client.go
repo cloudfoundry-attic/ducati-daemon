@@ -198,6 +198,35 @@ func (d *DaemonClient) ListNetworkContainers(networkID string) ([]models.Contain
 	return containers, nil
 }
 
+func (d *DaemonClient) ListContainers() ([]models.Container, error) {
+	url, err := d.buildURL("containers")
+	if err != nil {
+		panic(err)
+	}
+	resp, err := d.HttpClient.Get(url)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("failed to perform request: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if statusError := checkStatus("ListContainers", resp.StatusCode, http.StatusOK); statusError != nil {
+		return []models.Container{}, statusError
+	}
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("reading response: %s", err)
+	}
+
+	var containers []models.Container
+	err = d.Unmarshaler.Unmarshal(respBytes, &containers)
+	if err != nil {
+		return []models.Container{}, fmt.Errorf("failed to unmarshal containers: %s", err)
+	}
+
+	return containers, nil
+}
+
 func checkStatus(method string, receivedStatus, expectedStatus int) error {
 	if receivedStatus != expectedStatus {
 		return fmt.Errorf("unexpected status code on %s: expected %d but got %d", method, expectedStatus, receivedStatus)
