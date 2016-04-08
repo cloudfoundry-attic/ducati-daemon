@@ -1,14 +1,10 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
-	"net/url"
 	"path"
 
 	"github.com/appc/cni/pkg/skel"
@@ -22,10 +18,12 @@ var RecordNotFoundError error = errors.New("record not found")
 
 func New(baseURL string, httpClient *http.Client) *DaemonClient {
 	return &DaemonClient{
-		BaseURL:     baseURL,
-		Marshaler:   marshal.MarshalFunc(json.Marshal),
-		Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
-		HttpClient:  httpClient,
+		JSONClient: JSONClient{
+			BaseURL:     baseURL,
+			Marshaler:   marshal.MarshalFunc(json.Marshal),
+			Unmarshaler: marshal.UnmarshalFunc(json.Unmarshal),
+			HttpClient:  httpClient,
+		},
 	}
 }
 
@@ -35,10 +33,7 @@ type httpClient interface {
 }
 
 type DaemonClient struct {
-	BaseURL     string
-	Marshaler   marshal.Marshaler
-	Unmarshaler marshal.Unmarshaler
-	HttpClient  httpClient
+	JSONClient JSONClient
 }
 
 func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
@@ -72,70 +67,10 @@ func (d *DaemonClient) CNIDel(input *skel.CmdArgs) error {
 	})
 }
 
-type ClientConfig struct {
-	Action            string
-	Method            string
-	URL               string
-	RequestPayload    interface{}
-	ResponseResult    interface{}
-	SuccessStatusCode int
-	MeaningfulErrors  map[int]error
-}
-
-func (d *DaemonClient) buildAndDo(config ClientConfig) error {
-	var err error
-	url, err := d.buildURL(config.URL)
-	if err != nil {
-		return fmt.Errorf("build url: %s", err)
-	}
-
-	var requestBody io.Reader
-	if config.RequestPayload != nil {
-		postData, err := d.Marshaler.Marshal(config.RequestPayload)
-		if err != nil {
-			return fmt.Errorf("failed to marshal request: %s", err)
-		}
-		requestBody = bytes.NewReader(postData)
-	}
-	req, err := http.NewRequest(config.Method, url, requestBody)
-	if err != nil {
-		return fmt.Errorf("build request: %s", err) // not tested
-	}
-	if config.RequestPayload != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := d.HttpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to perform request: %s", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != config.SuccessStatusCode {
-		for statusCode, meaningfulError := range config.MeaningfulErrors {
-			if statusCode == resp.StatusCode {
-				return meaningfulError
-			}
-		}
-		if statusError := checkStatus(config.Action, resp.StatusCode, config.SuccessStatusCode); statusError != nil {
-			return statusError
-		}
-	}
-
-	if config.ResponseResult != nil {
-		err = d.unmarshalResponse(resp.Body, config.ResponseResult)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (d *DaemonClient) ContainerUp(payload models.CNIAddPayload) (types.Result, error) {
 	var ipamResult types.Result
 
-	err := d.buildAndDo(ClientConfig{
+	err := d.JSONClient.BuildAndDo(ClientConfig{
 		Action:            "ContainerUp",
 		Method:            "POST",
 		URL:               "/cni/add",
@@ -151,7 +86,7 @@ func (d *DaemonClient) ContainerUp(payload models.CNIAddPayload) (types.Result, 
 }
 
 func (d *DaemonClient) ContainerDown(payload models.CNIDelPayload) error {
-	return d.buildAndDo(ClientConfig{
+	return d.JSONClient.BuildAndDo(ClientConfig{
 		Action:            "ContainerDown",
 		Method:            "POST",
 		URL:               "/cni/del",
@@ -163,7 +98,7 @@ func (d *DaemonClient) ContainerDown(payload models.CNIDelPayload) error {
 func (d *DaemonClient) GetContainer(containerID string) (models.Container, error) {
 	var container models.Container
 
-	err := d.buildAndDo(ClientConfig{
+	err := d.JSONClient.BuildAndDo(ClientConfig{
 		Action:            "GetContainer",
 		Method:            "GET",
 		URL:               path.Join("containers", containerID),
@@ -180,7 +115,7 @@ func (d *DaemonClient) GetContainer(containerID string) (models.Container, error
 func (d *DaemonClient) ListNetworkContainers(networkID string) ([]models.Container, error) {
 	var containers []models.Container
 
-	err := d.buildAndDo(ClientConfig{
+	err := d.JSONClient.BuildAndDo(ClientConfig{
 		Action:            "ListNetworkContainers",
 		Method:            "GET",
 		URL:               path.Join("networks", networkID),
@@ -194,7 +129,7 @@ func (d *DaemonClient) ListNetworkContainers(networkID string) ([]models.Contain
 func (d *DaemonClient) ListContainers() ([]models.Container, error) {
 	var containers []models.Container
 
-	err := d.buildAndDo(ClientConfig{
+	err := d.JSONClient.BuildAndDo(ClientConfig{
 		Action:            "ListContainers",
 		Method:            "GET",
 		URL:               "containers",
@@ -208,30 +143,6 @@ func (d *DaemonClient) ListContainers() ([]models.Container, error) {
 func checkStatus(method string, receivedStatus, expectedStatus int) error {
 	if receivedStatus != expectedStatus {
 		return fmt.Errorf("unexpected status code on %s: expected %d but got %d", method, expectedStatus, receivedStatus)
-	}
-
-	return nil
-}
-
-func (d *DaemonClient) buildURL(routeElements ...string) (string, error) {
-	parsedURL, err := url.Parse(d.BaseURL)
-	if err != nil {
-		return "", err
-	}
-	pathElements := append([]string{parsedURL.Path}, routeElements...)
-	parsedURL.Path = path.Join(pathElements...)
-	return parsedURL.String(), nil
-}
-
-func (d *DaemonClient) unmarshalResponse(responseBody io.Reader, output interface{}) error {
-	respBytes, err := ioutil.ReadAll(responseBody)
-	if err != nil {
-		return fmt.Errorf("reading response body: %s", err)
-	}
-
-	err = d.Unmarshaler.Unmarshal(respBytes, output)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal result: %s", err)
 	}
 
 	return nil
