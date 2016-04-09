@@ -3,7 +3,8 @@ package models
 import "github.com/appc/cni/pkg/types"
 
 type NetworkPayload struct {
-	ID string `json:"network_id"`
+	ID  string `json:"network_id"`
+	App string `json:"app"`
 }
 
 type CNIAddPayload struct {

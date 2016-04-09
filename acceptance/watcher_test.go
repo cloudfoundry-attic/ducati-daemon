@@ -75,6 +75,7 @@ var _ = Describe("Networks", func() {
 
 		// GinkgoParallelNode() necessary to avoid test pollution in parallel
 		network.ID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
+		network.App = fmt.Sprintf("some-app-id-%x", rand.Int())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
 
 		networkMapper := &ipam.FixedNetworkMapper{}

@@ -77,8 +77,11 @@ var _ = Describe("CNIAdd", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
-			Network:            models.NetworkPayload{ID: "network-id-1"},
 			ContainerID:        "container-id",
+			Network: models.NetworkPayload{
+				ID:  "network-id-1",
+				App: "some-app-guid",
+			},
 		}
 		setPayload()
 	})
@@ -153,6 +156,7 @@ var _ = Describe("CNIAdd", func() {
 					"cni-add.bad-request.*missing-%s", jsonName)))
 			},
 			Entry("network id", "ID", "network_id"),
+			Entry("app", "App", "app"),
 		)
 	})
 

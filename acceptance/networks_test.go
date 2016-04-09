@@ -89,6 +89,7 @@ var _ = Describe("Networks", func() {
 		// GinkgoParallelNode() necessary to avoid test pollution in parallel
 		network.ID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
+		network.App = fmt.Sprintf("some-app-id-%x", rand.Int())
 
 		networkMapper := &ipam.FixedNetworkMapper{}
 		vni, err = networkMapper.GetVNI(network.ID)
@@ -186,6 +187,7 @@ var _ = Describe("Networks", func() {
 
 			Expect(container.HostIP).To(Equal(hostAddress))
 			Expect(container.NetworkID).To(Equal(network.ID))
+			Expect(container.App).To(Equal(network.App))
 		})
 
 		Context("when the ADD endpoint is called a second time with the same container ID", func() {

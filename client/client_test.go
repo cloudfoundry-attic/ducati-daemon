@@ -63,7 +63,7 @@ var _ = Describe("Client", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: "/some/namespace/path",
 				InterfaceName:      "interface-name",
-				Network:            models.NetworkPayload{ID: "legacy"},
+				Network:            models.NetworkPayload{ID: "legacy", App: "some-app-guid"},
 				ContainerID:        "some-container-id",
 			}
 
@@ -82,7 +82,7 @@ var _ = Describe("Client", func() {
 					Netns:       "/some/namespace/path",
 					IfName:      "interface-name",
 					Args:        "FOO=BAR;ABC=123",
-					StdinData:   []byte(`{"network": {"network_id": ""}}`),
+					StdinData:   []byte(`{"network": {"network_id": "", "app": "some-app-guid"}}`),
 				})
 				Expect(err).NotTo(HaveOccurred())
 

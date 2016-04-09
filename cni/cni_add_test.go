@@ -73,6 +73,7 @@ var _ = Describe("CniAdd", func() {
 		creator.SetupReturns(models.Container{
 			ID:        "container-id",
 			NetworkID: "network-id-1",
+			App:       "app-id-1",
 			MAC:       "00:00:00:00:00",
 			HostIP:    "10.12.100.4",
 			IP:        "192.168.160.3",
@@ -82,8 +83,11 @@ var _ = Describe("CniAdd", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
-			Network:            models.NetworkPayload{ID: "network-id-1"},
-			ContainerID:        "container-id",
+			Network: models.NetworkPayload{
+				ID:  "network-id-1",
+				App: "app-id-1",
+			},
+			ContainerID: "container-id",
 		}
 	})
 
@@ -96,6 +100,7 @@ var _ = Describe("CniAdd", func() {
 		Expect(creator.SetupCallCount()).To(Equal(1))
 		Expect(creator.SetupArgsForCall(0)).To(Equal(container.CreatorConfig{
 			NetworkID:       "network-id-1",
+			App:             "app-id-1",
 			ContainerNsPath: "/some/namespace/path",
 			ContainerID:     "container-id",
 			InterfaceName:   "interface-name",
@@ -107,6 +112,7 @@ var _ = Describe("CniAdd", func() {
 		Expect(datastore.CreateArgsForCall(0)).To(Equal(models.Container{
 			ID:        "container-id",
 			NetworkID: "network-id-1",
+			App:       "app-id-1",
 			MAC:       "00:00:00:00:00",
 			HostIP:    "10.12.100.4",
 			IP:        "192.168.160.3",

@@ -40,6 +40,7 @@ func (c *AddController) Add(payload models.CNIAddPayload) (*types.Result, error)
 
 	containerConfig := container.CreatorConfig{
 		NetworkID:       payload.Network.ID,
+		App:             payload.Network.App,
 		ContainerNsPath: payload.ContainerNamespace,
 		ContainerID:     payload.ContainerID,
 		InterfaceName:   payload.InterfaceName,

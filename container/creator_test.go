@@ -99,6 +99,7 @@ var _ = Describe("Creator", func() {
 			InterfaceName:   "container-link",
 			VNI:             99,
 			IPAMResult:      ipamResult,
+			App:             "some-app-guid",
 		}
 	})
 
@@ -128,6 +129,7 @@ var _ = Describe("Creator", func() {
 			MAC:       "01:02:03:04:05:06",
 			IP:        "192.168.100.2",
 			HostIP:    "10.11.12.13",
+			App:       "some-app-guid",
 		}))
 	})
 

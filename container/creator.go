@@ -36,6 +36,7 @@ type Creator struct {
 
 type CreatorConfig struct {
 	NetworkID       string
+	App             string
 	ContainerNsPath string
 	ContainerID     string
 	InterfaceName   string
@@ -105,5 +106,6 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 		IP:        config.IPAMResult.IP4.IP.IP.String(),
 		NetworkID: config.NetworkID,
 		HostIP:    c.HostIP.String(),
+		App:       config.App,
 	}, nil
 }

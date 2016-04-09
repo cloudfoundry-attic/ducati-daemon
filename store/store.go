@@ -11,11 +11,12 @@ import (
 
 const schema = `
 CREATE TABLE IF NOT EXISTS container (
-   id text PRIMARY KEY,
-   ip text,
-   mac text,
-   host_ip text,
-   network_id text
+  id text PRIMARY KEY,
+  ip text,
+  mac text,
+  host_ip text,
+  network_id text,
+  app text
 );
 `
 
@@ -54,7 +55,7 @@ func New(dbConnectionPool db) (Store, error) {
 }
 
 func (s *store) Create(container models.Container) error {
-	_, err := s.conn.NamedExec("INSERT INTO container (id, ip, mac, host_ip, network_id) VALUES (:id, :ip, :mac, :host_ip, :network_id)", &container)
+	_, err := s.conn.NamedExec("INSERT INTO container (id, ip, mac, host_ip, network_id, app) VALUES (:id, :ip, :mac, :host_ip, :network_id, :app)", &container)
 	if err != nil {
 		pqErr, ok := err.(*pq.Error)
 		if !ok {

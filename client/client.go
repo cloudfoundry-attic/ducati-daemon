@@ -48,7 +48,10 @@ func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
 		stdinStruct.Network.ID = "legacy"
 	}
 
-	network := models.NetworkPayload{ID: stdinStruct.Network.ID}
+	network := models.NetworkPayload{
+		ID:  stdinStruct.Network.ID,
+		App: stdinStruct.Network.App,
+	}
 
 	return d.ContainerUp(models.CNIAddPayload{
 		ContainerID:        input.ContainerID,
