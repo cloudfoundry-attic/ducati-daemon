@@ -58,12 +58,6 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if payload.Network.App == "" {
-		logger.Error("bad-request", errors.New("missing-app"))
-		resp.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	if payload.ContainerID == "" {
 		logger.Error("bad-request", errors.New("missing-container_id"))
 		resp.WriteHeader(http.StatusBadRequest)

@@ -156,8 +156,19 @@ var _ = Describe("CNIAdd", func() {
 					"cni-add.bad-request.*missing-%s", jsonName)))
 			},
 			Entry("network id", "ID", "network_id"),
-			Entry("app", "App", "app"),
 		)
+	})
+
+	Context("when app is missing from payload", func() {
+		It("succeeds with 201 status code", func() {
+			payload.Network.App = ""
+			setPayload()
+
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, request)
+
+			Expect(resp.Code).To(Equal(http.StatusCreated))
+		})
 	})
 
 	It("passes the payload to controller.Add", func() {
