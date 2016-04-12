@@ -42,10 +42,7 @@ func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
 	}
 	err := json.Unmarshal(input.StdinData, &stdinStruct)
 	if err != nil {
-		panic(err)
-	}
-	if stdinStruct.Network.ID == "" {
-		stdinStruct.Network.ID = "legacy"
+		return types.Result{}, fmt.Errorf("invalid network spec: %s", err)
 	}
 
 	network := models.NetworkPayload{

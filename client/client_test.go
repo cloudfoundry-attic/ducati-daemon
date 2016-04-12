@@ -56,27 +56,27 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("CNIAdd", func() {
-		var cniPayload models.CNIAddPayload
+		var expectedCNIPayload models.CNIAddPayload
 
-		BeforeEach(func() {
-			cniPayload = models.CNIAddPayload{
-				Args:               "FOO=BAR;ABC=123",
-				ContainerNamespace: "/some/namespace/path",
-				InterfaceName:      "interface-name",
-				Network:            models.NetworkPayload{ID: "legacy", App: "some-app-guid"},
-				ContainerID:        "some-container-id",
-			}
+		Context("when network id is not provided", func() {
+			BeforeEach(func() {
+				expectedCNIPayload = models.CNIAddPayload{
+					Args:               "FOO=BAR;ABC=123",
+					ContainerNamespace: "/some/namespace/path",
+					InterfaceName:      "interface-name",
+					Network:            models.NetworkPayload{ID: "", App: "some-app-guid"},
+					ContainerID:        "some-container-id",
+				}
 
-			server.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/cni/add"),
-				ghttp.VerifyJSONRepresenting(cniPayload),
-				ghttp.VerifyHeaderKV("Content-type", "application/json"),
-				ghttp.RespondWithJSONEncoded(http.StatusCreated, types.Result{}),
-			))
-		})
+				server.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/cni/add"),
+					ghttp.VerifyJSONRepresenting(expectedCNIPayload),
+					ghttp.VerifyHeaderKV("Content-type", "application/json"),
+					ghttp.RespondWithJSONEncoded(http.StatusCreated, types.Result{}),
+				))
+			})
 
-		Context("when network spec is not provided", func() {
-			It("sets the Network.ID to 'legacy'", func() {
+			It("does not change network spec", func() {
 				_, err := c.CNIAdd(&skel.CmdArgs{
 					ContainerID: "some-container-id",
 					Netns:       "/some/namespace/path",
@@ -87,7 +87,36 @@ var _ = Describe("Client", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(marshaler.MarshalCallCount()).To(Equal(1))
-				Expect(marshaler.MarshalArgsForCall(0)).To(Equal(cniPayload))
+				Expect(marshaler.MarshalArgsForCall(0)).To(Equal(expectedCNIPayload))
+			})
+		})
+
+		Context("when network is omitted", func() {
+			BeforeEach(func() {
+				expectedCNIPayload = models.CNIAddPayload{
+					Args:               "FOO=BAR;ABC=123",
+					ContainerNamespace: "/some/namespace/path",
+					InterfaceName:      "interface-name",
+					ContainerID:        "some-container-id",
+				}
+
+				server.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/cni/add"),
+					ghttp.VerifyJSONRepresenting(expectedCNIPayload),
+					ghttp.VerifyHeaderKV("Content-type", "application/json"),
+					ghttp.RespondWithJSONEncoded(http.StatusCreated, types.Result{}),
+				))
+			})
+
+			It("returns an invalid network payload message", func() {
+				_, err := c.CNIAdd(&skel.CmdArgs{
+					ContainerID: "some-container-id",
+					Netns:       "/some/namespace/path",
+					IfName:      "interface-name",
+					Args:        "FOO=BAR;ABC=123",
+					StdinData:   []byte{},
+				})
+				Expect(err).To(MatchError("invalid network spec: unexpected end of JSON input"))
 			})
 		})
 	})
