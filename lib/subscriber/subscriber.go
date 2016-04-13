@@ -53,6 +53,8 @@ func (s *Subscriber) Subscribe(neighChan chan<- *watcher.Neigh, doneChan <-chan 
 					continue
 				}
 
+				s.Logger.Info("===== Subscriber: Message Receive =====", lager.Data{"msg": n})
+
 				neigh := convertNeigh(n)
 
 				neighChan <- neigh

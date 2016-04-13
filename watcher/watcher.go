@@ -19,6 +19,11 @@ type Neigh struct {
 	HardwareAddr net.HardwareAddr
 }
 
+func (n Neigh) String() string {
+	return fmt.Sprintf(`{ LinkIndex: %d, Family: %x, State: %x, Type: %x, Flags: %d, IP: %s, HWAddr: %s`,
+		n.LinkIndex, n.Family, n.State, n.Type, n.Flags, n.IP, n.HardwareAddr)
+}
+
 //go:generate counterfeiter -o ../fakes/subscriber.go --fake-name Subscriber . sub
 type sub interface {
 	Subscribe(ch chan<- *Neigh, done <-chan struct{}) error
@@ -60,6 +65,11 @@ type Neighbor struct {
 	SandboxName string
 	VTEP        net.IP
 	Neigh       Neigh
+}
+
+func (n Neighbor) String() string {
+	return fmt.Sprintf(`Sandbox: %s, VTEP: %s, Neigh: %s`,
+		n.SandboxName, n.VTEP, n.Neigh.String())
 }
 
 func (w *missWatcher) StartMonitor(ns namespace.Namespace, vxlanName string) error {

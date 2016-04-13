@@ -71,7 +71,7 @@ func main() {
 		log.Fatalf("failed to construct datastore: %s", err)
 	}
 
-	logger := lager.NewLogger("ducati-d")
+	logger := lager.NewLogger("ducati-d-" + conf.HostAddress.String())
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
 	configFactory := &ipam.ConfigFactory{

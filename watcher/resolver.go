@@ -30,6 +30,7 @@ func (d *Resolver) ResolveMisses(misses <-chan Neighbor, knownNeighbors chan<- N
 			d.Logger.Error("store-retrieval-failed", err)
 			continue
 		}
+		d.Logger.Info("===== Resolver: DB Lookup =====")
 
 		found := false
 		for _, container := range containers {
