@@ -161,6 +161,7 @@ func main() {
 		Datastore:      dataStore,
 		Deletor:        deletor,
 		SandboxRepo:    sandboxRepo,
+		IPAllocator:    ipAllocator,
 		NetworkMapper:  networkMapper,
 		OSThreadLocker: osThreadLocker,
 	}

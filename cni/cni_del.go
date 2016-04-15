@@ -23,6 +23,7 @@ type DelController struct {
 	Datastore      store.Store
 	Deletor        deletor
 	SandboxRepo    repository
+	IPAllocator    ipam.IPAllocator
 	NetworkMapper  ipam.NetworkMapper
 	OSThreadLocker ossupport.OSThreadLocker
 }
@@ -57,6 +58,11 @@ func (c *DelController) Del(payload models.CNIDelPayload) error {
 	err = c.Datastore.Delete(payload.ContainerID)
 	if err != nil {
 		return fmt.Errorf("datastore delete: %s", err)
+	}
+
+	err = c.IPAllocator.ReleaseIP(dbRecord.NetworkID, payload.ContainerID)
+	if err != nil {
+		return fmt.Errorf("release ip: %s", err)
 	}
 
 	return nil

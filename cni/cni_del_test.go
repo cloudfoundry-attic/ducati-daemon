@@ -17,6 +17,7 @@ var _ = Describe("CniDel", func() {
 		deletor       *fakes.Deletor
 		controller    *cni.DelController
 		osLocker      *fakes.OSThreadLocker
+		ipAllocator   *fakes.IPAllocator
 		networkMapper *fakes.NetworkMapper
 		sandboxRepo   *fakes.Repository
 		sandboxNS     *fakes.Namespace
@@ -28,16 +29,21 @@ var _ = Describe("CniDel", func() {
 
 		datastore = &fakes.Store{}
 		deletor = &fakes.Deletor{}
+		ipAllocator = &fakes.IPAllocator{}
 		networkMapper = &fakes.NetworkMapper{}
-		networkMapper.GetVNIReturns(42, nil)
-
 		sandboxRepo = &fakes.Repository{}
+
+		networkMapper.GetVNIReturns(42, nil)
+		datastore.GetReturns(models.Container{
+			NetworkID: "some-network-id",
+		}, nil)
 
 		controller = &cni.DelController{
 			Datastore:      datastore,
 			Deletor:        deletor,
 			OSThreadLocker: osLocker,
 			SandboxRepo:    sandboxRepo,
+			IPAllocator:    ipAllocator,
 			NetworkMapper:  networkMapper,
 		}
 
@@ -82,9 +88,6 @@ var _ = Describe("CniDel", func() {
 	})
 
 	It("uses the network id to get the VNI", func() {
-		datastore.GetReturns(models.Container{
-			NetworkID: "some-network-id",
-		}, nil)
 		err := controller.Del(payload)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -173,6 +176,33 @@ var _ = Describe("CniDel", func() {
 		It("returns a wrapped error", func() {
 			err := controller.Del(payload)
 			Expect(err).To(MatchError("datastore delete: some-datastore-error"))
+		})
+
+		It("unlocks the thread", func() {
+			controller.Del(payload)
+			Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
+		})
+	})
+
+	It("releases the IP allocation", func() {
+		err := controller.Del(payload)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(ipAllocator.ReleaseIPCallCount()).To(Equal(1))
+
+		networkID, containerID := ipAllocator.ReleaseIPArgsForCall(0)
+		Expect(networkID).To(Equal("some-network-id"))
+		Expect(containerID).To(Equal("some-container-id"))
+	})
+
+	Context("when releasing the IP fails", func() {
+		BeforeEach(func() {
+			ipAllocator.ReleaseIPReturns(errors.New("mango"))
+		})
+
+		It("returns a wrapped error", func() {
+			err := controller.Del(payload)
+			Expect(err).To(MatchError("release ip: mango"))
 		})
 
 		It("unlocks the thread", func() {
