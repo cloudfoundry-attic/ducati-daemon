@@ -25,6 +25,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
+	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	"github.com/pivotal-golang/lager"
@@ -92,10 +93,12 @@ func main() {
 	addressManager := &ip.AddressManager{Netlinker: nl.Netlink}
 	routeManager := &ip.RouteManager{Netlinker: nl.Netlink}
 	linkFactory := &links.Factory{Netlinker: nl.Netlink}
-	sandboxRepo, err := namespace.NewRepository(conf.SandboxRepoDir)
+	sandboxNamespaceRepo, err := namespace.NewRepository(conf.SandboxRepoDir)
 	if err != nil {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
+
+	sandboxRepo := sandbox.NewRepository(&sync.Mutex{}, sandboxNamespaceRepo)
 
 	osThreadLocker := &ossupport.OSLocker{}
 	namedMutex := &locks.NamedMutex{}
@@ -131,22 +134,28 @@ func main() {
 		MissWatcher:   missWatcher,
 		HostNamespace: hostNamespace,
 	}
-	executor := executor.New(addressManager, routeManager, linkFactory, sandboxRepo)
+	executor := executor.New(
+		addressManager,
+		routeManager,
+		linkFactory,
+		sandboxNamespaceRepo,
+		sandboxRepo,
+	)
 	creator := &container.Creator{
-		Executor:        executor,
-		SandboxRepo:     sandboxRepo,
-		NamedLocker:     namedMutex,
-		Watcher:         missWatcher,
-		CommandBuilder:  commandBuilder,
-		HostIP:          conf.HostAddress,
-		NamespaceOpener: namespaceOpener,
+		Executor:             executor,
+		SandboxNamespaceRepo: sandboxNamespaceRepo,
+		NamedLocker:          namedMutex,
+		Watcher:              missWatcher,
+		CommandBuilder:       commandBuilder,
+		HostIP:               conf.HostAddress,
+		NamespaceOpener:      namespaceOpener,
 	}
 	deletor := &container.Deletor{
-		Executor:          executor,
-		NamedLocker:       namedMutex,
-		Watcher:           missWatcher,
-		SandboxRepository: sandboxRepo,
-		NamespaceOpener:   namespaceOpener,
+		Executor:             executor,
+		NamedLocker:          namedMutex,
+		Watcher:              missWatcher,
+		SandboxNamespaceRepo: sandboxNamespaceRepo,
+		NamespaceOpener:      namespaceOpener,
 	}
 
 	addController := &cni.AddController{
@@ -158,12 +167,12 @@ func main() {
 	}
 
 	delController := &cni.DelController{
-		Datastore:      dataStore,
-		Deletor:        deletor,
-		SandboxRepo:    sandboxRepo,
-		IPAllocator:    ipAllocator,
-		NetworkMapper:  networkMapper,
-		OSThreadLocker: osThreadLocker,
+		Datastore:            dataStore,
+		Deletor:              deletor,
+		SandboxNamespaceRepo: sandboxNamespaceRepo,
+		IPAllocator:          ipAllocator,
+		NetworkMapper:        networkMapper,
+		OSThreadLocker:       osThreadLocker,
 	}
 
 	marshaler := marshal.MarshalFunc(json.Marshal)

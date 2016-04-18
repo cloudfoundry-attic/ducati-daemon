@@ -20,12 +20,12 @@ type repository interface {
 }
 
 type DelController struct {
-	Datastore      store.Store
-	Deletor        deletor
-	SandboxRepo    repository
-	IPAllocator    ipam.IPAllocator
-	NetworkMapper  ipam.NetworkMapper
-	OSThreadLocker ossupport.OSThreadLocker
+	Datastore            store.Store
+	Deletor              deletor
+	SandboxNamespaceRepo repository
+	IPAllocator          ipam.IPAllocator
+	NetworkMapper        ipam.NetworkMapper
+	OSThreadLocker       ossupport.OSThreadLocker
 }
 
 func (c *DelController) Del(payload models.CNIDelPayload) error {
@@ -43,7 +43,7 @@ func (c *DelController) Del(payload models.CNIDelPayload) error {
 	}
 
 	sandboxName := fmt.Sprintf("vni-%d", vni)
-	sandboxNS, err := c.SandboxRepo.Get(sandboxName)
+	sandboxNS, err := c.SandboxNamespaceRepo.Get(sandboxName)
 	if err != nil {
 		return fmt.Errorf("sandbox get: %s", err)
 	}
