@@ -11,7 +11,7 @@ type SandboxNamespaceExists struct {
 }
 
 func (n SandboxNamespaceExists) Satisfied(context executor.Context) bool {
-	_, err := context.SandboxRepository().Get(n.Name)
+	_, err := context.SandboxNamespaceRepository().Get(n.Name)
 	return err == nil
 }
 

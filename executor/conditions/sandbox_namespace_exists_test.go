@@ -19,7 +19,7 @@ var _ = Describe("SandboxNamespaceExists", func() {
 	BeforeEach(func() {
 		repo = &fakes.Repository{}
 		context = &fakes.Context{}
-		context.SandboxRepositoryReturns(repo)
+		context.SandboxNamespaceRepositoryReturns(repo)
 
 		namespaceExists = conditions.SandboxNamespaceExists{
 			Name: "some-sandbox",
