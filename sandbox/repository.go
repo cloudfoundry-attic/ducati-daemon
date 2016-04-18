@@ -5,9 +5,10 @@ import (
 	"sync"
 )
 
+//go:generate counterfeiter -o ../fakes/sandbox_repository.go --fake-name SandboxRepository . Repository
 type Repository interface {
 	Get(sandboxName string) *Sandbox
-	Put(sandboxName string, sandbox *Sandbox) error
+	Put(sandboxName string, sbox *Sandbox) error
 	Remove(sandboxName string)
 }
 

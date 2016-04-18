@@ -9,23 +9,31 @@ import (
 
 var _ = Describe("Executor", func() {
 	var (
-		addressManager    *fakes.AddressManager
-		routeManager      *fakes.RouteManager
-		linkFactory       *fakes.LinkFactory
-		sandboxRepository *fakes.Repository
-		command           *fakes.Command
-		ex                executor.Executor
+		addressManager             *fakes.AddressManager
+		routeManager               *fakes.RouteManager
+		linkFactory                *fakes.LinkFactory
+		sandboxNamespaceRepository *fakes.Repository
+		sandboxRepository          *fakes.SandboxRepository
+		command                    *fakes.Command
+		ex                         executor.Executor
 	)
 
 	BeforeEach(func() {
 		addressManager = &fakes.AddressManager{}
 		routeManager = &fakes.RouteManager{}
 		linkFactory = &fakes.LinkFactory{}
-		sandboxRepository = &fakes.Repository{}
+		sandboxNamespaceRepository = &fakes.Repository{}
+		sandboxRepository = &fakes.SandboxRepository{}
 
 		command = &fakes.Command{}
 
-		ex = executor.New(addressManager, routeManager, linkFactory, sandboxRepository)
+		ex = executor.New(
+			addressManager,
+			routeManager,
+			linkFactory,
+			sandboxNamespaceRepository,
+			sandboxRepository,
+		)
 	})
 
 	It("executes a command with a context", func() {
@@ -64,7 +72,13 @@ var _ = Describe("Executor", func() {
 
 		Describe("SandboxNamespaceRepository", func() {
 			It("returns the SandboxNamespaceRepository", func() {
-				Expect(context.SandboxNamespaceRepository()).To(Equal(sandboxRepository))
+				Expect(context.SandboxNamespaceRepository()).To(Equal(sandboxNamespaceRepository))
+			})
+		})
+
+		Describe("SandboxRepository", func() {
+			It("returns the SandboxRepository", func() {
+				Expect(context.SandboxRepository()).To(Equal(sandboxRepository))
 			})
 		})
 	})
