@@ -1,10 +1,13 @@
 package sandbox
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type Repository interface {
 	Get(sandboxName string) *Sandbox
-	Put(sandboxName string, sandbox *Sandbox)
+	Put(sandboxName string, sandbox *Sandbox) error
 	Remove(sandboxName string)
 }
 
@@ -27,11 +30,17 @@ func (r *repository) Get(sandboxName string) *Sandbox {
 	return sbox
 }
 
-func (r *repository) Put(sandboxName string, sandbox *Sandbox) {
+func (r *repository) Put(sandboxName string, sandbox *Sandbox) error {
 	r.locker.Lock()
+	defer r.locker.Unlock()
+
+	if _, exists := r.sandboxes[sandboxName]; exists {
+		return fmt.Errorf("sandbox %q already exists", sandboxName)
+	}
+
 	r.sandboxes[sandboxName] = sandbox
-	r.locker.Unlock()
-	return
+
+	return nil
 }
 
 func (r *repository) Remove(sandboxName string) {
