@@ -20,7 +20,7 @@ var _ = Describe("CreateSandboxNamespace", func() {
 	BeforeEach(func() {
 		context = &fakes.Context{}
 		repository = &fakes.Repository{}
-		context.SandboxRepositoryReturns(repository)
+		context.SandboxNamespaceRepositoryReturns(repository)
 
 		createSandboxNamespace = commands.CreateSandboxNamespace{
 			Name: "my-namespace",

@@ -17,7 +17,7 @@ type StartMonitor struct {
 }
 
 func (sm StartMonitor) Execute(context executor.Context) error {
-	ns, err := context.SandboxRepository().Get(sm.SandboxName)
+	ns, err := context.SandboxNamespaceRepository().Get(sm.SandboxName)
 	if err != nil {
 		return fmt.Errorf("getting sandbox namespace: %s", err)
 	}

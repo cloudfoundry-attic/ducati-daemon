@@ -27,10 +27,10 @@ type Context struct {
 	routeManagerReturns     struct {
 		result1 executor.RouteManager
 	}
-	SandboxRepositoryStub        func() namespace.Repository
-	sandboxRepositoryMutex       sync.RWMutex
-	sandboxRepositoryArgsForCall []struct{}
-	sandboxRepositoryReturns     struct {
+	SandboxNamespaceRepositoryStub        func() namespace.Repository
+	sandboxNamespaceRepositoryMutex       sync.RWMutex
+	sandboxNamespaceRepositoryArgsForCall []struct{}
+	sandboxNamespaceRepositoryReturns     struct {
 		result1 namespace.Repository
 	}
 }
@@ -107,26 +107,26 @@ func (fake *Context) RouteManagerReturns(result1 executor.RouteManager) {
 	}{result1}
 }
 
-func (fake *Context) SandboxRepository() namespace.Repository {
-	fake.sandboxRepositoryMutex.Lock()
-	fake.sandboxRepositoryArgsForCall = append(fake.sandboxRepositoryArgsForCall, struct{}{})
-	fake.sandboxRepositoryMutex.Unlock()
-	if fake.SandboxRepositoryStub != nil {
-		return fake.SandboxRepositoryStub()
+func (fake *Context) SandboxNamespaceRepository() namespace.Repository {
+	fake.sandboxNamespaceRepositoryMutex.Lock()
+	fake.sandboxNamespaceRepositoryArgsForCall = append(fake.sandboxNamespaceRepositoryArgsForCall, struct{}{})
+	fake.sandboxNamespaceRepositoryMutex.Unlock()
+	if fake.SandboxNamespaceRepositoryStub != nil {
+		return fake.SandboxNamespaceRepositoryStub()
 	} else {
-		return fake.sandboxRepositoryReturns.result1
+		return fake.sandboxNamespaceRepositoryReturns.result1
 	}
 }
 
-func (fake *Context) SandboxRepositoryCallCount() int {
-	fake.sandboxRepositoryMutex.RLock()
-	defer fake.sandboxRepositoryMutex.RUnlock()
-	return len(fake.sandboxRepositoryArgsForCall)
+func (fake *Context) SandboxNamespaceRepositoryCallCount() int {
+	fake.sandboxNamespaceRepositoryMutex.RLock()
+	defer fake.sandboxNamespaceRepositoryMutex.RUnlock()
+	return len(fake.sandboxNamespaceRepositoryArgsForCall)
 }
 
-func (fake *Context) SandboxRepositoryReturns(result1 namespace.Repository) {
-	fake.SandboxRepositoryStub = nil
-	fake.sandboxRepositoryReturns = struct {
+func (fake *Context) SandboxNamespaceRepositoryReturns(result1 namespace.Repository) {
+	fake.SandboxNamespaceRepositoryStub = nil
+	fake.sandboxNamespaceRepositoryReturns = struct {
 		result1 namespace.Repository
 	}{result1}
 }

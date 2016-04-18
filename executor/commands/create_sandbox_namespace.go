@@ -11,7 +11,7 @@ type CreateSandboxNamespace struct {
 }
 
 func (cn CreateSandboxNamespace) Execute(context executor.Context) error {
-	_, err := context.SandboxRepository().Create(cn.Name)
+	_, err := context.SandboxNamespaceRepository().Create(cn.Name)
 	if err != nil {
 		return fmt.Errorf("create namespace: %s", err)
 	}

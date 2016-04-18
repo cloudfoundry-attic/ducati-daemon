@@ -24,7 +24,7 @@ var _ = Describe("StartMonitor", func() {
 	BeforeEach(func() {
 		context = &fakes.Context{}
 		sandboxRepository = &fakes.Repository{}
-		context.SandboxRepositoryReturns(sandboxRepository)
+		context.SandboxNamespaceRepositoryReturns(sandboxRepository)
 
 		sandboxNS = &fakes.Namespace{}
 		sandboxRepository.GetReturns(sandboxNS, nil)

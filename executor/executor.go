@@ -52,28 +52,28 @@ type Context interface {
 	AddressManager() AddressManager
 	LinkFactory() LinkFactory
 	RouteManager() RouteManager
-	SandboxRepository() namespace.Repository
+	SandboxNamespaceRepository() namespace.Repository
 }
 
 func New(
 	addressManager AddressManager,
 	routeManager RouteManager,
 	linkFactory LinkFactory,
-	sandboxRepository namespace.Repository,
+	sandboxNamespaceRepository namespace.Repository,
 ) Executor {
 	return &executor{
-		addressManager:    addressManager,
-		routeManager:      routeManager,
-		linkFactory:       linkFactory,
-		sandboxRepository: sandboxRepository,
+		addressManager:             addressManager,
+		routeManager:               routeManager,
+		linkFactory:                linkFactory,
+		sandboxNamespaceRepository: sandboxNamespaceRepository,
 	}
 }
 
 type executor struct {
-	addressManager    AddressManager
-	routeManager      RouteManager
-	linkFactory       LinkFactory
-	sandboxRepository namespace.Repository
+	addressManager             AddressManager
+	routeManager               RouteManager
+	linkFactory                LinkFactory
+	sandboxNamespaceRepository namespace.Repository
 }
 
 func (e *executor) Execute(command Command) error {
@@ -92,6 +92,6 @@ func (e *executor) LinkFactory() LinkFactory {
 	return e.linkFactory
 }
 
-func (e *executor) SandboxRepository() namespace.Repository {
-	return e.sandboxRepository
+func (e *executor) SandboxNamespaceRepository() namespace.Repository {
+	return e.sandboxNamespaceRepository
 }

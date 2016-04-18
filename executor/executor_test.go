@@ -62,9 +62,9 @@ var _ = Describe("Executor", func() {
 			})
 		})
 
-		Describe("SandboxRepository", func() {
-			It("returns the SandboxRepository", func() {
-				Expect(context.SandboxRepository()).To(Equal(sandboxRepository))
+		Describe("SandboxNamespaceRepository", func() {
+			It("returns the SandboxNamespaceRepository", func() {
+				Expect(context.SandboxNamespaceRepository()).To(Equal(sandboxRepository))
 			})
 		})
 	})
