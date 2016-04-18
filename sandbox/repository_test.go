@@ -38,12 +38,21 @@ var _ = Describe("Sandbox Repository", func() {
 		})
 
 		Context("when putting a different sandbox with the same key", func() {
+			BeforeEach(func() {
+				err := repo.Put("some-sandbox-name", sandbox1)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
 			It("overwrites that sandbox", func() {
-				repo.Put("some-sandbox-name", sandbox1)
+				err := repo.Put("some-sandbox-name", sandbox2)
+				Expect(err).To(MatchError(`sandbox "some-sandbox-name" already exists`))
+			})
+
+			It("locks and unlocks", func() {
 				repo.Put("some-sandbox-name", sandbox2)
 
-				sbox := repo.Get("some-sandbox-name")
-				Expect(sbox).To(Equal(sandbox2))
+				Expect(locker.LockCallCount()).To(Equal(2))
+				Expect(locker.UnlockCallCount()).To(Equal(2))
 			})
 		})
 	})
