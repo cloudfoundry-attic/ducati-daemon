@@ -28,11 +28,11 @@ var _ = Describe("CommandBuilder", func() {
 
 			Expect(cmd).To(Equal(
 				commands.Unless{
-					Condition: conditions.SandboxNamespaceExists{
+					Condition: conditions.SandboxExists{
 						Name: "some-sandbox-name",
 					},
 					Command: commands.All(
-						commands.CreateSandboxNamespace{
+						commands.CreateSandbox{
 							Name: "some-sandbox-name",
 						},
 					),

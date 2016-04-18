@@ -18,11 +18,11 @@ type CommandBuilder struct {
 
 func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName string) executor.Command {
 	return commands.Unless{
-		Condition: conditions.SandboxNamespaceExists{
+		Condition: conditions.SandboxExists{
 			Name: sandboxName,
 		},
 		Command: commands.All(
-			commands.CreateSandboxNamespace{
+			commands.CreateSandbox{
 				Name: sandboxName,
 			},
 		),
