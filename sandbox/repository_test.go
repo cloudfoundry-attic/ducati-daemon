@@ -1,6 +1,8 @@
 package sandbox_test
 
 import (
+	"errors"
+
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	. "github.com/onsi/ginkgo"
@@ -9,47 +11,75 @@ import (
 
 var _ = Describe("Sandbox Repository", func() {
 	var (
-		repo     sandbox.Repository
-		sandbox1 *sandbox.Sandbox
-		sandbox2 *sandbox.Sandbox
-		locker   *fakes.Locker
+		sandboxRepo   sandbox.Repository
+		namespaceRepo *fakes.Repository
+		sboxNamespace *fakes.Namespace
+		locker        *fakes.Locker
 	)
 
 	BeforeEach(func() {
 		locker = &fakes.Locker{}
-		repo = sandbox.NewRepository(locker)
-
-		sandbox1 = &sandbox.Sandbox{}
-		sandbox2 = &sandbox.Sandbox{}
+		sboxNamespace = &fakes.Namespace{}
+		namespaceRepo = &fakes.Repository{}
+		namespaceRepo.CreateReturns(sboxNamespace, nil)
+		sandboxRepo = sandbox.NewRepository(locker, namespaceRepo)
 	})
 
-	Describe("Put", func() {
-		It("adds the sandbox by name to the repo", func() {
-			repo.Put("some-other-sandbox-name", sandbox1)
-
-			sbox := repo.Get("some-other-sandbox-name")
-			Expect(sbox).To(Equal(sandbox1))
+	Describe("Create", func() {
+		It("returns the created sandbox", func() {
+			sbox, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sbox).NotTo(BeNil())
 		})
 
 		It("locks and unlocks", func() {
-			repo.Put("some-other-sandbox-name", sandbox1)
+			_, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
 			Expect(locker.LockCallCount()).To(Equal(1))
 			Expect(locker.UnlockCallCount()).To(Equal(1))
 		})
 
-		Context("when putting a different sandbox with the same key", func() {
+		It("creates a namespace", func() {
+			_, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(namespaceRepo.CreateCallCount()).To(Equal(1))
+			nsName := namespaceRepo.CreateArgsForCall(0)
+			Expect(nsName).To(Equal("some-sandbox-name"))
+		})
+
+		It("populates the namespace on the sandbox", func() {
+			sbox, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sbox.Namespace).To(Equal(sboxNamespace))
+		})
+
+		Context("when creating the namespace fails", func() {
 			BeforeEach(func() {
-				err := repo.Put("some-sandbox-name", sandbox1)
+				namespaceRepo.CreateReturns(nil, errors.New("watermelon"))
+			})
+
+			It("returns a meaningful error", func() {
+				_, err := sandboxRepo.Create("some-sandbox-name")
+				Expect(err).To(MatchError("create namespace: watermelon"))
+			})
+		})
+
+		Context("if the sandbox already exists", func() {
+			BeforeEach(func() {
+				_, err := sandboxRepo.Create("some-sandbox-name")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("overwrites that sandbox", func() {
-				err := repo.Put("some-sandbox-name", sandbox2)
+			It("returns an error", func() {
+				_, err := sandboxRepo.Create("some-sandbox-name")
 				Expect(err).To(MatchError(`sandbox "some-sandbox-name" already exists`))
 			})
 
 			It("locks and unlocks", func() {
-				repo.Put("some-sandbox-name", sandbox2)
+				sandboxRepo.Create("some-sandbox-name")
 
 				Expect(locker.LockCallCount()).To(Equal(2))
 				Expect(locker.UnlockCallCount()).To(Equal(2))
@@ -59,52 +89,58 @@ var _ = Describe("Sandbox Repository", func() {
 
 	Describe("Get", func() {
 		It("locks and unlocks", func() {
-			repo.Get("some-other-sandbox-name")
+			sandboxRepo.Get("some-other-sandbox-name")
 			Expect(locker.LockCallCount()).To(Equal(1))
 			Expect(locker.UnlockCallCount()).To(Equal(1))
 		})
 
-		Context("when getting a sandbox that hasn't been put", func() {
+		Context("when getting a sandbox that hasn't been created", func() {
 			It("returns nil", func() {
-				sbox := repo.Get("unknown-sandbox")
+				sbox := sandboxRepo.Get("unknown-sandbox")
 				Expect(sbox).To(BeNil())
 			})
 		})
 
-		Context("when getting a sandbox that has been put", func() {
+		Context("when getting a sandbox that has been created", func() {
 			It("returns the sandbox", func() {
-				repo.Put("some-sandbox-name", sandbox1)
+				expectedSandbox, err := sandboxRepo.Create("some-sandbox-name")
+				Expect(err).NotTo(HaveOccurred())
 
-				sbox := repo.Get("some-sandbox-name")
-				Expect(sbox).To(Equal(sandbox1))
+				sbox := sandboxRepo.Get("some-sandbox-name")
+				Expect(sbox).To(Equal(expectedSandbox))
 			})
 		})
 	})
 
 	Describe("Remove", func() {
+		var otherSandbox *sandbox.Sandbox
+
 		BeforeEach(func() {
-			repo.Put("some-sandbox-name", sandbox1)
-			repo.Put("some-other-sandbox-name", sandbox2)
+			_, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			otherSandbox, err = sandboxRepo.Create("some-other-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("removes the sandbox by name", func() {
-			repo.Remove("some-sandbox-name")
+			sandboxRepo.Remove("some-sandbox-name")
 
-			sbox := repo.Get("some-sandbox-name")
+			sbox := sandboxRepo.Get("some-sandbox-name")
 			Expect(sbox).To(BeNil())
 		})
 
 		It("locks and unlocks", func() {
-			repo.Remove("some-other-sandbox-name")
+			sandboxRepo.Remove("some-other-sandbox-name")
 			Expect(locker.LockCallCount()).To(Equal(3))
 			Expect(locker.UnlockCallCount()).To(Equal(3))
 		})
 
 		It("does not remove other sandbox", func() {
-			repo.Remove("some-sandbox-name")
+			sandboxRepo.Remove("some-sandbox-name")
 
-			sbox := repo.Get("some-other-sandbox-name")
-			Expect(sbox).To(Equal(sandbox2))
+			sbox := sandboxRepo.Get("some-other-sandbox-name")
+			Expect(sbox).To(Equal(otherSandbox))
 		})
 	})
 })

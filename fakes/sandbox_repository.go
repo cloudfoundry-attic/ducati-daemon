@@ -8,6 +8,15 @@ import (
 )
 
 type SandboxRepository struct {
+	CreateStub        func(sandboxName string) (*sandbox.Sandbox, error)
+	createMutex       sync.RWMutex
+	createArgsForCall []struct {
+		sandboxName string
+	}
+	createReturns struct {
+		result1 *sandbox.Sandbox
+		result2 error
+	}
 	GetStub        func(sandboxName string) *sandbox.Sandbox
 	getMutex       sync.RWMutex
 	getArgsForCall []struct {
@@ -16,20 +25,44 @@ type SandboxRepository struct {
 	getReturns struct {
 		result1 *sandbox.Sandbox
 	}
-	PutStub        func(sandboxName string, sbox *sandbox.Sandbox) error
-	putMutex       sync.RWMutex
-	putArgsForCall []struct {
-		sandboxName string
-		sbox        *sandbox.Sandbox
-	}
-	putReturns struct {
-		result1 error
-	}
 	RemoveStub        func(sandboxName string)
 	removeMutex       sync.RWMutex
 	removeArgsForCall []struct {
 		sandboxName string
 	}
+}
+
+func (fake *SandboxRepository) Create(sandboxName string) (*sandbox.Sandbox, error) {
+	fake.createMutex.Lock()
+	fake.createArgsForCall = append(fake.createArgsForCall, struct {
+		sandboxName string
+	}{sandboxName})
+	fake.createMutex.Unlock()
+	if fake.CreateStub != nil {
+		return fake.CreateStub(sandboxName)
+	} else {
+		return fake.createReturns.result1, fake.createReturns.result2
+	}
+}
+
+func (fake *SandboxRepository) CreateCallCount() int {
+	fake.createMutex.RLock()
+	defer fake.createMutex.RUnlock()
+	return len(fake.createArgsForCall)
+}
+
+func (fake *SandboxRepository) CreateArgsForCall(i int) string {
+	fake.createMutex.RLock()
+	defer fake.createMutex.RUnlock()
+	return fake.createArgsForCall[i].sandboxName
+}
+
+func (fake *SandboxRepository) CreateReturns(result1 *sandbox.Sandbox, result2 error) {
+	fake.CreateStub = nil
+	fake.createReturns = struct {
+		result1 *sandbox.Sandbox
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *SandboxRepository) Get(sandboxName string) *sandbox.Sandbox {
@@ -61,39 +94,6 @@ func (fake *SandboxRepository) GetReturns(result1 *sandbox.Sandbox) {
 	fake.GetStub = nil
 	fake.getReturns = struct {
 		result1 *sandbox.Sandbox
-	}{result1}
-}
-
-func (fake *SandboxRepository) Put(sandboxName string, sbox *sandbox.Sandbox) error {
-	fake.putMutex.Lock()
-	fake.putArgsForCall = append(fake.putArgsForCall, struct {
-		sandboxName string
-		sbox        *sandbox.Sandbox
-	}{sandboxName, sbox})
-	fake.putMutex.Unlock()
-	if fake.PutStub != nil {
-		return fake.PutStub(sandboxName, sbox)
-	} else {
-		return fake.putReturns.result1
-	}
-}
-
-func (fake *SandboxRepository) PutCallCount() int {
-	fake.putMutex.RLock()
-	defer fake.putMutex.RUnlock()
-	return len(fake.putArgsForCall)
-}
-
-func (fake *SandboxRepository) PutArgsForCall(i int) (string, *sandbox.Sandbox) {
-	fake.putMutex.RLock()
-	defer fake.putMutex.RUnlock()
-	return fake.putArgsForCall[i].sandboxName, fake.putArgsForCall[i].sbox
-}
-
-func (fake *SandboxRepository) PutReturns(result1 error) {
-	fake.PutStub = nil
-	fake.putReturns = struct {
-		result1 error
 	}{result1}
 }
 
