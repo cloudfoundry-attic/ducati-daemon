@@ -14,31 +14,31 @@ import (
 
 var _ = Describe("Delete", func() {
 	var (
-		deletor           container.Deletor
-		executor          *fakes.Executor
-		sandboxRepoLocker *fakes.NamedLocker
-		watcher           *fakes.MissWatcher
-		sandboxRepository *fakes.Repository
-		containerNS       namespace.Namespace
-		sandboxNS         *fakes.Namespace
-		namespaceOpener   *fakes.Opener
+		deletor              container.Deletor
+		executor             *fakes.Executor
+		sandboxRepoLocker    *fakes.NamedLocker
+		watcher              *fakes.MissWatcher
+		sandboxNamespaceRepo *fakes.Repository
+		containerNS          namespace.Namespace
+		sandboxNS            *fakes.Namespace
+		namespaceOpener      *fakes.Opener
 	)
 
 	BeforeEach(func() {
 		executor = &fakes.Executor{}
 		sandboxRepoLocker = &fakes.NamedLocker{}
 		watcher = &fakes.MissWatcher{}
-		sandboxRepository = &fakes.Repository{}
+		sandboxNamespaceRepo = &fakes.Repository{}
 		containerNS = &fakes.Namespace{NameStub: func() string { return "container ns sentinel" }}
 		namespaceOpener = &fakes.Opener{}
 		namespaceOpener.OpenPathReturns(containerNS, nil)
 		sandboxNS = &fakes.Namespace{NameStub: func() string { return "sandbox ns sentinel" }}
 		deletor = container.Deletor{
-			Executor:          executor,
-			SandboxRepository: sandboxRepository,
-			NamedLocker:       sandboxRepoLocker,
-			Watcher:           watcher,
-			NamespaceOpener:   namespaceOpener,
+			Executor:             executor,
+			SandboxNamespaceRepo: sandboxNamespaceRepo,
+			NamedLocker:          sandboxRepoLocker,
+			Watcher:              watcher,
+			NamespaceOpener:      namespaceOpener,
 		}
 	})
 
@@ -76,7 +76,7 @@ var _ = Describe("Delete", func() {
 
 				commands.CleanupSandbox{
 					Namespace:         sandboxNS,
-					SandboxRepository: sandboxRepository,
+					SandboxRepository: sandboxNamespaceRepo,
 					NamedLocker:       sandboxRepoLocker,
 					Watcher:           watcher,
 					VxlanDeviceName:   "some-vxlan",

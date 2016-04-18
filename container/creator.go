@@ -25,13 +25,13 @@ type commandBuilder interface {
 }
 
 type Creator struct {
-	Executor        executor.Executor
-	SandboxRepo     namespace.Repository
-	NamedLocker     locks.NamedLocker
-	Watcher         watcher.MissWatcher
-	CommandBuilder  commandBuilder
-	HostIP          net.IP
-	NamespaceOpener namespace.Opener
+	Executor             executor.Executor
+	SandboxNamespaceRepo namespace.Repository
+	NamedLocker          locks.NamedLocker
+	Watcher              watcher.MissWatcher
+	CommandBuilder       commandBuilder
+	HostIP               net.IP
+	NamespaceOpener      namespace.Opener
 }
 
 type CreatorConfig struct {
@@ -72,7 +72,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 		return models.Container{}, fmt.Errorf("executing command: create sandbox: %s", err)
 	}
 
-	sandboxNS, err := c.SandboxRepo.Get(sandboxName)
+	sandboxNS, err := c.SandboxNamespaceRepo.Get(sandboxName)
 	if err != nil {
 		return models.Container{}, fmt.Errorf("get sandbox: %s", err)
 	}

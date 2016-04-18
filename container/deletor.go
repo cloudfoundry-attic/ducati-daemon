@@ -11,11 +11,11 @@ import (
 )
 
 type Deletor struct {
-	Executor          executor.Executor
-	NamedLocker       locks.NamedLocker
-	Watcher           watcher.MissWatcher
-	SandboxRepository namespace.Repository
-	NamespaceOpener   namespace.Opener
+	Executor             executor.Executor
+	NamedLocker          locks.NamedLocker
+	Watcher              watcher.MissWatcher
+	SandboxNamespaceRepo namespace.Repository
+	NamespaceOpener      namespace.Opener
 }
 
 func (d *Deletor) Delete(
@@ -40,7 +40,7 @@ func (d *Deletor) Delete(
 
 			commands.CleanupSandbox{
 				Namespace:         sandboxNS,
-				SandboxRepository: d.SandboxRepository,
+				SandboxRepository: d.SandboxNamespaceRepo,
 				NamedLocker:       d.NamedLocker,
 				Watcher:           d.Watcher,
 				VxlanDeviceName:   vxlanDeviceName,
