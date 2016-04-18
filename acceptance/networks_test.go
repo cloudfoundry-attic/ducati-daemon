@@ -181,6 +181,18 @@ var _ = Describe("Networks", func() {
 			Expect(containers[0].HostIP).To(Equal(hostAddress))
 		})
 
+		It("makes container metadata available on the /containers endpoint", func() {
+			containers, err := daemonClient.ListContainers()
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, container := range containers {
+				if container.ID != containerID {
+					continue
+				}
+				Expect(container.SandboxName).To(Equal(sandboxName))
+			}
+		})
+
 		It("makes container metadata available on get container endpoint", func() {
 			container, err := daemonClient.GetContainer(containerID)
 			Expect(err).NotTo(HaveOccurred())

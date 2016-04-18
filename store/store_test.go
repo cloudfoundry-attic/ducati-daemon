@@ -65,6 +65,27 @@ var _ = Describe("Store", func() {
 		})
 	})
 
+	Describe("round-tripping a container through the database", func() {
+		It("stores and retrieves all the fields on the container model", func() {
+			toCreate := models.Container{
+				NetworkID:   "some-crazy-network-id",
+				ID:          "some-container-id",
+				MAC:         "01:02:03:04:05:06",
+				IP:          "192.168.100.2",
+				HostIP:      "10.11.12.13",
+				SandboxName: "vni-99",
+				App:         "some-app-guid",
+			}
+
+			Expect(dataStore.Create(toCreate)).To(Succeed())
+
+			retrieved, err := dataStore.Get("some-container-id")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(retrieved).To(Equal(toCreate))
+		})
+	})
+
 	Describe("Create", func() {
 		It("saves the container", func() {
 			container := models.Container{ID: "some-id"}

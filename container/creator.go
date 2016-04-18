@@ -101,11 +101,12 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	}
 
 	return models.Container{
-		ID:        config.ContainerID,
-		MAC:       getHardwareAddressCommand.Result.String(),
-		IP:        config.IPAMResult.IP4.IP.IP.String(),
-		NetworkID: config.NetworkID,
-		HostIP:    c.HostIP.String(),
-		App:       config.App,
+		ID:          config.ContainerID,
+		MAC:         getHardwareAddressCommand.Result.String(),
+		IP:          config.IPAMResult.IP4.IP.IP.String(),
+		NetworkID:   config.NetworkID,
+		HostIP:      c.HostIP.String(),
+		SandboxName: sandboxName,
+		App:         config.App,
 	}, nil
 }

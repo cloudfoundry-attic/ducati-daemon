@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS container (
   mac text,
   host_ip text,
   network_id text,
+  sandbox_name text,
   app text
 );
 `
@@ -55,7 +56,7 @@ func New(dbConnectionPool db) (Store, error) {
 }
 
 func (s *store) Create(container models.Container) error {
-	_, err := s.conn.NamedExec("INSERT INTO container (id, ip, mac, host_ip, network_id, app) VALUES (:id, :ip, :mac, :host_ip, :network_id, :app)", &container)
+	_, err := s.conn.NamedExec("INSERT INTO container (id, ip, mac, host_ip, network_id, sandbox_name, app) VALUES (:id, :ip, :mac, :host_ip, :network_id, :sandbox_name, :app)", &container)
 	if err != nil {
 		pqErr, ok := err.(*pq.Error)
 		if !ok {

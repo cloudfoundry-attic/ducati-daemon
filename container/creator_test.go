@@ -124,12 +124,13 @@ var _ = Describe("Creator", func() {
 		container, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(container).To(Equal(models.Container{
-			NetworkID: "some-crazy-network-id",
-			ID:        "123456789012345",
-			MAC:       "01:02:03:04:05:06",
-			IP:        "192.168.100.2",
-			HostIP:    "10.11.12.13",
-			App:       "some-app-guid",
+			NetworkID:   "some-crazy-network-id",
+			ID:          "123456789012345",
+			MAC:         "01:02:03:04:05:06",
+			IP:          "192.168.100.2",
+			HostIP:      "10.11.12.13",
+			SandboxName: "vni-99",
+			App:         "some-app-guid",
 		}))
 	})
 
