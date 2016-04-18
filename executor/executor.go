@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 )
 
 //go:generate counterfeiter -o ../fakes/address_manager.go --fake-name AddressManager . AddressManager
@@ -53,6 +54,7 @@ type Context interface {
 	LinkFactory() LinkFactory
 	RouteManager() RouteManager
 	SandboxNamespaceRepository() namespace.Repository
+	SandboxRepository() sandbox.Repository
 }
 
 func New(
@@ -60,12 +62,14 @@ func New(
 	routeManager RouteManager,
 	linkFactory LinkFactory,
 	sandboxNamespaceRepository namespace.Repository,
+	sandboxRepository sandbox.Repository,
 ) Executor {
 	return &executor{
 		addressManager:             addressManager,
 		routeManager:               routeManager,
 		linkFactory:                linkFactory,
 		sandboxNamespaceRepository: sandboxNamespaceRepository,
+		sandboxRepository:          sandboxRepository,
 	}
 }
 
@@ -74,6 +78,7 @@ type executor struct {
 	routeManager               RouteManager
 	linkFactory                LinkFactory
 	sandboxNamespaceRepository namespace.Repository
+	sandboxRepository          sandbox.Repository
 }
 
 func (e *executor) Execute(command Command) error {
@@ -94,4 +99,8 @@ func (e *executor) LinkFactory() LinkFactory {
 
 func (e *executor) SandboxNamespaceRepository() namespace.Repository {
 	return e.sandboxNamespaceRepository
+}
+
+func (e *executor) SandboxRepository() sandbox.Repository {
+	return e.sandboxRepository
 }
