@@ -3,6 +3,7 @@ package sandbox
 import (
 	"os"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -23,6 +24,7 @@ type process interface {
 
 type Sandbox struct {
 	Invoker          invoker
+	Namespace        namespace.Namespace
 	NamespaceWatcher runner
 }
 
