@@ -14,39 +14,33 @@ import (
 
 var _ = Describe("Delete", func() {
 	var (
-		deletor              container.Deletor
-		executor             *fakes.Executor
-		sandboxRepoLocker    *fakes.NamedLocker
-		watcher              *fakes.MissWatcher
-		sandboxNamespaceRepo *fakes.Repository
-		containerNS          namespace.Namespace
-		sandboxNS            *fakes.Namespace
-		namespaceOpener      *fakes.Opener
+		deletor         container.Deletor
+		executor        *fakes.Executor
+		watcher         *fakes.MissWatcher
+		containerNS     namespace.Namespace
+		namespaceOpener *fakes.Opener
 	)
 
 	BeforeEach(func() {
 		executor = &fakes.Executor{}
-		sandboxRepoLocker = &fakes.NamedLocker{}
 		watcher = &fakes.MissWatcher{}
-		sandboxNamespaceRepo = &fakes.Repository{}
-		containerNS = &fakes.Namespace{NameStub: func() string { return "container ns sentinel" }}
+
 		namespaceOpener = &fakes.Opener{}
+		containerNS = &fakes.Namespace{NameStub: func() string { return "container ns sentinel" }}
 		namespaceOpener.OpenPathReturns(containerNS, nil)
-		sandboxNS = &fakes.Namespace{NameStub: func() string { return "sandbox ns sentinel" }}
+
 		deletor = container.Deletor{
-			Executor:             executor,
-			SandboxNamespaceRepo: sandboxNamespaceRepo,
-			NamedLocker:          sandboxRepoLocker,
-			Watcher:              watcher,
-			NamespaceOpener:      namespaceOpener,
+			Executor:        executor,
+			Watcher:         watcher,
+			NamespaceOpener: namespaceOpener,
 		}
 	})
 
 	It("should open the container namespace", func() {
-		err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
+		err := deletor.Delete("some-interface-name", "/path/to/container/namespace", "sandbox-name", "some-vxlan")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(namespaceOpener.OpenPathCallCount()).To(Equal(1))
-		Expect(namespaceOpener.OpenPathArgsForCall(0)).To(Equal("/some/container/ns/path"))
+		Expect(namespaceOpener.OpenPathArgsForCall(0)).To(Equal("/path/to/container/namespace"))
 	})
 
 	Context("when opening the container namespace fails", func() {
@@ -55,13 +49,13 @@ var _ = Describe("Delete", func() {
 		})
 
 		It("should return a meaningful error", func() {
-			err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
+			err := deletor.Delete("some-interface-name", "/path/to/container/namespace", "sandbox-name", "some-vxlan")
 			Expect(err).To(MatchError("open container netns: POTATO"))
 		})
 	})
 
 	It("should construct the correct command sequence", func() {
-		err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
+		err := deletor.Delete("some-interface-name", "/path/to/container/namespace", "sandbox-name", "some-vxlan")
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(executor.ExecuteCallCount()).To(Equal(1))
@@ -75,11 +69,9 @@ var _ = Describe("Delete", func() {
 				},
 
 				commands.CleanupSandbox{
-					Namespace:         sandboxNS,
-					SandboxRepository: sandboxNamespaceRepo,
-					NamedLocker:       sandboxRepoLocker,
-					Watcher:           watcher,
-					VxlanDeviceName:   "some-vxlan",
+					SandboxName:     "sandbox-name",
+					Watcher:         watcher,
+					VxlanDeviceName: "some-vxlan",
 				},
 			),
 		))
@@ -91,7 +83,7 @@ var _ = Describe("Delete", func() {
 		})
 
 		It("should return the error", func() {
-			err := deletor.Delete("some-interface-name", "/some/container/ns/path", sandboxNS, "some-vxlan")
+			err := deletor.Delete("some-interface-name", "/path/to/container/namespace", "sandbox-name", "some-vxlan")
 			Expect(err).To(MatchError("boom"))
 		})
 	})

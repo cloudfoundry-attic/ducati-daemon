@@ -6,22 +6,19 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
-	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type Deletor struct {
-	Executor             executor.Executor
-	NamedLocker          locks.NamedLocker
-	Watcher              watcher.MissWatcher
-	SandboxNamespaceRepo namespace.Repository
-	NamespaceOpener      namespace.Opener
+	Executor        executor.Executor
+	Watcher         watcher.MissWatcher
+	NamespaceOpener namespace.Opener
 }
 
 func (d *Deletor) Delete(
 	interfaceName string,
 	containerNSPath string,
-	sandboxNS namespace.Namespace,
+	sandboxName string,
 	vxlanDeviceName string,
 ) error {
 	containerNS, err := d.NamespaceOpener.OpenPath(containerNSPath)
@@ -39,11 +36,9 @@ func (d *Deletor) Delete(
 			},
 
 			commands.CleanupSandbox{
-				Namespace:         sandboxNS,
-				SandboxRepository: d.SandboxNamespaceRepo,
-				NamedLocker:       d.NamedLocker,
-				Watcher:           d.Watcher,
-				VxlanDeviceName:   vxlanDeviceName,
+				SandboxName:     sandboxName,
+				Watcher:         d.Watcher,
+				VxlanDeviceName: vxlanDeviceName,
 			},
 		),
 	)

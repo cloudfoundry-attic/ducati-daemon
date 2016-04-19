@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -14,30 +15,48 @@ import (
 var _ = Describe("CleanupSandbox", func() {
 	var (
 		context               *fakes.Context
+		sbox                  *sandbox.Sandbox
+		sboxLocker            *fakes.Locker
 		sandboxNS             *fakes.Namespace
-		namedLocker           *fakes.NamedLocker
 		linkFactory           *fakes.LinkFactory
 		cleanupSandboxCommand commands.CleanupSandbox
 		missWatcher           *fakes.MissWatcher
-		sandboxRepository     *fakes.Repository
+		namespaceRepository   *fakes.Repository
+		sandboxRepo           *fakes.SandboxRepository
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
+
 		sandboxNS = &fakes.Namespace{}
-		sandboxNS.NameReturns("some-sandbox-name")
-		namedLocker = &fakes.NamedLocker{}
+		sandboxNS.NameReturns("sandbox-name")
+
+		sboxLocker = &fakes.Locker{}
+		sbox = &sandbox.Sandbox{
+			Namespace: sandboxNS,
+			Locker:    sboxLocker,
+		}
+
 		linkFactory = &fakes.LinkFactory{}
 		context.LinkFactoryReturns(linkFactory)
 		missWatcher = &fakes.MissWatcher{}
-		sandboxRepository = &fakes.Repository{}
+		namespaceRepository = &fakes.Repository{}
+
+		sandboxRepo = &fakes.SandboxRepository{}
+		sandboxRepo.GetStub = func(key string) *sandbox.Sandbox {
+			if key == "sandbox-name" {
+				return sbox
+			}
+			return nil
+		}
+
+		context.SandboxRepositoryReturns(sandboxRepo)
+		context.SandboxNamespaceRepositoryReturns(namespaceRepository)
 
 		cleanupSandboxCommand = commands.CleanupSandbox{
-			Namespace:         sandboxNS,
-			SandboxRepository: sandboxRepository,
-			NamedLocker:       namedLocker,
-			Watcher:           missWatcher,
-			VxlanDeviceName:   "some-vxlan",
+			SandboxName:     "sandbox-name",
+			Watcher:         missWatcher,
+			VxlanDeviceName: "some-vxlan",
 		}
 
 		sandboxNS.ExecuteStub = func(callback func(ns *os.File) error) error {
@@ -49,14 +68,20 @@ var _ = Describe("CleanupSandbox", func() {
 		}
 	})
 
+	It("gets the sandbox by name", func() {
+		err := cleanupSandboxCommand.Execute(context)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(sandboxRepo.GetCallCount()).To(Equal(1))
+		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("sandbox-name"))
+	})
+
 	It("locks and unlocks on the namespace", func() {
 		err := cleanupSandboxCommand.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(namedLocker.LockCallCount()).To(Equal(1))
-		Expect(namedLocker.UnlockCallCount()).To(Equal(1))
-		Expect(namedLocker.LockArgsForCall(0)).To(Equal("some-sandbox-name"))
-		Expect(namedLocker.UnlockArgsForCall(0)).To(Equal("some-sandbox-name"))
+		Expect(sboxLocker.LockCallCount()).To(Equal(1))
+		Expect(sboxLocker.UnlockCallCount()).To(Equal(1))
 	})
 
 	It("counts the veth devices inside the sandbox", func() {
@@ -78,7 +103,7 @@ var _ = Describe("CleanupSandbox", func() {
 
 		It("wraps and returns an error", func() {
 			err := cleanupSandboxCommand.Execute(context)
-			Expect(err).To(MatchError("in namespace some-sandbox-name: callback failed: counting veth devices: some error"))
+			Expect(err).To(MatchError("in namespace sandbox-name: callback failed: counting veth devices: some error"))
 		})
 	})
 
@@ -91,7 +116,7 @@ var _ = Describe("CleanupSandbox", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sandboxRepository.DestroyCallCount()).To(Equal(0))
+			Expect(namespaceRepository.DestroyCallCount()).To(Equal(0))
 		})
 
 		It("does NOT destroy the vxlan device", func() {
@@ -124,7 +149,7 @@ var _ = Describe("CleanupSandbox", func() {
 			It("does not attempt to destroy the namespace", func() {
 				cleanupSandboxCommand.Execute(context)
 
-				Expect(sandboxRepository.DestroyCallCount()).To(Equal(0))
+				Expect(namespaceRepository.DestroyCallCount()).To(Equal(0))
 			})
 		})
 
@@ -172,7 +197,7 @@ var _ = Describe("CleanupSandbox", func() {
 
 				It("wraps and returns the original error", func() {
 					err := cleanupSandboxCommand.Execute(context)
-					Expect(err).To(MatchError("in namespace some-sandbox-name: callback failed: destroying vxlan some-vxlan: some-error"))
+					Expect(err).To(MatchError("in namespace sandbox-name: callback failed: destroying vxlan some-vxlan: some-error"))
 				})
 			})
 		})
@@ -181,24 +206,32 @@ var _ = Describe("CleanupSandbox", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sandboxRepository.DestroyCallCount()).To(Equal(1))
-			Expect(sandboxRepository.DestroyArgsForCall(0)).To(Equal(sandboxNS))
+			Expect(namespaceRepository.DestroyCallCount()).To(Equal(1))
+			Expect(namespaceRepository.DestroyArgsForCall(0)).To(Equal(sandboxNS))
 		})
 
 		Context("when theres an error destroying namespace", func() {
 			BeforeEach(func() {
-				sandboxRepository.DestroyReturns(errors.New("some-destroy-error"))
+				namespaceRepository.DestroyReturns(errors.New("some-destroy-error"))
 			})
 
 			It("wraps and propogates the error", func() {
-				Expect(cleanupSandboxCommand.Execute(context)).To(MatchError("destroying sandbox some-sandbox-name: some-destroy-error"))
+				Expect(cleanupSandboxCommand.Execute(context)).To(MatchError("destroying sandbox sandbox-name: some-destroy-error"))
 			})
+		})
+
+		It("removes the sandbox from the repo", func() {
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sandboxRepo.RemoveCallCount()).To(Equal(1))
+			Expect(sandboxRepo.RemoveArgsForCall(0)).To(Equal("sandbox-name"))
 		})
 	})
 
 	Describe("String", func() {
 		It("describes itself", func() {
-			Expect(cleanupSandboxCommand.String()).To(Equal("cleanup-sandbox some-sandbox-name"))
+			Expect(cleanupSandboxCommand.String()).To(Equal("cleanup-sandbox sandbox-name"))
 		})
 	})
 })
