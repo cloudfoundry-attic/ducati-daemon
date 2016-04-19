@@ -19,37 +19,36 @@ import (
 
 var _ = Describe("Creator", func() {
 	var (
-		creator              container.Creator
-		ex                   *fakes.Executor
-		containerMAC         net.HardwareAddr
-		containerNS          *fakes.Namespace
-		ipamResult           *types.Result
-		config               container.CreatorConfig
-		sandboxNamespaceRepo *fakes.Repository
-		sandboxNS            *fakes.Namespace
-		namedLocker          *fakes.NamedLocker
-		missWatcher          watcher.MissWatcher
-		commandBuilder       *fakes.CommandBuilder
-		namespaceOpener      *fakes.Opener
+		creator         container.Creator
+		ex              *fakes.Executor
+		containerMAC    net.HardwareAddr
+		containerNS     *fakes.Namespace
+		ipamResult      *types.Result
+		config          container.CreatorConfig
+		sandbox         *fakes.Sandbox
+		sandboxRepo     *fakes.SandboxRepository
+		sandboxNS       *fakes.Namespace
+		missWatcher     watcher.MissWatcher
+		commandBuilder  *fakes.CommandBuilder
+		namespaceOpener *fakes.Opener
 	)
 
 	BeforeEach(func() {
 		ex = &fakes.Executor{}
-		sandboxNamespaceRepo = &fakes.Repository{}
-		namedLocker = &fakes.NamedLocker{}
+		sandbox = &fakes.Sandbox{}
+		sandboxRepo = &fakes.SandboxRepository{}
 		missWatcher = &fakes.MissWatcher{}
 		commandBuilder = &fakes.CommandBuilder{}
 		containerNS = &fakes.Namespace{NameStub: func() string { return "container ns sentinel" }}
 		namespaceOpener = &fakes.Opener{}
 		namespaceOpener.OpenPathReturns(containerNS, nil)
 		creator = container.Creator{
-			Executor:             ex,
-			SandboxNamespaceRepo: sandboxNamespaceRepo,
-			NamedLocker:          namedLocker,
-			Watcher:              missWatcher,
-			CommandBuilder:       commandBuilder,
-			NamespaceOpener:      namespaceOpener,
-			HostIP:               net.ParseIP("10.11.12.13"),
+			Executor:        ex,
+			SandboxRepo:     sandboxRepo,
+			Watcher:         missWatcher,
+			CommandBuilder:  commandBuilder,
+			NamespaceOpener: namespaceOpener,
+			HostIP:          net.ParseIP("10.11.12.13"),
 		}
 
 		macAddress := "01:02:03:04:05:06"
@@ -81,7 +80,10 @@ var _ = Describe("Creator", func() {
 		}
 
 		sandboxNS = &fakes.Namespace{NameStub: func() string { return "sandbox ns sentinel" }}
-		sandboxNamespaceRepo.GetReturns(sandboxNS, nil)
+		sandbox.NamespaceReturns(sandboxNS)
+
+		sandboxRepo.GetReturns(sandbox, nil)
+
 		ex.ExecuteStub = func(command executor.Command) error {
 			switch ex.ExecuteCallCount() {
 			case 3:
@@ -137,10 +139,8 @@ var _ = Describe("Creator", func() {
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(namedLocker.LockCallCount()).To(Equal(1))
-		Expect(namedLocker.UnlockCallCount()).To(Equal(1))
-		Expect(namedLocker.LockArgsForCall(0)).To(Equal("vni-99"))
-		Expect(namedLocker.UnlockArgsForCall(0)).To(Equal("vni-99"))
+		Expect(sandbox.LockCallCount()).To(Equal(1))
+		Expect(sandbox.UnlockCallCount()).To(Equal(1))
 	})
 
 	It("should execute the IdempotentlyCreateSandbox command group", func() {
@@ -171,13 +171,13 @@ var _ = Describe("Creator", func() {
 		_, err := creator.Setup(config)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(sandboxNamespaceRepo.GetCallCount()).To(Equal(1))
-		Expect(sandboxNamespaceRepo.GetArgsForCall(0)).To(Equal("vni-99"))
+		Expect(sandboxRepo.GetCallCount()).To(Equal(1))
+		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("vni-99"))
 	})
 
 	Context("when getting the sandbox ns from the sandbox repo fails", func() {
 		It("should return a meaningful error", func() {
-			sandboxNamespaceRepo.GetReturns(nil, errors.New("daikon"))
+			sandboxRepo.GetReturns(nil, errors.New("daikon"))
 
 			_, err := creator.Setup(config)
 			Expect(err).To(MatchError("get sandbox: daikon"))

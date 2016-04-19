@@ -22,7 +22,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/neigh"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/subscriber"
-	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
@@ -101,7 +100,6 @@ func main() {
 	sandboxRepo := sandbox.NewRepository(&sync.Mutex{}, sandboxNamespaceRepo)
 
 	osThreadLocker := &ossupport.OSLocker{}
-	namedMutex := &locks.NamedMutex{}
 
 	namespaceOpener := &namespace.PathOpener{}
 
@@ -142,13 +140,12 @@ func main() {
 		sandboxRepo,
 	)
 	creator := &container.Creator{
-		Executor:             executor,
-		SandboxNamespaceRepo: sandboxNamespaceRepo,
-		NamedLocker:          namedMutex,
-		Watcher:              missWatcher,
-		CommandBuilder:       commandBuilder,
-		HostIP:               conf.HostAddress,
-		NamespaceOpener:      namespaceOpener,
+		Executor:        executor,
+		SandboxRepo:     sandboxRepo,
+		Watcher:         missWatcher,
+		CommandBuilder:  commandBuilder,
+		HostIP:          conf.HostAddress,
+		NamespaceOpener: namespaceOpener,
 	}
 	deletor := &container.Deletor{
 		Executor:        executor,
