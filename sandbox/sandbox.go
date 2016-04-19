@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"os"
+	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/tedsuo/ifrit"
@@ -24,6 +25,7 @@ type process interface {
 
 type Sandbox struct {
 	Invoker          invoker
+	Locker           sync.Locker
 	Namespace        namespace.Namespace
 	NamespaceWatcher runner
 }
@@ -36,4 +38,12 @@ func (s *Sandbox) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	process.Signal(signal)
 
 	return nil
+}
+
+func (s *Sandbox) Lock() {
+	s.Locker.Lock()
+}
+
+func (s *Sandbox) Unlock() {
+	s.Locker.Unlock()
 }

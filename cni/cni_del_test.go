@@ -13,15 +13,13 @@ import (
 
 var _ = Describe("CniDel", func() {
 	var (
-		datastore            *fakes.Store
-		deletor              *fakes.Deletor
-		controller           *cni.DelController
-		osLocker             *fakes.OSThreadLocker
-		ipAllocator          *fakes.IPAllocator
-		networkMapper        *fakes.NetworkMapper
-		sandboxNamespaceRepo *fakes.Repository
-		sandboxNS            *fakes.Namespace
-		payload              models.CNIDelPayload
+		datastore     *fakes.Store
+		deletor       *fakes.Deletor
+		controller    *cni.DelController
+		osLocker      *fakes.OSThreadLocker
+		ipAllocator   *fakes.IPAllocator
+		networkMapper *fakes.NetworkMapper
+		payload       models.CNIDelPayload
 	)
 
 	BeforeEach(func() {
@@ -31,7 +29,6 @@ var _ = Describe("CniDel", func() {
 		deletor = &fakes.Deletor{}
 		ipAllocator = &fakes.IPAllocator{}
 		networkMapper = &fakes.NetworkMapper{}
-		sandboxNamespaceRepo = &fakes.Repository{}
 
 		networkMapper.GetVNIReturns(42, nil)
 		datastore.GetReturns(models.Container{
@@ -39,16 +36,12 @@ var _ = Describe("CniDel", func() {
 		}, nil)
 
 		controller = &cni.DelController{
-			Datastore:            datastore,
-			Deletor:              deletor,
-			OSThreadLocker:       osLocker,
-			SandboxNamespaceRepo: sandboxNamespaceRepo,
-			IPAllocator:          ipAllocator,
-			NetworkMapper:        networkMapper,
+			Datastore:      datastore,
+			Deletor:        deletor,
+			OSThreadLocker: osLocker,
+			IPAllocator:    ipAllocator,
+			NetworkMapper:  networkMapper,
 		}
-
-		sandboxNS = &fakes.Namespace{NameStub: func() string { return "sandbox ns sentinel" }}
-		sandboxNamespaceRepo.GetReturns(sandboxNS, nil)
 
 		payload = models.CNIDelPayload{
 			InterfaceName:      "some-interface-name",
@@ -104,27 +97,6 @@ var _ = Describe("CniDel", func() {
 			err := controller.Del(payload)
 			Expect(err).To(MatchError("get vni: some error"))
 
-			Expect(sandboxNamespaceRepo.GetCallCount()).To(Equal(0))
-		})
-	})
-
-	It("gets the correct sandbox from the repo", func() {
-		err := controller.Del(payload)
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(sandboxNamespaceRepo.GetCallCount()).To(Equal(1))
-		Expect(sandboxNamespaceRepo.GetArgsForCall(0)).To(Equal("vni-42"))
-	})
-
-	Context("when the sandbox repo fails", func() {
-		BeforeEach(func() {
-			sandboxNamespaceRepo.GetReturns(nil, errors.New("some-repo-error"))
-		})
-
-		It("aborts and returns a wrapped error", func() {
-			err := controller.Del(payload)
-
-			Expect(err).To(MatchError("sandbox get: some-repo-error"))
 			Expect(deletor.DeleteCallCount()).To(Equal(0))
 		})
 	})
@@ -135,10 +107,10 @@ var _ = Describe("CniDel", func() {
 
 		Expect(deletor.DeleteCallCount()).To(Equal(1))
 
-		ifName, cnsPath, sbNS, vxName := deletor.DeleteArgsForCall(0)
+		ifName, cnsPath, sbName, vxName := deletor.DeleteArgsForCall(0)
 		Expect(ifName).To(Equal("some-interface-name"))
 		Expect(cnsPath).To(Equal("/some/container/namespace/path"))
-		Expect(sbNS).To(Equal(sandboxNS))
+		Expect(sbName).To(Equal("vni-42"))
 		Expect(vxName).To(Equal("vxlan42"))
 	})
 

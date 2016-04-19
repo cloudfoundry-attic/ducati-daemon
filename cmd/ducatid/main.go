@@ -151,11 +151,9 @@ func main() {
 		NamespaceOpener:      namespaceOpener,
 	}
 	deletor := &container.Deletor{
-		Executor:             executor,
-		NamedLocker:          namedMutex,
-		Watcher:              missWatcher,
-		SandboxNamespaceRepo: sandboxNamespaceRepo,
-		NamespaceOpener:      namespaceOpener,
+		Executor:        executor,
+		Watcher:         missWatcher,
+		NamespaceOpener: namespaceOpener,
 	}
 
 	addController := &cni.AddController{
@@ -167,12 +165,11 @@ func main() {
 	}
 
 	delController := &cni.DelController{
-		Datastore:            dataStore,
-		Deletor:              deletor,
-		SandboxNamespaceRepo: sandboxNamespaceRepo,
-		IPAllocator:          ipAllocator,
-		NetworkMapper:        networkMapper,
-		OSThreadLocker:       osThreadLocker,
+		Datastore:      dataStore,
+		Deletor:        deletor,
+		IPAllocator:    ipAllocator,
+		NetworkMapper:  networkMapper,
+		OSThreadLocker: osThreadLocker,
 	}
 
 	marshaler := marshal.MarshalFunc(json.Marshal)

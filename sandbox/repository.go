@@ -42,6 +42,7 @@ func (r *repository) Create(sandboxName string) (*Sandbox, error) {
 	}
 
 	sandbox := &Sandbox{
+		Locker:    &sync.Mutex{}, // not tested
 		Namespace: ns,
 	}
 	r.sandboxes[sandboxName] = sandbox
@@ -55,7 +56,6 @@ func (r *repository) Get(sandboxName string) *Sandbox {
 	r.locker.Unlock()
 	return sbox
 }
-
 
 func (r *repository) Remove(sandboxName string) {
 	r.locker.Lock()

@@ -76,4 +76,36 @@ var _ = Describe("Sandbox", func() {
 			Expect(signal).To(Equal(os.Kill))
 		})
 	})
+
+	Describe("Lock", func() {
+		var locker *fakes.Locker
+
+		BeforeEach(func() {
+			locker = &fakes.Locker{}
+			sb = &sandbox.Sandbox{
+				Locker: locker,
+			}
+		})
+
+		It("locks the Locker", func() {
+			sb.Lock()
+			Expect(locker.LockCallCount()).To(Equal(1))
+		})
+	})
+
+	Describe("Unlock", func() {
+		var locker *fakes.Locker
+
+		BeforeEach(func() {
+			locker = &fakes.Locker{}
+			sb = &sandbox.Sandbox{
+				Locker: locker,
+			}
+		})
+
+		It("locks the Locker", func() {
+			sb.Unlock()
+			Expect(locker.UnlockCallCount()).To(Equal(1))
+		})
+	})
 })
