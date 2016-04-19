@@ -39,7 +39,7 @@ type Command interface {
 
 //go:generate counterfeiter -o ../fakes/condition.go --fake-name Condition . Condition
 type Condition interface {
-	Satisfied(context Context) bool
+	Satisfied(context Context) (bool, error)
 	String() string
 }
 

@@ -8,13 +8,14 @@ import (
 )
 
 type Condition struct {
-	SatisfiedStub        func(context executor.Context) bool
+	SatisfiedStub        func(context executor.Context) (bool, error)
 	satisfiedMutex       sync.RWMutex
 	satisfiedArgsForCall []struct {
 		context executor.Context
 	}
 	satisfiedReturns struct {
 		result1 bool
+		result2 error
 	}
 	StringStub        func() string
 	stringMutex       sync.RWMutex
@@ -24,7 +25,7 @@ type Condition struct {
 	}
 }
 
-func (fake *Condition) Satisfied(context executor.Context) bool {
+func (fake *Condition) Satisfied(context executor.Context) (bool, error) {
 	fake.satisfiedMutex.Lock()
 	fake.satisfiedArgsForCall = append(fake.satisfiedArgsForCall, struct {
 		context executor.Context
@@ -33,7 +34,7 @@ func (fake *Condition) Satisfied(context executor.Context) bool {
 	if fake.SatisfiedStub != nil {
 		return fake.SatisfiedStub(context)
 	} else {
-		return fake.satisfiedReturns.result1
+		return fake.satisfiedReturns.result1, fake.satisfiedReturns.result2
 	}
 }
 
@@ -49,11 +50,12 @@ func (fake *Condition) SatisfiedArgsForCall(i int) executor.Context {
 	return fake.satisfiedArgsForCall[i].context
 }
 
-func (fake *Condition) SatisfiedReturns(result1 bool) {
+func (fake *Condition) SatisfiedReturns(result1 bool, result2 error) {
 	fake.SatisfiedStub = nil
 	fake.satisfiedReturns = struct {
 		result1 bool
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Condition) String() string {

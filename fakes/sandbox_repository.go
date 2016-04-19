@@ -8,22 +8,23 @@ import (
 )
 
 type SandboxRepository struct {
-	CreateStub        func(sandboxName string) (*sandbox.Sandbox, error)
+	CreateStub        func(sandboxName string) (sandbox.Sandbox, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
 		sandboxName string
 	}
 	createReturns struct {
-		result1 *sandbox.Sandbox
+		result1 sandbox.Sandbox
 		result2 error
 	}
-	GetStub        func(sandboxName string) *sandbox.Sandbox
+	GetStub        func(sandboxName string) (sandbox.Sandbox, error)
 	getMutex       sync.RWMutex
 	getArgsForCall []struct {
 		sandboxName string
 	}
 	getReturns struct {
-		result1 *sandbox.Sandbox
+		result1 sandbox.Sandbox
+		result2 error
 	}
 	RemoveStub        func(sandboxName string)
 	removeMutex       sync.RWMutex
@@ -32,7 +33,7 @@ type SandboxRepository struct {
 	}
 }
 
-func (fake *SandboxRepository) Create(sandboxName string) (*sandbox.Sandbox, error) {
+func (fake *SandboxRepository) Create(sandboxName string) (sandbox.Sandbox, error) {
 	fake.createMutex.Lock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		sandboxName string
@@ -57,15 +58,15 @@ func (fake *SandboxRepository) CreateArgsForCall(i int) string {
 	return fake.createArgsForCall[i].sandboxName
 }
 
-func (fake *SandboxRepository) CreateReturns(result1 *sandbox.Sandbox, result2 error) {
+func (fake *SandboxRepository) CreateReturns(result1 sandbox.Sandbox, result2 error) {
 	fake.CreateStub = nil
 	fake.createReturns = struct {
-		result1 *sandbox.Sandbox
+		result1 sandbox.Sandbox
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *SandboxRepository) Get(sandboxName string) *sandbox.Sandbox {
+func (fake *SandboxRepository) Get(sandboxName string) (sandbox.Sandbox, error) {
 	fake.getMutex.Lock()
 	fake.getArgsForCall = append(fake.getArgsForCall, struct {
 		sandboxName string
@@ -74,7 +75,7 @@ func (fake *SandboxRepository) Get(sandboxName string) *sandbox.Sandbox {
 	if fake.GetStub != nil {
 		return fake.GetStub(sandboxName)
 	} else {
-		return fake.getReturns.result1
+		return fake.getReturns.result1, fake.getReturns.result2
 	}
 }
 
@@ -90,11 +91,12 @@ func (fake *SandboxRepository) GetArgsForCall(i int) string {
 	return fake.getArgsForCall[i].sandboxName
 }
 
-func (fake *SandboxRepository) GetReturns(result1 *sandbox.Sandbox) {
+func (fake *SandboxRepository) GetReturns(result1 sandbox.Sandbox, result2 error) {
 	fake.GetStub = nil
 	fake.getReturns = struct {
-		result1 *sandbox.Sandbox
-	}{result1}
+		result1 sandbox.Sandbox
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *SandboxRepository) Remove(sandboxName string) {

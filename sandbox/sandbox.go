@@ -1,7 +1,6 @@
 package sandbox
 
 import (
-	"os"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -23,27 +22,23 @@ type process interface {
 	ifrit.Process
 }
 
-type Sandbox struct {
-	Invoker          invoker
-	Locker           sync.Locker
-	Namespace        namespace.Namespace
-	NamespaceWatcher runner
+//go:generate counterfeiter -o ../fakes/sandbox.go --fake-name Sandbox . Sandbox
+type Sandbox interface {
+	sync.Locker
+	Namespace() namespace.Namespace
 }
 
-func (s *Sandbox) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	process := s.Invoker.Invoke(s.NamespaceWatcher)
-	close(ready)
-
-	signal := <-signals
-	process.Signal(signal)
-
-	return nil
+func New(namespace namespace.Namespace) *sandbox {
+	return &sandbox{
+		namespace: namespace,
+	}
 }
 
-func (s *Sandbox) Lock() {
-	s.Locker.Lock()
+type sandbox struct {
+	sync.Mutex
+	namespace namespace.Namespace
 }
 
-func (s *Sandbox) Unlock() {
-	s.Locker.Unlock()
+func (s *sandbox) Namespace() namespace.Namespace {
+	return s.namespace
 }
