@@ -10,8 +10,8 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
-	"github.com/cloudfoundry-incubator/ducati-daemon/locks"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
@@ -25,13 +25,12 @@ type commandBuilder interface {
 }
 
 type Creator struct {
-	Executor             executor.Executor
-	SandboxNamespaceRepo namespace.Repository
-	NamedLocker          locks.NamedLocker
-	Watcher              watcher.MissWatcher
-	CommandBuilder       commandBuilder
-	HostIP               net.IP
-	NamespaceOpener      namespace.Opener
+	Executor        executor.Executor
+	SandboxRepo     sandbox.Repository
+	Watcher         watcher.MissWatcher
+	CommandBuilder  commandBuilder
+	HostIP          net.IP
+	NamespaceOpener namespace.Opener
 }
 
 type CreatorConfig struct {
@@ -64,18 +63,19 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 
 	var routeCommands = c.CommandBuilder.AddRoutes(config.InterfaceName, config.IPAMResult.IP4)
 
-	c.NamedLocker.Lock(sandboxName)
-	defer c.NamedLocker.Unlock(sandboxName)
-
 	err = c.Executor.Execute(c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName, vxlanName))
 	if err != nil {
 		return models.Container{}, fmt.Errorf("executing command: create sandbox: %s", err)
 	}
 
-	sandboxNS, err := c.SandboxNamespaceRepo.Get(sandboxName)
+	sandbox, err := c.SandboxRepo.Get(sandboxName)
 	if err != nil {
 		return models.Container{}, fmt.Errorf("get sandbox: %s", err)
 	}
+	sandbox.Lock()
+	defer sandbox.Unlock()
+
+	sandboxNS := sandbox.Namespace()
 	err = c.Executor.Execute(
 		commands.All(
 			c.CommandBuilder.IdempotentlyCreateVxlan(vxlanName, config.VNI, sandboxName, sandboxNS),
