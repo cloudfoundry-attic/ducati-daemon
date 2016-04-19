@@ -15,8 +15,7 @@ import (
 var _ = Describe("CleanupSandbox", func() {
 	var (
 		context               *fakes.Context
-		sbox                  *sandbox.Sandbox
-		sboxLocker            *fakes.Locker
+		sbox                  *fakes.Sandbox
 		sandboxNS             *fakes.Namespace
 		linkFactory           *fakes.LinkFactory
 		cleanupSandboxCommand commands.CleanupSandbox
@@ -31,11 +30,8 @@ var _ = Describe("CleanupSandbox", func() {
 		sandboxNS = &fakes.Namespace{}
 		sandboxNS.NameReturns("sandbox-name")
 
-		sboxLocker = &fakes.Locker{}
-		sbox = &sandbox.Sandbox{
-			Namespace: sandboxNS,
-			Locker:    sboxLocker,
-		}
+		sbox = &fakes.Sandbox{}
+		sbox.NamespaceReturns(sandboxNS)
 
 		linkFactory = &fakes.LinkFactory{}
 		context.LinkFactoryReturns(linkFactory)
@@ -43,11 +39,11 @@ var _ = Describe("CleanupSandbox", func() {
 		namespaceRepository = &fakes.Repository{}
 
 		sandboxRepo = &fakes.SandboxRepository{}
-		sandboxRepo.GetStub = func(key string) *sandbox.Sandbox {
+		sandboxRepo.GetStub = func(key string) (sandbox.Sandbox, error) {
 			if key == "sandbox-name" {
-				return sbox
+				return sbox, nil
 			}
-			return nil
+			return nil, sandbox.NotFoundError
 		}
 
 		context.SandboxRepositoryReturns(sandboxRepo)
@@ -76,12 +72,21 @@ var _ = Describe("CleanupSandbox", func() {
 		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("sandbox-name"))
 	})
 
+	Context("when sandbox doesn't exist", func() {
+		It("returns an error", func() {
+			sandboxRepo.GetReturns(nil, sandbox.NotFoundError)
+
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).To(MatchError("get sandbox: not found"))
+		})
+	})
+
 	It("locks and unlocks on the namespace", func() {
 		err := cleanupSandboxCommand.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(sboxLocker.LockCallCount()).To(Equal(1))
-		Expect(sboxLocker.UnlockCallCount()).To(Equal(1))
+		Expect(sbox.LockCallCount()).To(Equal(1))
+		Expect(sbox.UnlockCallCount()).To(Equal(1))
 	})
 
 	It("counts the veth devices inside the sandbox", func() {

@@ -15,12 +15,15 @@ type CleanupSandbox struct {
 }
 
 func (c CleanupSandbox) Execute(context executor.Context) error {
-	sbox := context.SandboxRepository().Get(c.SandboxName)
+	sbox, err := context.SandboxRepository().Get(c.SandboxName)
+	if err != nil {
+		return fmt.Errorf("get sandbox: %s", err)
+	}
 	sbox.Lock()
 	defer sbox.Unlock()
 
 	var vethLinkCount = 0
-	err := sbox.Namespace.Execute(func(ns *os.File) error {
+	err = sbox.Namespace().Execute(func(ns *os.File) error {
 		var err error
 		vethLinkCount, err = context.LinkFactory().VethDeviceCount()
 		if err != nil {
@@ -45,12 +48,12 @@ func (c CleanupSandbox) Execute(context executor.Context) error {
 	namespaceRepo := context.SandboxNamespaceRepository()
 
 	if vethLinkCount == 0 {
-		err := c.Watcher.StopMonitor(sbox.Namespace)
+		err := c.Watcher.StopMonitor(sbox.Namespace())
 		if err != nil {
 			return fmt.Errorf("watcher stop monitor: %s", err)
 		}
 
-		err = namespaceRepo.Destroy(sbox.Namespace)
+		err = namespaceRepo.Destroy(sbox.Namespace())
 		if err != nil {
 			return fmt.Errorf("destroying sandbox %s: %s", c.SandboxName, err)
 		}

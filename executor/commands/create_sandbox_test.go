@@ -5,7 +5,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,7 +26,7 @@ var _ = Describe("CreateSandbox", func() {
 			Name: "my-namespace",
 		}
 
-		sandbox := &sandbox.Sandbox{}
+		sandbox := &fakes.Sandbox{}
 		sandboxRepository.CreateReturns(sandbox, nil)
 	})
 

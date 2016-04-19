@@ -12,11 +12,16 @@ type Unless struct {
 }
 
 func (u Unless) Execute(context executor.Context) error {
-	if u.Condition.Satisfied(context) {
+	satisfied, err := u.Condition.Satisfied(context)
+	if err != nil {
+		return fmt.Errorf("condition check: %s", err)
+	}
+
+	if satisfied {
 		return nil
 	}
 
-	err := u.Command.Execute(context)
+	err = u.Command.Execute(context)
 	if err != nil {
 		return fmt.Errorf("unless: %s", err)
 	}

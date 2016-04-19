@@ -53,7 +53,7 @@ var _ = Describe("Sandbox Repository", func() {
 			sbox, err := sandboxRepo.Create("some-sandbox-name")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sbox.Namespace).To(Equal(sboxNamespace))
+			Expect(sbox.Namespace()).To(Equal(sboxNamespace))
 		})
 
 		Context("when creating the namespace fails", func() {
@@ -95,9 +95,10 @@ var _ = Describe("Sandbox Repository", func() {
 		})
 
 		Context("when getting a sandbox that hasn't been created", func() {
-			It("returns nil", func() {
-				sbox := sandboxRepo.Get("unknown-sandbox")
+			It("returns an error", func() {
+				sbox, err := sandboxRepo.Get("unknown-sandbox")
 				Expect(sbox).To(BeNil())
+				Expect(err).To(BeIdenticalTo(sandbox.NotFoundError))
 			})
 		})
 
@@ -106,14 +107,15 @@ var _ = Describe("Sandbox Repository", func() {
 				expectedSandbox, err := sandboxRepo.Create("some-sandbox-name")
 				Expect(err).NotTo(HaveOccurred())
 
-				sbox := sandboxRepo.Get("some-sandbox-name")
+				sbox, err := sandboxRepo.Get("some-sandbox-name")
+				Expect(err).NotTo(HaveOccurred())
 				Expect(sbox).To(Equal(expectedSandbox))
 			})
 		})
 	})
 
 	Describe("Remove", func() {
-		var otherSandbox *sandbox.Sandbox
+		var otherSandbox sandbox.Sandbox
 
 		BeforeEach(func() {
 			_, err := sandboxRepo.Create("some-sandbox-name")
@@ -126,7 +128,8 @@ var _ = Describe("Sandbox Repository", func() {
 		It("removes the sandbox by name", func() {
 			sandboxRepo.Remove("some-sandbox-name")
 
-			sbox := sandboxRepo.Get("some-sandbox-name")
+			sbox, err := sandboxRepo.Get("some-sandbox-name")
+			Expect(err).To(BeIdenticalTo(sandbox.NotFoundError))
 			Expect(sbox).To(BeNil())
 		})
 
@@ -139,7 +142,8 @@ var _ = Describe("Sandbox Repository", func() {
 		It("does not remove other sandbox", func() {
 			sandboxRepo.Remove("some-sandbox-name")
 
-			sbox := sandboxRepo.Get("some-other-sandbox-name")
+			sbox, err := sandboxRepo.Get("some-other-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
 			Expect(sbox).To(Equal(otherSandbox))
 		})
 	})

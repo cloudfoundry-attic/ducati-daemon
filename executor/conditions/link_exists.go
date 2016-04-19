@@ -10,8 +10,8 @@ type LinkExists struct {
 	Name string
 }
 
-func (l LinkExists) Satisfied(context executor.Context) bool {
-	return context.LinkFactory().Exists(l.Name)
+func (l LinkExists) Satisfied(context executor.Context) (bool, error) {
+	return context.LinkFactory().Exists(l.Name), nil
 }
 
 func (l LinkExists) String() string {

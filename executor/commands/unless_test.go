@@ -40,7 +40,7 @@ var _ = Describe("unless", func() {
 
 	Context("when the condition is satisfied", func() {
 		BeforeEach(func() {
-			condition.SatisfiedReturns(true)
+			condition.SatisfiedReturns(true, nil)
 		})
 
 		It("does not execute the command", func() {
@@ -52,7 +52,7 @@ var _ = Describe("unless", func() {
 
 	Context("when the condition is not satisfied", func() {
 		BeforeEach(func() {
-			condition.SatisfiedReturns(false)
+			condition.SatisfiedReturns(false, nil)
 		})
 
 		It("executes the command", func() {
@@ -72,5 +72,18 @@ var _ = Describe("unless", func() {
 				Expect(err).To(MatchError("unless: go away"))
 			})
 		})
+	})
+
+	Context("when the condition check errors", func() {
+		BeforeEach(func() {
+			condition.SatisfiedReturns(false, errors.New("potato"))
+		})
+		It("returns an error and does not execute the command", func() {
+
+			err := unless.Execute(context)
+			Expect(err).To(MatchError("condition check: potato"))
+			Expect(command.ExecuteCallCount()).To(Equal(0))
+		})
+
 	})
 })
