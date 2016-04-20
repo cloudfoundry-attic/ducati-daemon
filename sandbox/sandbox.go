@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -26,6 +27,7 @@ type process interface {
 type Sandbox interface {
 	sync.Locker
 	Namespace() namespace.Namespace
+	LaunchDNS(ifrit.Runner) error
 }
 
 func New(namespace namespace.Namespace) *sandbox {
@@ -41,4 +43,8 @@ type sandbox struct {
 
 func (s *sandbox) Namespace() namespace.Namespace {
 	return s.namespace
+}
+
+func (s *sandbox) LaunchDNS(ifrit.Runner) error {
+	return errors.New("not implemented")
 }

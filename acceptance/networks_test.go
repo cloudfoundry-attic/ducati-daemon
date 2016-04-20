@@ -16,6 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/miekg/dns"
 
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
@@ -300,6 +301,37 @@ var _ = Describe("Networks", func() {
 					Src: net.ParseIP("192.168.1.1").To4(),
 					Dst: vxlanNet,
 				}))
+
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("starts a DNS resolver in the sandbox at the configured overlay address", func() {
+			err := containerNamespace.Execute(func(_ *os.File) error {
+				client := dns.Client{
+					Net: "udp",
+				}
+				message := &dns.Msg{
+					MsgHdr: dns.MsgHdr{
+						Id: dns.Id(),
+					},
+					Question: []dns.Question{
+						dns.Question{
+							Name:   dns.Fqdn("example.com"),
+							Qtype:  dns.TypeA,
+							Qclass: uint16(dns.ClassINET),
+						},
+					},
+				}
+				resp, _, err := client.Exchange(message, "192.168.255.254:53")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(resp).NotTo(BeNil())
+				Expect(resp.Rcode).To(Equal(dns.RcodeSuccess))
+				Expect(len(resp.Answer)).To(BeNumerically(">=", 1))
+				_, ok := resp.Answer[0].(*dns.A)
+				Expect(ok).To(BeTrue())
 
 				return nil
 			})

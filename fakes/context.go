@@ -40,6 +40,18 @@ type Context struct {
 	sandboxRepositoryReturns     struct {
 		result1 sandbox.Repository
 	}
+	ListenerFactoryStub        func() executor.ListenerFactory
+	listenerFactoryMutex       sync.RWMutex
+	listenerFactoryArgsForCall []struct{}
+	listenerFactoryReturns     struct {
+		result1 executor.ListenerFactory
+	}
+	DNSServerFactoryStub        func() executor.DNSServerFactory
+	dNSServerFactoryMutex       sync.RWMutex
+	dNSServerFactoryArgsForCall []struct{}
+	dNSServerFactoryReturns     struct {
+		result1 executor.DNSServerFactory
+	}
 }
 
 func (fake *Context) AddressManager() executor.AddressManager {
@@ -159,6 +171,54 @@ func (fake *Context) SandboxRepositoryReturns(result1 sandbox.Repository) {
 	fake.SandboxRepositoryStub = nil
 	fake.sandboxRepositoryReturns = struct {
 		result1 sandbox.Repository
+	}{result1}
+}
+
+func (fake *Context) ListenerFactory() executor.ListenerFactory {
+	fake.listenerFactoryMutex.Lock()
+	fake.listenerFactoryArgsForCall = append(fake.listenerFactoryArgsForCall, struct{}{})
+	fake.listenerFactoryMutex.Unlock()
+	if fake.ListenerFactoryStub != nil {
+		return fake.ListenerFactoryStub()
+	} else {
+		return fake.listenerFactoryReturns.result1
+	}
+}
+
+func (fake *Context) ListenerFactoryCallCount() int {
+	fake.listenerFactoryMutex.RLock()
+	defer fake.listenerFactoryMutex.RUnlock()
+	return len(fake.listenerFactoryArgsForCall)
+}
+
+func (fake *Context) ListenerFactoryReturns(result1 executor.ListenerFactory) {
+	fake.ListenerFactoryStub = nil
+	fake.listenerFactoryReturns = struct {
+		result1 executor.ListenerFactory
+	}{result1}
+}
+
+func (fake *Context) DNSServerFactory() executor.DNSServerFactory {
+	fake.dNSServerFactoryMutex.Lock()
+	fake.dNSServerFactoryArgsForCall = append(fake.dNSServerFactoryArgsForCall, struct{}{})
+	fake.dNSServerFactoryMutex.Unlock()
+	if fake.DNSServerFactoryStub != nil {
+		return fake.DNSServerFactoryStub()
+	} else {
+		return fake.dNSServerFactoryReturns.result1
+	}
+}
+
+func (fake *Context) DNSServerFactoryCallCount() int {
+	fake.dNSServerFactoryMutex.RLock()
+	defer fake.dNSServerFactoryMutex.RUnlock()
+	return len(fake.dNSServerFactoryArgsForCall)
+}
+
+func (fake *Context) DNSServerFactoryReturns(result1 executor.DNSServerFactory) {
+	fake.DNSServerFactoryStub = nil
+	fake.dNSServerFactoryReturns = struct {
+		result1 executor.DNSServerFactory
 	}{result1}
 }
 

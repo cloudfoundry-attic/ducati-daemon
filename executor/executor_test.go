@@ -14,6 +14,8 @@ var _ = Describe("Executor", func() {
 		linkFactory                *fakes.LinkFactory
 		sandboxNamespaceRepository *fakes.Repository
 		sandboxRepository          *fakes.SandboxRepository
+		listenerFactory            *fakes.ListenerFactory
+		dnsServerFactory           *fakes.DNSServerFactory
 		command                    *fakes.Command
 		ex                         executor.Executor
 	)
@@ -24,6 +26,8 @@ var _ = Describe("Executor", func() {
 		linkFactory = &fakes.LinkFactory{}
 		sandboxNamespaceRepository = &fakes.Repository{}
 		sandboxRepository = &fakes.SandboxRepository{}
+		listenerFactory = &fakes.ListenerFactory{}
+		dnsServerFactory = &fakes.DNSServerFactory{}
 
 		command = &fakes.Command{}
 
@@ -33,6 +37,8 @@ var _ = Describe("Executor", func() {
 			linkFactory,
 			sandboxNamespaceRepository,
 			sandboxRepository,
+			listenerFactory,
+			dnsServerFactory,
 		)
 	})
 
@@ -79,6 +85,18 @@ var _ = Describe("Executor", func() {
 		Describe("SandboxRepository", func() {
 			It("returns the SandboxRepository", func() {
 				Expect(context.SandboxRepository()).To(Equal(sandboxRepository))
+			})
+		})
+
+		Describe("ListenerFactory", func() {
+			It("returns the ListenerFactory", func() {
+				Expect(context.ListenerFactory()).To(Equal(listenerFactory))
+			})
+		})
+
+		Describe("DNSServerFactory", func() {
+			It("returns the DNSServerFactory", func() {
+				Expect(context.DNSServerFactory()).To(Equal(dnsServerFactory))
 			})
 		})
 	})

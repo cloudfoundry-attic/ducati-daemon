@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
+	"github.com/tedsuo/ifrit"
 )
 
 type Sandbox struct {
@@ -20,6 +21,14 @@ type Sandbox struct {
 	namespaceArgsForCall []struct{}
 	namespaceReturns     struct {
 		result1 namespace.Namespace
+	}
+	LaunchDNSStub        func(ifrit.Runner) error
+	launchDNSMutex       sync.RWMutex
+	launchDNSArgsForCall []struct {
+		arg1 ifrit.Runner
+	}
+	launchDNSReturns struct {
+		result1 error
 	}
 }
 
@@ -74,6 +83,38 @@ func (fake *Sandbox) NamespaceReturns(result1 namespace.Namespace) {
 	fake.NamespaceStub = nil
 	fake.namespaceReturns = struct {
 		result1 namespace.Namespace
+	}{result1}
+}
+
+func (fake *Sandbox) LaunchDNS(arg1 ifrit.Runner) error {
+	fake.launchDNSMutex.Lock()
+	fake.launchDNSArgsForCall = append(fake.launchDNSArgsForCall, struct {
+		arg1 ifrit.Runner
+	}{arg1})
+	fake.launchDNSMutex.Unlock()
+	if fake.LaunchDNSStub != nil {
+		return fake.LaunchDNSStub(arg1)
+	} else {
+		return fake.launchDNSReturns.result1
+	}
+}
+
+func (fake *Sandbox) LaunchDNSCallCount() int {
+	fake.launchDNSMutex.RLock()
+	defer fake.launchDNSMutex.RUnlock()
+	return len(fake.launchDNSArgsForCall)
+}
+
+func (fake *Sandbox) LaunchDNSArgsForCall(i int) ifrit.Runner {
+	fake.launchDNSMutex.RLock()
+	defer fake.launchDNSMutex.RUnlock()
+	return fake.launchDNSArgsForCall[i].arg1
+}
+
+func (fake *Sandbox) LaunchDNSReturns(result1 error) {
+	fake.LaunchDNSStub = nil
+	fake.launchDNSReturns = struct {
+		result1 error
 	}{result1}
 }
 
