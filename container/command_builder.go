@@ -161,6 +161,10 @@ func (b *CommandBuilder) IdempotentlySetupBridge(
 					commands.SetLinkUp{
 						LinkName: bridgeName,
 					},
+					commands.SetLinkMaster{
+						Master: bridgeName,
+						Slave:  commands.DNS_INTERFACE_NAME,
+					},
 				),
 			},
 			commands.SetLinkMaster{

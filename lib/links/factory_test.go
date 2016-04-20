@@ -56,6 +56,35 @@ var _ = Describe("Factory", func() {
 		})
 	})
 
+	Describe("CreateDummy", func() {
+		var expectedDummy *netlink.Dummy
+
+		BeforeEach(func() {
+			expectedDummy = &netlink.Dummy{
+				LinkAttrs: netlink.LinkAttrs{
+					Name: "some-dummy-name",
+				},
+			}
+		})
+
+		It("adds the dummy link", func() {
+			err := factory.CreateDummy("some-dummy-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(netlinker.LinkAddCallCount()).To(Equal(1))
+			Expect(netlinker.LinkAddArgsForCall(0)).To(Equal(expectedDummy))
+		})
+
+		Context("when adding the dummy link fails", func() {
+			It("returns the error", func() {
+				netlinker.LinkAddReturns(errors.New("link add failed"))
+
+				err := factory.CreateDummy("some-dummy-name")
+				Expect(err).To(Equal(errors.New("link add failed")))
+			})
+		})
+	})
+
 	Describe("CreateVxlan", func() {
 		var expectedVxlan *netlink.Vxlan
 

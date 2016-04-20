@@ -8,6 +8,8 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 )
 
+const DNS_INTERFACE_NAME = "dns0"
+
 type StartDNSServer struct {
 	ListenAddress string
 	SandboxName   string
@@ -26,16 +28,41 @@ func (sd StartDNSServer) Execute(context executor.Context) error {
 		return fmt.Errorf("get sandbox: %s", err)
 	}
 
-	ns := sbox.Namespace()
+	sbox.Lock()
+	defer sbox.Unlock()
 
 	var conn *net.UDPConn
-	err = ns.Execute(func(*os.File) error {
-		var err error
+	err = sbox.Namespace().Execute(func(*os.File) error {
+		linkFactory := context.LinkFactory()
+		err := linkFactory.CreateDummy(DNS_INTERFACE_NAME)
+		if err != nil {
+			return fmt.Errorf("create dummy: %s", err)
+		}
+
+		dnsAddress := &net.IPNet{
+			IP:   listenAddress.IP,
+			Mask: net.CIDRMask(32, 32),
+		}
+
+		err = context.AddressManager().AddAddress(DNS_INTERFACE_NAME, dnsAddress)
+		if err != nil {
+			return fmt.Errorf("add address: %s", err)
+		}
+
+		err = linkFactory.SetUp(DNS_INTERFACE_NAME)
+		if err != nil {
+			return fmt.Errorf("set up: %s", err)
+		}
+
 		conn, err = listenerFactory.ListenUDP("udp", listenAddress)
-		return err
+		if err != nil {
+			return fmt.Errorf("listen udp: %s", err)
+		}
+
+		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("listen udp: %s", err)
+		return fmt.Errorf("namespace execute: %s", err)
 	}
 
 	dnsServerRunner := context.DNSServerFactory().New(conn)

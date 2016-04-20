@@ -39,6 +39,16 @@ func (f *Factory) CreateBridge(name string) error {
 	return f.Netlinker.LinkAdd(bridge)
 }
 
+func (f *Factory) CreateDummy(name string) error {
+	dummy := &netlink.Dummy{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: name,
+		},
+	}
+
+	return f.Netlinker.LinkAdd(dummy)
+}
+
 func (f *Factory) CreateVeth(name, peerName string, mtu int) error {
 	vethLink := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
