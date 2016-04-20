@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
+	"github.com/tedsuo/ifrit"
 )
 
 //go:generate counterfeiter -o ../fakes/address_manager.go --fake-name AddressManager . AddressManager
@@ -31,6 +32,16 @@ type LinkFactory interface {
 	VethDeviceCount() (int, error)
 }
 
+//go:generate counterfeiter -o ../fakes/listener_factory.go --fake-name ListenerFactory . ListenerFactory
+type ListenerFactory interface {
+	ListenUDP(net string, address string) (*net.UDPConn, error)
+}
+
+//go:generate counterfeiter -o ../fakes/dns_server_factory.go --fake-name DNSServerFactory . DNSServerFactory
+type DNSServerFactory interface {
+	New(listener net.PacketConn) (ifrit.Runner, error)
+}
+
 //go:generate counterfeiter -o ../fakes/command.go --fake-name Command . Command
 type Command interface {
 	Execute(context Context) error
@@ -55,6 +66,8 @@ type Context interface {
 	RouteManager() RouteManager
 	SandboxNamespaceRepository() namespace.Repository
 	SandboxRepository() sandbox.Repository
+	ListenerFactory() ListenerFactory
+	DNSServerFactory() DNSServerFactory
 }
 
 func New(
@@ -63,6 +76,8 @@ func New(
 	linkFactory LinkFactory,
 	sandboxNamespaceRepository namespace.Repository,
 	sandboxRepository sandbox.Repository,
+	listenerFactory ListenerFactory,
+	dnsServerFactory DNSServerFactory,
 ) Executor {
 	return &executor{
 		addressManager:             addressManager,
@@ -70,6 +85,8 @@ func New(
 		linkFactory:                linkFactory,
 		sandboxNamespaceRepository: sandboxNamespaceRepository,
 		sandboxRepository:          sandboxRepository,
+		listenerFactory:            listenerFactory,
+		dnsServerFactory:           dnsServerFactory,
 	}
 }
 
@@ -79,6 +96,8 @@ type executor struct {
 	linkFactory                LinkFactory
 	sandboxNamespaceRepository namespace.Repository
 	sandboxRepository          sandbox.Repository
+	listenerFactory            ListenerFactory
+	dnsServerFactory           DNSServerFactory
 }
 
 func (e *executor) Execute(command Command) error {
@@ -103,4 +122,12 @@ func (e *executor) SandboxNamespaceRepository() namespace.Repository {
 
 func (e *executor) SandboxRepository() sandbox.Repository {
 	return e.sandboxRepository
+}
+
+func (e *executor) ListenerFactory() ListenerFactory {
+	return e.listenerFactory
+}
+
+func (e *executor) DNSServerFactory() DNSServerFactory {
+	return e.dnsServerFactory
 }
