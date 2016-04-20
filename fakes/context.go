@@ -7,9 +7,16 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
+	"github.com/pivotal-golang/lager"
 )
 
 type Context struct {
+	LoggerStub        func() lager.Logger
+	loggerMutex       sync.RWMutex
+	loggerArgsForCall []struct{}
+	loggerReturns     struct {
+		result1 lager.Logger
+	}
 	AddressManagerStub        func() executor.AddressManager
 	addressManagerMutex       sync.RWMutex
 	addressManagerArgsForCall []struct{}
@@ -52,6 +59,30 @@ type Context struct {
 	dNSServerFactoryReturns     struct {
 		result1 executor.DNSServerFactory
 	}
+}
+
+func (fake *Context) Logger() lager.Logger {
+	fake.loggerMutex.Lock()
+	fake.loggerArgsForCall = append(fake.loggerArgsForCall, struct{}{})
+	fake.loggerMutex.Unlock()
+	if fake.LoggerStub != nil {
+		return fake.LoggerStub()
+	} else {
+		return fake.loggerReturns.result1
+	}
+}
+
+func (fake *Context) LoggerCallCount() int {
+	fake.loggerMutex.RLock()
+	defer fake.loggerMutex.RUnlock()
+	return len(fake.loggerArgsForCall)
+}
+
+func (fake *Context) LoggerReturns(result1 lager.Logger) {
+	fake.LoggerStub = nil
+	fake.loggerReturns = struct {
+		result1 lager.Logger
+	}{result1}
 }
 
 func (fake *Context) AddressManager() executor.AddressManager {

@@ -5,10 +5,12 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Executor", func() {
 	var (
+		logger                     *lagertest.TestLogger
 		addressManager             *fakes.AddressManager
 		routeManager               *fakes.RouteManager
 		linkFactory                *fakes.LinkFactory
@@ -21,6 +23,7 @@ var _ = Describe("Executor", func() {
 	)
 
 	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("test")
 		addressManager = &fakes.AddressManager{}
 		routeManager = &fakes.RouteManager{}
 		linkFactory = &fakes.LinkFactory{}
@@ -32,6 +35,7 @@ var _ = Describe("Executor", func() {
 		command = &fakes.Command{}
 
 		ex = executor.New(
+			logger,
 			addressManager,
 			routeManager,
 			linkFactory,
@@ -53,9 +57,10 @@ var _ = Describe("Executor", func() {
 		var context executor.Context
 
 		BeforeEach(func() {
-			c, ok := ex.(executor.Context)
-			Expect(ok).To(BeTrue())
-			context = c
+			ex.Execute(command)
+
+			Expect(command.ExecuteCallCount()).To(Equal(1))
+			context = command.ExecuteArgsForCall(0)
 		})
 
 		Describe("AddressManager", func() {
@@ -97,6 +102,12 @@ var _ = Describe("Executor", func() {
 		Describe("DNSServerFactory", func() {
 			It("returns the DNSServerFactory", func() {
 				Expect(context.DNSServerFactory()).To(Equal(dnsServerFactory))
+			})
+		})
+
+		Describe("Logger", func() {
+			It("returns the Logger with a new session", func() {
+				Expect(context.Logger().SessionName()).NotTo(Equal(logger.SessionName()))
 			})
 		})
 	})

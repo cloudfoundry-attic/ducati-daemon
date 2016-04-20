@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -68,6 +69,7 @@ type Executor interface {
 
 //go:generate counterfeiter -o ../fakes/context.go --fake-name Context . Context
 type Context interface {
+	Logger() lager.Logger
 	AddressManager() AddressManager
 	LinkFactory() LinkFactory
 	RouteManager() RouteManager
@@ -77,7 +79,12 @@ type Context interface {
 	DNSServerFactory() DNSServerFactory
 }
 
+type executor struct {
+	context
+}
+
 func New(
+	logger lager.Logger,
 	addressManager AddressManager,
 	routeManager RouteManager,
 	linkFactory LinkFactory,
@@ -87,17 +94,38 @@ func New(
 	dnsServerFactory DNSServerFactory,
 ) Executor {
 	return &executor{
-		addressManager:             addressManager,
-		routeManager:               routeManager,
-		linkFactory:                linkFactory,
-		sandboxNamespaceRepository: sandboxNamespaceRepository,
-		sandboxRepository:          sandboxRepository,
-		listenerFactory:            listenerFactory,
-		dnsServerFactory:           dnsServerFactory,
+		context: context{
+			logger:                     logger,
+			addressManager:             addressManager,
+			routeManager:               routeManager,
+			linkFactory:                linkFactory,
+			sandboxNamespaceRepository: sandboxNamespaceRepository,
+			sandboxRepository:          sandboxRepository,
+			listenerFactory:            listenerFactory,
+			dnsServerFactory:           dnsServerFactory,
+		},
 	}
 }
 
-type executor struct {
+func (e *executor) Execute(command Command) error {
+	return command.Execute(e.newContext())
+}
+
+func (e *executor) newContext() *context {
+	return &context{
+		logger:                     e.logger.Session("execute"),
+		addressManager:             e.addressManager,
+		routeManager:               e.routeManager,
+		linkFactory:                e.linkFactory,
+		sandboxNamespaceRepository: e.sandboxNamespaceRepository,
+		sandboxRepository:          e.sandboxRepository,
+		listenerFactory:            e.listenerFactory,
+		dnsServerFactory:           e.dnsServerFactory,
+	}
+}
+
+type context struct {
+	logger                     lager.Logger
 	addressManager             AddressManager
 	routeManager               RouteManager
 	linkFactory                LinkFactory
@@ -107,34 +135,34 @@ type executor struct {
 	dnsServerFactory           DNSServerFactory
 }
 
-func (e *executor) Execute(command Command) error {
-	return command.Execute(e)
-}
-
-func (e *executor) AddressManager() AddressManager {
+func (e *context) AddressManager() AddressManager {
 	return e.addressManager
 }
 
-func (e *executor) RouteManager() RouteManager {
+func (e *context) RouteManager() RouteManager {
 	return e.routeManager
 }
 
-func (e *executor) LinkFactory() LinkFactory {
+func (e *context) LinkFactory() LinkFactory {
 	return e.linkFactory
 }
 
-func (e *executor) SandboxNamespaceRepository() namespace.Repository {
+func (e *context) SandboxNamespaceRepository() namespace.Repository {
 	return e.sandboxNamespaceRepository
 }
 
-func (e *executor) SandboxRepository() sandbox.Repository {
+func (e *context) SandboxRepository() sandbox.Repository {
 	return e.sandboxRepository
 }
 
-func (e *executor) ListenerFactory() ListenerFactory {
+func (e *context) ListenerFactory() ListenerFactory {
 	return e.listenerFactory
 }
 
-func (e *executor) DNSServerFactory() DNSServerFactory {
+func (e *context) DNSServerFactory() DNSServerFactory {
 	return e.dnsServerFactory
+}
+
+func (e *context) Logger() lager.Logger {
+	return e.logger
 }
