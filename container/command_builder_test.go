@@ -284,6 +284,10 @@ var _ = Describe("CommandBuilder", func() {
 								commands.SetLinkUp{
 									LinkName: "some-bridge-name",
 								},
+								commands.SetLinkMaster{
+									Master: "some-bridge-name",
+									Slave:  "dns0",
+								},
 							),
 						},
 						commands.SetLinkMaster{

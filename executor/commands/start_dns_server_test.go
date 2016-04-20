@@ -17,6 +17,8 @@ var _ = Describe("Start DNS Server", func() {
 		ns               *fakes.Namespace
 		context          *fakes.Context
 		listenerFactory  *fakes.ListenerFactory
+		linkFactory      *fakes.LinkFactory
+		addressManager   *fakes.AddressManager
 		dnsServerFactory *fakes.DNSServerFactory
 		returnedListener *net.UDPConn
 
@@ -29,6 +31,8 @@ var _ = Describe("Start DNS Server", func() {
 
 	BeforeEach(func() {
 		listenerFactory = &fakes.ListenerFactory{}
+		linkFactory = &fakes.LinkFactory{}
+		addressManager = &fakes.AddressManager{}
 		dnsServerFactory = &fakes.DNSServerFactory{}
 
 		ns = &fakes.Namespace{}
@@ -40,6 +44,8 @@ var _ = Describe("Start DNS Server", func() {
 
 		context = &fakes.Context{}
 		context.ListenerFactoryReturns(listenerFactory)
+		context.LinkFactoryReturns(linkFactory)
+		context.AddressManagerReturns(addressManager)
 		context.DNSServerFactoryReturns(dnsServerFactory)
 		context.SandboxRepositoryReturns(sandboxRepo)
 		sandboxRepo.GetReturns(sbox, nil)
@@ -65,6 +71,64 @@ var _ = Describe("Start DNS Server", func() {
 		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("some-sandbox-name"))
 
 		Expect(sbox.NamespaceCallCount()).To(Equal(1))
+	})
+
+	It("locks and unlocks the sandbox", func() {
+		err := startDNS.Execute(context)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(sbox.LockCallCount()).To(Equal(1))
+		Expect(sbox.UnlockCallCount()).To(Equal(1))
+	})
+
+	It("adds a dummy link to the sandbox namespace", func() {
+		ns.ExecuteStub = func(callback func(*os.File) error) error {
+			Expect(linkFactory.CreateDummyCallCount()).To(Equal(0))
+			err := callback(nil)
+			Expect(linkFactory.CreateDummyCallCount()).To(Equal(1))
+			return err
+		}
+
+		err := startDNS.Execute(context)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(ns.ExecuteCallCount()).To(Equal(1))
+
+		Expect(linkFactory.CreateDummyCallCount()).To(Equal(1))
+		linkName := linkFactory.CreateDummyArgsForCall(0)
+		Expect(linkName).To(Equal("dns0"))
+	})
+
+	It("sets the address on the dummy device in the sandbox namespace", func() {
+		ns.ExecuteStub = func(callback func(*os.File) error) error {
+			Expect(addressManager.AddAddressCallCount()).To(Equal(0))
+			err := callback(nil)
+			Expect(addressManager.AddAddressCallCount()).To(Equal(1))
+			return err
+		}
+
+		err := startDNS.Execute(context)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(addressManager.AddAddressCallCount()).To(Equal(1))
+		ifName, address := addressManager.AddAddressArgsForCall(0)
+		Expect(ifName).To(Equal("dns0"))
+		Expect(address.IP.String()).To(Equal("10.10.10.10"))
+	})
+
+	It("ups the dummy device in the sandbox namespace", func() {
+		ns.ExecuteStub = func(callback func(*os.File) error) error {
+			Expect(linkFactory.SetUpCallCount()).To(Equal(0))
+			err := callback(nil)
+			Expect(linkFactory.SetUpCallCount()).To(Equal(1))
+			return err
+		}
+
+		err := startDNS.Execute(context)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(linkFactory.SetUpCallCount()).To(Equal(1))
+		Expect(linkFactory.SetUpArgsForCall(0)).To(Equal("dns0"))
 	})
 
 	It("creates a listener in the sandbox namespace", func() {
@@ -118,6 +182,39 @@ var _ = Describe("Start DNS Server", func() {
 		})
 	})
 
+	Context("when creating the dummy link fails", func() {
+		BeforeEach(func() {
+			linkFactory.CreateDummyReturns(errors.New("pineapple"))
+		})
+
+		It("returns a meaningful error", func() {
+			err := startDNS.Execute(context)
+			Expect(err).To(MatchError("namespace execute: create dummy: pineapple"))
+		})
+	})
+
+	Context("when adding the address fails", func() {
+		BeforeEach(func() {
+			addressManager.AddAddressReturns(errors.New("pineapple"))
+		})
+
+		It("returns a meaningful error", func() {
+			err := startDNS.Execute(context)
+			Expect(err).To(MatchError("namespace execute: add address: pineapple"))
+		})
+	})
+
+	Context("when setting the link up fails", func() {
+		BeforeEach(func() {
+			linkFactory.SetUpReturns(errors.New("pineapple"))
+		})
+
+		It("returns a meaningful error", func() {
+			err := startDNS.Execute(context)
+			Expect(err).To(MatchError("namespace execute: set up: pineapple"))
+		})
+	})
+
 	Context("when creating the listener fails", func() {
 		BeforeEach(func() {
 			listenerFactory.ListenUDPReturns(nil, errors.New("cantelope"))
@@ -125,7 +222,7 @@ var _ = Describe("Start DNS Server", func() {
 
 		It("returns a meaningful error", func() {
 			err := startDNS.Execute(context)
-			Expect(err).To(MatchError("listen udp: cantelope"))
+			Expect(err).To(MatchError("namespace execute: listen udp: cantelope"))
 		})
 	})
 

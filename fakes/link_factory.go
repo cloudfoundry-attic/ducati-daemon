@@ -17,6 +17,14 @@ type LinkFactory struct {
 	createBridgeReturns struct {
 		result1 error
 	}
+	CreateDummyStub        func(name string) error
+	createDummyMutex       sync.RWMutex
+	createDummyArgsForCall []struct {
+		name string
+	}
+	createDummyReturns struct {
+		result1 error
+	}
 	CreateVethStub        func(name, peerName string, mtu int) error
 	createVethMutex       sync.RWMutex
 	createVethArgsForCall []struct {
@@ -124,6 +132,38 @@ func (fake *LinkFactory) CreateBridgeArgsForCall(i int) string {
 func (fake *LinkFactory) CreateBridgeReturns(result1 error) {
 	fake.CreateBridgeStub = nil
 	fake.createBridgeReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *LinkFactory) CreateDummy(name string) error {
+	fake.createDummyMutex.Lock()
+	fake.createDummyArgsForCall = append(fake.createDummyArgsForCall, struct {
+		name string
+	}{name})
+	fake.createDummyMutex.Unlock()
+	if fake.CreateDummyStub != nil {
+		return fake.CreateDummyStub(name)
+	} else {
+		return fake.createDummyReturns.result1
+	}
+}
+
+func (fake *LinkFactory) CreateDummyCallCount() int {
+	fake.createDummyMutex.RLock()
+	defer fake.createDummyMutex.RUnlock()
+	return len(fake.createDummyArgsForCall)
+}
+
+func (fake *LinkFactory) CreateDummyArgsForCall(i int) string {
+	fake.createDummyMutex.RLock()
+	defer fake.createDummyMutex.RUnlock()
+	return fake.createDummyArgsForCall[i].name
+}
+
+func (fake *LinkFactory) CreateDummyReturns(result1 error) {
+	fake.CreateDummyStub = nil
+	fake.createDummyReturns = struct {
 		result1 error
 	}{result1}
 }

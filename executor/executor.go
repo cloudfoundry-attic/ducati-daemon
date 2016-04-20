@@ -21,6 +21,7 @@ type RouteManager interface {
 //go:generate counterfeiter -o ../fakes/link_factory.go --fake-name LinkFactory . LinkFactory
 type LinkFactory interface {
 	CreateBridge(name string) error
+	CreateDummy(name string) error
 	CreateVeth(name, peerName string, mtu int) error
 	CreateVxlan(name string, vni int) error
 	DeleteLinkByName(name string) error
