@@ -10,18 +10,17 @@ import (
 )
 
 type DNSServerFactory struct {
-	NewStub        func(listener net.PacketConn) (ifrit.Runner, error)
+	NewStub        func(listener net.PacketConn) ifrit.Runner
 	newMutex       sync.RWMutex
 	newArgsForCall []struct {
 		listener net.PacketConn
 	}
 	newReturns struct {
 		result1 ifrit.Runner
-		result2 error
 	}
 }
 
-func (fake *DNSServerFactory) New(listener net.PacketConn) (ifrit.Runner, error) {
+func (fake *DNSServerFactory) New(listener net.PacketConn) ifrit.Runner {
 	fake.newMutex.Lock()
 	fake.newArgsForCall = append(fake.newArgsForCall, struct {
 		listener net.PacketConn
@@ -30,7 +29,7 @@ func (fake *DNSServerFactory) New(listener net.PacketConn) (ifrit.Runner, error)
 	if fake.NewStub != nil {
 		return fake.NewStub(listener)
 	} else {
-		return fake.newReturns.result1, fake.newReturns.result2
+		return fake.newReturns.result1
 	}
 }
 
@@ -46,12 +45,11 @@ func (fake *DNSServerFactory) NewArgsForCall(i int) net.PacketConn {
 	return fake.newArgsForCall[i].listener
 }
 
-func (fake *DNSServerFactory) NewReturns(result1 ifrit.Runner, result2 error) {
+func (fake *DNSServerFactory) NewReturns(result1 ifrit.Runner) {
 	fake.NewStub = nil
 	fake.newReturns = struct {
 		result1 ifrit.Runner
-		result2 error
-	}{result1, result2}
+	}{result1}
 }
 
 var _ executor.DNSServerFactory = new(DNSServerFactory)

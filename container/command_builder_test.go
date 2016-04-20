@@ -35,6 +35,10 @@ var _ = Describe("CommandBuilder", func() {
 						commands.CreateSandbox{
 							Name: "some-sandbox-name",
 						},
+						commands.StartDNSServer{
+							SandboxName:   "some-sandbox-name",
+							ListenAddress: "192.168.255.254:53",
+						},
 					),
 				}))
 		})

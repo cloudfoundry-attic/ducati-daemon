@@ -7,22 +7,27 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Sandbox Repository", func() {
 	var (
-		sandboxRepo   sandbox.Repository
-		namespaceRepo *fakes.Repository
-		sboxNamespace *fakes.Namespace
+		logger        *lagertest.TestLogger
 		locker        *fakes.Locker
+		sboxNamespace *fakes.Namespace
+		namespaceRepo *fakes.Repository
+		invoker       *fakes.Invoker
+		sandboxRepo   sandbox.Repository
 	)
 
 	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("test")
 		locker = &fakes.Locker{}
+		invoker = &fakes.Invoker{}
 		sboxNamespace = &fakes.Namespace{}
 		namespaceRepo = &fakes.Repository{}
 		namespaceRepo.CreateReturns(sboxNamespace, nil)
-		sandboxRepo = sandbox.NewRepository(locker, namespaceRepo)
+		sandboxRepo = sandbox.NewRepository(logger, locker, namespaceRepo, invoker)
 	})
 
 	Describe("Create", func() {

@@ -31,10 +31,12 @@ var _ = Describe("Start DNS Server", func() {
 		listenerFactory = &fakes.ListenerFactory{}
 		dnsServerFactory = &fakes.DNSServerFactory{}
 
+		ns = &fakes.Namespace{}
 		sandboxRepo = &fakes.SandboxRepository{}
 		sbox = &fakes.Sandbox{}
+		sbox.NamespaceReturns(ns)
 		dnsServer = &fakes.Runner{}
-		dnsServerFactory.NewReturns(dnsServer, nil)
+		dnsServerFactory.NewReturns(dnsServer)
 
 		context = &fakes.Context{}
 		context.ListenerFactoryReturns(listenerFactory)
@@ -45,16 +47,24 @@ var _ = Describe("Start DNS Server", func() {
 		returnedListener = &net.UDPConn{}
 		listenerFactory.ListenUDPReturns(returnedListener, nil)
 
-		ns = &fakes.Namespace{}
 		ns.ExecuteStub = func(callback func(*os.File) error) error {
 			return callback(nil)
 		}
 
 		startDNS = commands.StartDNSServer{
-			Namespace:     ns,
-			ListenAddress: "some-address",
+			ListenAddress: "10.10.10.10:53",
 			SandboxName:   "some-sandbox-name",
 		}
+	})
+
+	It("gets the namespace from the sandbox", func() {
+		err := startDNS.Execute(context)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(sandboxRepo.GetCallCount()).To(Equal(1))
+		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("some-sandbox-name"))
+
+		Expect(sbox.NamespaceCallCount()).To(Equal(1))
 	})
 
 	It("creates a listener in the sandbox namespace", func() {
@@ -66,15 +76,18 @@ var _ = Describe("Start DNS Server", func() {
 			return err
 		}
 
-		err := startDNS.Execute(context)
+		expectedAddress, err := net.ResolveUDPAddr("udp", "10.10.10.10:53")
+		Expect(err).NotTo(HaveOccurred())
+
+		err = startDNS.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(ns.ExecuteCallCount()).To(Equal(1))
 
 		Expect(listenerFactory.ListenUDPCallCount()).To(Equal(1))
-		net, addr := listenerFactory.ListenUDPArgsForCall(0)
-		Expect(net).To(Equal("udp"))
-		Expect(addr).To(Equal("some-address"))
+		network, addr := listenerFactory.ListenUDPArgsForCall(0)
+		Expect(network).To(Equal("udp"))
+		Expect(addr).To(Equal(expectedAddress))
 	})
 
 	It("uses the DNS Server Factory to create a DNS server with the listener", func() {
@@ -90,11 +103,19 @@ var _ = Describe("Start DNS Server", func() {
 		err := startDNS.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(sandboxRepo.GetCallCount()).To(Equal(1))
-		Expect(sandboxRepo.GetArgsForCall(0)).To(Equal("some-sandbox-name"))
-
 		Expect(sbox.LaunchDNSCallCount()).To(Equal(1))
 		Expect(sbox.LaunchDNSArgsForCall(0)).To(Equal(dnsServer))
+	})
+
+	Context("when parsing the listen address fails", func() {
+		BeforeEach(func() {
+			startDNS.ListenAddress = "some-bogus-address"
+		})
+
+		It("returns a meaningful error", func() {
+			err := startDNS.Execute(context)
+			Expect(err).To(MatchError(MatchRegexp("resolve udp address:.*some-bogus-address")))
+		})
 	})
 
 	Context("when creating the listener fails", func() {
@@ -105,17 +126,6 @@ var _ = Describe("Start DNS Server", func() {
 		It("returns a meaningful error", func() {
 			err := startDNS.Execute(context)
 			Expect(err).To(MatchError("listen udp: cantelope"))
-		})
-	})
-
-	Context("when the DNS server factory returns an error", func() {
-		BeforeEach(func() {
-			dnsServerFactory.NewReturns(nil, errors.New("kumquat"))
-		})
-
-		It("returns a meaningful error", func() {
-			err := startDNS.Execute(context)
-			Expect(err).To(MatchError("new dns server: kumquat"))
 		})
 	})
 
@@ -138,6 +148,12 @@ var _ = Describe("Start DNS Server", func() {
 		It("returns a meaningful error", func() {
 			err := startDNS.Execute(context)
 			Expect(err).To(MatchError("sandbox launch dns: bergamot"))
+		})
+	})
+
+	Describe("String", func() {
+		It("returns a human readable representation", func() {
+			Expect(startDNS.String()).To(Equal("start dns server in sandbox some-sandbox-name"))
 		})
 	})
 })

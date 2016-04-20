@@ -6,11 +6,9 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
 type StartDNSServer struct {
-	Namespace     namespace.Namespace
 	ListenAddress string
 	SandboxName   string
 }
@@ -18,25 +16,29 @@ type StartDNSServer struct {
 func (sd StartDNSServer) Execute(context executor.Context) error {
 	listenerFactory := context.ListenerFactory()
 
-	var conn *net.UDPConn
-	err := sd.Namespace.Execute(func(*os.File) error {
-		var err error
-		conn, err = listenerFactory.ListenUDP("udp", sd.ListenAddress)
-		return err
-	})
+	listenAddress, err := net.ResolveUDPAddr("udp", sd.ListenAddress)
 	if err != nil {
-		return fmt.Errorf("listen udp: %s", err)
-	}
-
-	dnsServerRunner, err := context.DNSServerFactory().New(conn)
-	if err != nil {
-		return fmt.Errorf("new dns server: %s", err)
+		return fmt.Errorf("resolve udp address: %s", err)
 	}
 
 	sbox, err := context.SandboxRepository().Get(sd.SandboxName)
 	if err != nil {
 		return fmt.Errorf("get sandbox: %s", err)
 	}
+
+	ns := sbox.Namespace()
+
+	var conn *net.UDPConn
+	err = ns.Execute(func(*os.File) error {
+		var err error
+		conn, err = listenerFactory.ListenUDP("udp", listenAddress)
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("listen udp: %s", err)
+	}
+
+	dnsServerRunner := context.DNSServerFactory().New(conn)
 
 	err = sbox.LaunchDNS(dnsServerRunner)
 	if err != nil {
@@ -47,5 +49,5 @@ func (sd StartDNSServer) Execute(context executor.Context) error {
 }
 
 func (sd StartDNSServer) String() string {
-	return ""
+	return fmt.Sprintf("start dns server in sandbox %s", sd.SandboxName)
 }
