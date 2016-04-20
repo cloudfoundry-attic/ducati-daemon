@@ -10,11 +10,13 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("CleanupSandbox", func() {
 	var (
 		context               *fakes.Context
+		logger                *lagertest.TestLogger
 		sbox                  *fakes.Sandbox
 		sandboxNS             *fakes.Namespace
 		linkFactory           *fakes.LinkFactory
@@ -26,6 +28,9 @@ var _ = Describe("CleanupSandbox", func() {
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
+
+		logger = lagertest.NewTestLogger("test")
+		context.LoggerReturns(logger)
 
 		sandboxNS = &fakes.Namespace{}
 		sandboxNS.NameReturns("sandbox-name")
@@ -73,11 +78,20 @@ var _ = Describe("CleanupSandbox", func() {
 	})
 
 	Context("when sandbox doesn't exist", func() {
-		It("returns an error", func() {
+		It("returns without an error", func() {
 			sandboxRepo.GetReturns(nil, sandbox.NotFoundError)
 
 			err := cleanupSandboxCommand.Execute(context)
-			Expect(err).To(MatchError("get sandbox: not found"))
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("when getting the sandbox fails", func() {
+		It("returns an error", func() {
+			sandboxRepo.GetReturns(nil, errors.New("raisins"))
+
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).To(MatchError("get sandbox: raisins"))
 		})
 	})
 
@@ -129,6 +143,13 @@ var _ = Describe("CleanupSandbox", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(0))
+		})
+
+		It("does NOT remove the sandbox from the repository", func() {
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sandboxRepo.RemoveCallCount()).To(Equal(0))
 		})
 	})
 
@@ -225,7 +246,7 @@ var _ = Describe("CleanupSandbox", func() {
 			})
 		})
 
-		It("removes the sandbox from the repo", func() {
+		It("removes the sandbox from the repo when no links are remaining", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,12 +14,17 @@ import (
 var _ = Describe("CreateSandbox", func() {
 	var (
 		context           *fakes.Context
+		logger            *lagertest.TestLogger
 		sandboxRepository *fakes.SandboxRepository
 		createSandbox     commands.CreateSandbox
 	)
 
 	BeforeEach(func() {
 		context = &fakes.Context{}
+
+		logger = lagertest.NewTestLogger("test")
+		context.LoggerReturns(logger)
+
 		sandboxRepository = &fakes.SandboxRepository{}
 		context.SandboxRepositoryReturns(sandboxRepository)
 

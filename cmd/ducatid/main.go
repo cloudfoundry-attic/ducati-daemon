@@ -143,6 +143,7 @@ func main() {
 		ExternalServer: "8.8.8.8:53",
 	}
 	executor := executor.New(
+		logger,
 		addressManager,
 		routeManager,
 		linkFactory,
