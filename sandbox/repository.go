@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/pivotal-golang/lager"
+	"github.com/tedsuo/ifrit"
 )
 
 var NotFoundError = errors.New("not found")
@@ -18,17 +20,37 @@ type Repository interface {
 	Remove(sandboxName string)
 }
 
+//go:generate counterfeiter -o ../fakes/invoker.go --fake-name Invoker . Invoker
+type Invoker interface {
+	Invoke(ifrit.Runner) ifrit.Process
+}
+
+type InvokeFunc func(ifrit.Runner) ifrit.Process
+
+func (i InvokeFunc) Invoke(r ifrit.Runner) ifrit.Process {
+	return i(r)
+}
+
 type repository struct {
+	logger        lager.Logger
 	sandboxes     map[string]*sandbox
 	locker        sync.Locker
 	namespaceRepo namespace.Repository
+	invoker       Invoker
 }
 
-func NewRepository(locker sync.Locker, namespaceRepo namespace.Repository) Repository {
+func NewRepository(
+	logger lager.Logger,
+	locker sync.Locker,
+	namespaceRepo namespace.Repository,
+	invoker Invoker,
+) Repository {
 	return &repository{
+		logger:        logger,
 		sandboxes:     map[string]*sandbox{},
 		locker:        locker,
 		namespaceRepo: namespaceRepo,
+		invoker:       invoker,
 	}
 }
 
@@ -45,7 +67,7 @@ func (r *repository) Create(sandboxName string) (Sandbox, error) {
 		return nil, fmt.Errorf("create namespace: %s", err)
 	}
 
-	sandbox := New(ns)
+	sandbox := New(r.logger, ns, r.invoker)
 	r.sandboxes[sandboxName] = sandbox
 
 	return sandbox, nil

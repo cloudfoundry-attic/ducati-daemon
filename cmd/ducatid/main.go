@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
+	"net"
 	"os"
 	"sync"
 	"time"
@@ -97,7 +98,12 @@ func main() {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
 
-	sandboxRepo := sandbox.NewRepository(&sync.Mutex{}, sandboxNamespaceRepo)
+	sandboxRepo := sandbox.NewRepository(
+		logger,
+		&sync.Mutex{},
+		sandboxNamespaceRepo,
+		sandbox.InvokeFunc(ifrit.Invoke),
+	)
 
 	osThreadLocker := &ossupport.OSLocker{}
 
@@ -132,12 +138,18 @@ func main() {
 		MissWatcher:   missWatcher,
 		HostNamespace: hostNamespace,
 	}
+	dnsFactory := &executor.DNSFactory{
+		Logger:         logger,
+		ExternalServer: "8.8.8.8:53",
+	}
 	executor := executor.New(
 		addressManager,
 		routeManager,
 		linkFactory,
 		sandboxNamespaceRepo,
 		sandboxRepo,
+		executor.ListenUDPFunc(net.ListenUDP),
+		dnsFactory,
 	)
 	creator := &container.Creator{
 		Executor:        executor,

@@ -25,6 +25,10 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName string
 			commands.CreateSandbox{
 				Name: sandboxName,
 			},
+			commands.StartDNSServer{
+				SandboxName:   sandboxName,
+				ListenAddress: "192.168.255.254:53",
+			},
 		),
 	}
 }

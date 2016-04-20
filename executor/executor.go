@@ -34,12 +34,18 @@ type LinkFactory interface {
 
 //go:generate counterfeiter -o ../fakes/listener_factory.go --fake-name ListenerFactory . ListenerFactory
 type ListenerFactory interface {
-	ListenUDP(net string, address string) (*net.UDPConn, error)
+	ListenUDP(network string, address *net.UDPAddr) (*net.UDPConn, error)
+}
+
+type ListenUDPFunc func(network string, address *net.UDPAddr) (*net.UDPConn, error)
+
+func (l ListenUDPFunc) ListenUDP(network string, address *net.UDPAddr) (*net.UDPConn, error) {
+	return l(network, address)
 }
 
 //go:generate counterfeiter -o ../fakes/dns_server_factory.go --fake-name DNSServerFactory . DNSServerFactory
 type DNSServerFactory interface {
-	New(listener net.PacketConn) (ifrit.Runner, error)
+	New(listener net.PacketConn) ifrit.Runner
 }
 
 //go:generate counterfeiter -o ../fakes/command.go --fake-name Command . Command

@@ -4,6 +4,7 @@ package fakes
 import (
 	"sync"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -49,3 +50,5 @@ func (fake *Invoker) InvokeReturns(result1 ifrit.Process) {
 		result1 ifrit.Process
 	}{result1}
 }
+
+var _ sandbox.Invoker = new(Invoker)

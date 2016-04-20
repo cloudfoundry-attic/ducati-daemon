@@ -9,11 +9,11 @@ import (
 )
 
 type ListenerFactory struct {
-	ListenUDPStub        func(net string, address string) (*net.UDPConn, error)
+	ListenUDPStub        func(network string, address *net.UDPAddr) (*net.UDPConn, error)
 	listenUDPMutex       sync.RWMutex
 	listenUDPArgsForCall []struct {
-		net     string
-		address string
+		network string
+		address *net.UDPAddr
 	}
 	listenUDPReturns struct {
 		result1 *net.UDPConn
@@ -21,15 +21,15 @@ type ListenerFactory struct {
 	}
 }
 
-func (fake *ListenerFactory) ListenUDP(net string, address string) (*net.UDPConn, error) {
+func (fake *ListenerFactory) ListenUDP(network string, address *net.UDPAddr) (*net.UDPConn, error) {
 	fake.listenUDPMutex.Lock()
 	fake.listenUDPArgsForCall = append(fake.listenUDPArgsForCall, struct {
-		net     string
-		address string
-	}{net, address})
+		network string
+		address *net.UDPAddr
+	}{network, address})
 	fake.listenUDPMutex.Unlock()
 	if fake.ListenUDPStub != nil {
-		return fake.ListenUDPStub(net, address)
+		return fake.ListenUDPStub(network, address)
 	} else {
 		return fake.listenUDPReturns.result1, fake.listenUDPReturns.result2
 	}
@@ -41,10 +41,10 @@ func (fake *ListenerFactory) ListenUDPCallCount() int {
 	return len(fake.listenUDPArgsForCall)
 }
 
-func (fake *ListenerFactory) ListenUDPArgsForCall(i int) (string, string) {
+func (fake *ListenerFactory) ListenUDPArgsForCall(i int) (string, *net.UDPAddr) {
 	fake.listenUDPMutex.RLock()
 	defer fake.listenUDPMutex.RUnlock()
-	return fake.listenUDPArgsForCall[i].net, fake.listenUDPArgsForCall[i].address
+	return fake.listenUDPArgsForCall[i].network, fake.listenUDPArgsForCall[i].address
 }
 
 func (fake *ListenerFactory) ListenUDPReturns(result1 *net.UDPConn, result2 error) {
