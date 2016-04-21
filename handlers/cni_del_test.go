@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"lib/testsupport"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -19,7 +20,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/handlers"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
-	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/rata"
 )

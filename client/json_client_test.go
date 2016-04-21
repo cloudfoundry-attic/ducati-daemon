@@ -3,11 +3,11 @@ package client_test
 import (
 	"encoding/json"
 	"errors"
+	"lib/testsupport"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
-	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -79,7 +79,7 @@ var _ = Describe("Networks", func() {
 			LocalSubnet:       "192.168.1.0/16",
 			OverlayNetwork:    "192.168.0.0/16",
 			SandboxDir:        sandboxRepoDir,
-			Database:          testDatabase.AsDaemonConfig(),
+			Database:          AsDaemonConfig(testDatabase),
 			HostAddress:       hostAddress,
 			OverlayDNSAddress: "192.168.255.254",
 			ExternalDNSServer: "8.8.8.8",

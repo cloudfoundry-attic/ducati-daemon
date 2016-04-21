@@ -3,13 +3,15 @@ package acceptance_test
 import (
 	"encoding/json"
 	"fmt"
+	"lib/testsupport"
 	"math/rand"
 	"net"
 	"runtime"
+	"strconv"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/testsupport"
+	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
+	gconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 
@@ -29,6 +31,21 @@ func TestDucatid(t *testing.T) {
 type beforeSuiteData struct {
 	DucatidPath string
 	DBConnInfo  testsupport.DBConnectionInfo
+}
+
+func AsDaemonConfig(d *testsupport.TestDatabase) config.Database {
+	port, err := strconv.Atoi(d.ConnInfo.Port)
+	if err != nil {
+		panic(err)
+	}
+	return config.Database{
+		Host:     d.ConnInfo.Hostname,
+		Port:     port,
+		Username: d.ConnInfo.Username,
+		Password: d.ConnInfo.Password,
+		Name:     d.Name,
+		SslMode:  "disable",
+	}
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -52,7 +69,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	ducatidPath = data.DucatidPath
 	dbConnInfo = &data.DBConnInfo
 
-	rand.Seed(config.GinkgoConfig.RandomSeed + int64(GinkgoParallelNode()))
+	rand.Seed(gconfig.GinkgoConfig.RandomSeed + int64(GinkgoParallelNode()))
 
 	runtime.LockOSThread()
 })
