@@ -48,6 +48,7 @@ var _ = Describe("Creator", func() {
 			Watcher:         missWatcher,
 			CommandBuilder:  commandBuilder,
 			NamespaceOpener: namespaceOpener,
+			DNSAddress:      "some-dns-address",
 			HostIP:          net.ParseIP("10.11.12.13"),
 		}
 
@@ -154,9 +155,10 @@ var _ = Describe("Creator", func() {
 
 		Expect(ex.ExecuteArgsForCall(0)).To(Equal(createSandboxResult))
 
-		sandboxName, vxlanDeviceName := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
+		sandboxName, vxlanDeviceName, dnsAddress := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
 		Expect(sandboxName).To(Equal("vni-99"))
 		Expect(vxlanDeviceName).To(Equal("vxlan99"))
+		Expect(dnsAddress).To(Equal("some-dns-address"))
 	})
 
 	Context("when creating the sandbox errors", func() {

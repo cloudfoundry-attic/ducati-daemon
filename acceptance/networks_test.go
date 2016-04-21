@@ -74,13 +74,15 @@ var _ = Describe("Networks", func() {
 		hostAddress = "10.11.12.13"
 
 		configFilePath := writeConfigFile(config.Daemon{
-			ListenHost:     "127.0.0.1",
-			ListenPort:     4001 + GinkgoParallelNode(),
-			LocalSubnet:    "192.168.1.0/16",
-			OverlayNetwork: "192.168.0.0/16",
-			SandboxDir:     sandboxRepoDir,
-			Database:       testDatabase.AsDaemonConfig(),
-			HostAddress:    hostAddress,
+			ListenHost:        "127.0.0.1",
+			ListenPort:        4001 + GinkgoParallelNode(),
+			LocalSubnet:       "192.168.1.0/16",
+			OverlayNetwork:    "192.168.0.0/16",
+			SandboxDir:        sandboxRepoDir,
+			Database:          testDatabase.AsDaemonConfig(),
+			HostAddress:       hostAddress,
+			OverlayDNSAddress: "192.168.255.254",
+			ExternalDNSServer: "8.8.8.8",
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)

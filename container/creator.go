@@ -17,7 +17,7 @@ import (
 
 //go:generate counterfeiter -o ../fakes/command_builder.go --fake-name CommandBuilder . commandBuilder
 type commandBuilder interface {
-	IdempotentlyCreateSandbox(sandboxName, vxlanDeviceName string) executor.Command
+	IdempotentlyCreateSandbox(sandboxName, vxlanDeviceName, dnsAddress string) executor.Command
 	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string, sandboxNS namespace.Namespace) executor.Command
 	AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command
 	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxNS namespace.Namespace, routeCommand executor.Command) executor.Command
@@ -29,6 +29,7 @@ type Creator struct {
 	SandboxRepo     sandbox.Repository
 	Watcher         watcher.MissWatcher
 	CommandBuilder  commandBuilder
+	DNSAddress      string
 	HostIP          net.IP
 	NamespaceOpener namespace.Opener
 }
@@ -63,7 +64,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 
 	var routeCommands = c.CommandBuilder.AddRoutes(config.InterfaceName, config.IPAMResult.IP4)
 
-	err = c.Executor.Execute(c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName, vxlanName))
+	err = c.Executor.Execute(c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName, vxlanName, c.DNSAddress))
 	if err != nil {
 		return models.Container{}, fmt.Errorf("executing command: create sandbox: %s", err)
 	}

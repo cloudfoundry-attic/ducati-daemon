@@ -16,7 +16,7 @@ type CommandBuilder struct {
 	HostNamespace namespace.Namespace
 }
 
-func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName string) executor.Command {
+func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName, dnsAddress string) executor.Command {
 	return commands.Unless{
 		Condition: conditions.SandboxExists{
 			Name: sandboxName,
@@ -27,7 +27,7 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName string
 			},
 			commands.StartDNSServer{
 				SandboxName:   sandboxName,
-				ListenAddress: "192.168.255.254:53",
+				ListenAddress: dnsAddress,
 			},
 		),
 	}

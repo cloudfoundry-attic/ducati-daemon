@@ -29,13 +29,15 @@ var _ = Describe("DB Connection Retry", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		basicConfig := config.Daemon{
-			ListenHost:     "127.0.0.1",
-			ListenPort:     4001 + GinkgoParallelNode(),
-			LocalSubnet:    "192.168.1.0/24",
-			OverlayNetwork: "192.168.0.0/16",
-			SandboxDir:     sandboxRepoDir,
-			Database:       testDatabase.AsDaemonConfig(),
-			HostAddress:    "10.11.12.13",
+			ListenHost:        "127.0.0.1",
+			ListenPort:        4001 + GinkgoParallelNode(),
+			LocalSubnet:       "192.168.1.0/24",
+			OverlayNetwork:    "192.168.0.0/16",
+			OverlayDNSAddress: "192.168.255.254",
+			ExternalDNSServer: "8.8.8.8",
+			SandboxDir:        sandboxRepoDir,
+			Database:          testDatabase.AsDaemonConfig(),
+			HostAddress:       "10.11.12.13",
 		}
 
 		databaseURL, err := url.Parse(testDatabase.URL())

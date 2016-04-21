@@ -20,14 +20,16 @@ type Database struct {
 }
 
 type Daemon struct {
-	ListenHost     string   `json:"listen_host"`
-	ListenPort     int      `json:"listen_port"`
-	LocalSubnet    string   `json:"local_subnet"`
-	OverlayNetwork string   `json:"overlay_network"`
-	SandboxDir     string   `json:"sandbox_dir"`
-	Database       Database `json:"database"`
-	Index          int      `json:"index"`
-	HostAddress    string   `json:"host_address"`
+	ListenHost        string   `json:"listen_host"`
+	ListenPort        int      `json:"listen_port"`
+	LocalSubnet       string   `json:"local_subnet"`
+	OverlayNetwork    string   `json:"overlay_network"`
+	SandboxDir        string   `json:"sandbox_dir"`
+	Database          Database `json:"database"`
+	Index             int      `json:"index"`
+	HostAddress       string   `json:"host_address"`
+	OverlayDNSAddress string   `json:"overlay_dns_address"`
+	ExternalDNSServer string   `json:"dns_server"`
 }
 
 func Unmarshal(input io.Reader) (Daemon, error) {
@@ -54,12 +56,14 @@ func (d Daemon) Marshal(output io.Writer) error {
 }
 
 type ValidatedConfig struct {
-	ListenAddress  string
-	OverlayNetwork *net.IPNet
-	LocalSubnet    *net.IPNet
-	DatabaseURL    string
-	SandboxRepoDir string
-	HostAddress    net.IP
+	ListenAddress     string
+	OverlayNetwork    *net.IPNet
+	LocalSubnet       *net.IPNet
+	DatabaseURL       string
+	SandboxRepoDir    string
+	HostAddress       net.IP
+	OverlayDNSAddress net.IP
+	ExternalDNSServer net.IP
 }
 
 func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
@@ -107,6 +111,14 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		return nil, errors.New(`missing required config "database.ssl_mode"`)
 	}
 
+	if d.ExternalDNSServer == "" {
+		return nil, errors.New(`missing required config "dns_server"`)
+	}
+
+	if d.OverlayDNSAddress == "" {
+		return nil, errors.New(`missing required config "overlay_dns_address"`)
+	}
+
 	if d.HostAddress == "" {
 		return nil, errors.New(`missing required config "host_address"`)
 	}
@@ -127,6 +139,20 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		return nil, fmt.Errorf(`bad config "overlay_network": %s`, err)
 	}
 
+	overlayDNSAddress := net.ParseIP(d.OverlayDNSAddress)
+	if overlayDNSAddress == nil {
+		return nil, fmt.Errorf(`bad config "host_address": %s`, err)
+	}
+
+	if !overlay.Contains(overlayDNSAddress) {
+		return nil, fmt.Errorf(`bad config "overlay_dns_address": not in overlay network`)
+	}
+
+	externalDNSServer := net.ParseIP(d.ExternalDNSServer)
+	if externalDNSServer == nil {
+		return nil, fmt.Errorf(`bad config "dns_server": %s`, err)
+	}
+
 	hostAddress := net.ParseIP(d.HostAddress)
 	if hostAddress == nil {
 		return nil, fmt.Errorf(`bad config "host_address": %s`, err)
@@ -136,12 +162,14 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 	}
 
 	return &ValidatedConfig{
-		ListenAddress:  fmt.Sprintf("%s:%d", d.ListenHost, d.ListenPort),
-		OverlayNetwork: overlay,
-		LocalSubnet:    localSubnet,
-		DatabaseURL:    dbURL,
-		SandboxRepoDir: d.SandboxDir,
-		HostAddress:    hostAddress,
+		ListenAddress:     fmt.Sprintf("%s:%d", d.ListenHost, d.ListenPort),
+		OverlayNetwork:    overlay,
+		LocalSubnet:       localSubnet,
+		DatabaseURL:       dbURL,
+		SandboxRepoDir:    d.SandboxDir,
+		HostAddress:       hostAddress,
+		OverlayDNSAddress: overlayDNSAddress,
+		ExternalDNSServer: externalDNSServer,
 	}, nil
 }
 

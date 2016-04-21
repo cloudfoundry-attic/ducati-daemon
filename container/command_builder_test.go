@@ -24,7 +24,7 @@ var _ = Describe("CommandBuilder", func() {
 		})
 
 		It("should return a command group that idempotently creates the sandbox", func() {
-			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name", "some-vxlan-name")
+			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name", "some-vxlan-name", "some-dns-address")
 
 			Expect(cmd).To(Equal(
 				commands.Unless{
@@ -37,7 +37,7 @@ var _ = Describe("CommandBuilder", func() {
 						},
 						commands.StartDNSServer{
 							SandboxName:   "some-sandbox-name",
-							ListenAddress: "192.168.255.254:53",
+							ListenAddress: "some-dns-address",
 						},
 					),
 				}))

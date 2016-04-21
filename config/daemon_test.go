@@ -28,7 +28,9 @@ const fixtureJSON = `
 	  "ssl_mode": "disable"
 	},
 	"host_address": "10.244.16.3",
-	"index": 9
+	"index": 9,
+	"dns_server": "1.2.3.4",
+	"overlay_dns_address": "192.168.255.254"
 }
 `
 
@@ -49,8 +51,10 @@ var _ = Describe("Daemon config", func() {
 				Name:     "ducati",
 				SslMode:  "disable",
 			},
-			HostAddress: "10.244.16.3",
-			Index:       9,
+			HostAddress:       "10.244.16.3",
+			Index:             9,
+			ExternalDNSServer: "1.2.3.4",
+			OverlayDNSAddress: "192.168.255.254",
 		}
 	})
 
@@ -92,12 +96,14 @@ var _ = Describe("Daemon config", func() {
 			dbURL := "postgres://ducati_daemon:some-password@10.244.16.9:5432/ducati?sslmode=disable"
 
 			Expect(validated).To(Equal(&config.ValidatedConfig{
-				ListenAddress:  "0.0.0.0:4001",
-				OverlayNetwork: expectedOverlay,
-				LocalSubnet:    expectedLocalSubnet,
-				DatabaseURL:    dbURL,
-				SandboxRepoDir: "/var/vcap/data/ducati/sandbox",
-				HostAddress:    net.ParseIP("10.244.16.3"),
+				ListenAddress:     "0.0.0.0:4001",
+				OverlayNetwork:    expectedOverlay,
+				LocalSubnet:       expectedLocalSubnet,
+				DatabaseURL:       dbURL,
+				SandboxRepoDir:    "/var/vcap/data/ducati/sandbox",
+				HostAddress:       net.ParseIP("10.244.16.3"),
+				ExternalDNSServer: net.ParseIP("1.2.3.4"),
+				OverlayDNSAddress: net.ParseIP("192.168.255.254"),
 			}))
 		})
 	})
@@ -120,8 +126,10 @@ var _ = Describe("Daemon config", func() {
 					Name:     "some-database-name",
 					SslMode:  "some-ssl-mode",
 				},
-				Index:       9,
-				HostAddress: "10.244.16.3",
+				Index:             9,
+				HostAddress:       "10.244.16.3",
+				ExternalDNSServer: "1.2.3.4",
+				OverlayDNSAddress: "192.168.255.254",
 			}
 		})
 
@@ -144,6 +152,12 @@ var _ = Describe("Daemon config", func() {
 			Entry("missing Database SslMode", `missing required config "database.ssl_mode"`, func() { conf.Database.SslMode = "" }),
 			Entry("unparsable LocalSubnet", `bad config "local_subnet": invalid CIDR address: foo`, func() { conf.LocalSubnet = "foo" }),
 			Entry("unparsable OverlayNetwork", `bad config "overlay_network": invalid CIDR address: bar`, func() { conf.OverlayNetwork = "bar" }),
+			Entry("missing ExternalDNSServer", `missing required config "dns_server"`, func() { conf.ExternalDNSServer = "" }),
+			Entry("unparsable ExternalDNSServer", `bad config "dns_server"`, func() { conf.ExternalDNSServer = "sdfasdf" }),
+			Entry("missing OverlayDNSAddress", `missing required config "overlay_dns_address"`, func() { conf.OverlayDNSAddress = "" }),
+			Entry("unparsable OverlayDNSAddress", `bad config "overlay_dns_address"`, func() { conf.OverlayDNSAddress = "sdfasdf" }),
+			Entry("OverlayDNSAddress has port", `bad config "overlay_dns_address" has port`, func() { conf.OverlayDNSAddress = "192.168.255.254:99" }),
+			Entry("OverlayDNSAddress not in overlay network", `bad config "overlay_dns_address" not in overlay network`, func() { conf.OverlayDNSAddress = "1.2.3.4" }),
 			Entry("missing HostAddress", `missing required config "host_address"`, func() { conf.HostAddress = "" }),
 			Entry("unparsable HostAddress", `bad config "host_address": invalid CIDR address: bar`, func() { conf.HostAddress = "bar" }),
 			Entry("zero HostAddress", `bad config "host_address": must be nonzero`, func() { conf.HostAddress = "0.0.0.0" }),
@@ -172,8 +186,10 @@ var _ = Describe("Daemon config", func() {
 					Name:     "some-database-name",
 					SslMode:  "some-ssl-mode",
 				},
-				Index:       9,
-				HostAddress: "10.244.16.3",
+				Index:             9,
+				HostAddress:       "10.244.16.3",
+				ExternalDNSServer: "1.2.3.4",
+				OverlayDNSAddress: "192.168.255.254",
 			}
 
 			configFile, err := ioutil.TempFile("", "config")
@@ -193,12 +209,14 @@ var _ = Describe("Daemon config", func() {
 			}
 
 			Expect(conf).To(Equal(&config.ValidatedConfig{
-				ListenAddress:  "127.0.0.1:4001",
-				OverlayNetwork: overlay,
-				LocalSubnet:    expectedLocalSubnet,
-				DatabaseURL:    "postgres://some-username:some-password@some-host:1234/some-database-name?sslmode=some-ssl-mode",
-				SandboxRepoDir: "/some/sandbox/repo/path",
-				HostAddress:    net.ParseIP("10.244.16.3"),
+				ListenAddress:     "127.0.0.1:4001",
+				OverlayNetwork:    overlay,
+				LocalSubnet:       expectedLocalSubnet,
+				DatabaseURL:       "postgres://some-username:some-password@some-host:1234/some-database-name?sslmode=some-ssl-mode",
+				SandboxRepoDir:    "/some/sandbox/repo/path",
+				HostAddress:       net.ParseIP("10.244.16.3"),
+				ExternalDNSServer: net.ParseIP("1.2.3.4"),
+				OverlayDNSAddress: net.ParseIP("192.168.255.254"),
 			}))
 		})
 

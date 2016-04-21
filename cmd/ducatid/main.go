@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -140,7 +141,7 @@ func main() {
 	}
 	dnsFactory := &executor.DNSFactory{
 		Logger:         logger,
-		ExternalServer: "8.8.8.8:53",
+		ExternalServer: fmt.Sprintf("%s:%d", conf.ExternalDNSServer, 53),
 	}
 	executor := executor.New(
 		logger,
@@ -157,6 +158,7 @@ func main() {
 		SandboxRepo:     sandboxRepo,
 		Watcher:         missWatcher,
 		CommandBuilder:  commandBuilder,
+		DNSAddress:      fmt.Sprintf("%s:%d", conf.OverlayDNSAddress, 53),
 		HostIP:          conf.HostAddress,
 		NamespaceOpener: namespaceOpener,
 	}
