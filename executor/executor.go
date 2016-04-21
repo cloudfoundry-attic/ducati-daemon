@@ -112,16 +112,9 @@ func (e *executor) Execute(command Command) error {
 }
 
 func (e *executor) newContext() *context {
-	return &context{
-		logger:                     e.logger.Session("execute"),
-		addressManager:             e.addressManager,
-		routeManager:               e.routeManager,
-		linkFactory:                e.linkFactory,
-		sandboxNamespaceRepository: e.sandboxNamespaceRepository,
-		sandboxRepository:          e.sandboxRepository,
-		listenerFactory:            e.listenerFactory,
-		dnsServerFactory:           e.dnsServerFactory,
-	}
+	context := e.context
+	context.logger = e.logger.Session("execute")
+	return &context
 }
 
 type context struct {
