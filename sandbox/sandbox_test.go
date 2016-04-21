@@ -2,6 +2,7 @@ package sandbox_test
 
 import (
 	"errors"
+	"os"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
@@ -14,16 +15,63 @@ var _ = Describe("Sandbox", func() {
 	var (
 		sb          sandbox.Sandbox
 		logger      *lagertest.TestLogger
-		invoker     *fakes.Invoker
 		sbNamespace *fakes.Namespace
+		invoker     *fakes.Invoker
+		linkFactory *fakes.LinkFactory
 	)
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 		invoker = &fakes.Invoker{}
+		linkFactory = &fakes.LinkFactory{}
 		sbNamespace = &fakes.Namespace{}
+		sbNamespace.ExecuteStub = func(callback func(*os.File) error) error {
+			return callback(nil)
+		}
 
-		sb = sandbox.New(logger, sbNamespace, invoker)
+		sb = sandbox.New(logger, sbNamespace, invoker, linkFactory)
+	})
+
+	Describe("Setup", func() {
+		It("brings up the loopback adapter in the sandbox namespace", func() {
+			sbNamespace.ExecuteStub = func(callback func(*os.File) error) error {
+				Expect(linkFactory.SetUpCallCount()).To(Equal(0))
+				err := callback(nil)
+				Expect(linkFactory.SetUpCallCount()).To(Equal(1))
+				return err
+			}
+
+			err := sb.Setup()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sbNamespace.ExecuteCallCount()).To(Equal(1))
+
+			Expect(linkFactory.SetUpCallCount()).To(Equal(1))
+			linkName := linkFactory.SetUpArgsForCall(0)
+			Expect(linkName).To(Equal("lo"))
+		})
+
+		Context("when namespace execution fails", func() {
+			BeforeEach(func() {
+				sbNamespace.ExecuteReturns(errors.New("boysenberry"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := sb.Setup()
+				Expect(err).To(MatchError("setup failed: boysenberry"))
+			})
+		})
+
+		Context("when setting the link up fails", func() {
+			BeforeEach(func() {
+				linkFactory.SetUpReturns(errors.New("tomato"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := sb.Setup()
+				Expect(err).To(MatchError("setup failed: set link up: tomato"))
+			})
+		})
 	})
 
 	Describe("Namespace", func() {

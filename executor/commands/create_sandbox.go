@@ -16,9 +16,17 @@ func (cn CreateSandbox) Execute(context executor.Context) error {
 	logger.Info("create-sandbox")
 	defer logger.Info("create-sandbox-complete")
 
-	_, err := context.SandboxRepository().Create(cn.Name)
+	sbox, err := context.SandboxRepository().Create(cn.Name)
 	if err != nil {
 		return fmt.Errorf("create sandbox: %s", err)
+	}
+
+	sbox.Lock()
+	defer sbox.Unlock()
+
+	err = sbox.Setup()
+	if err != nil {
+		return fmt.Errorf("setup sandbox: %s", err)
 	}
 
 	return nil

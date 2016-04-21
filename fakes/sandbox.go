@@ -10,12 +10,18 @@ import (
 )
 
 type Sandbox struct {
-	LockStub             func()
-	lockMutex            sync.RWMutex
-	lockArgsForCall      []struct{}
-	UnlockStub           func()
-	unlockMutex          sync.RWMutex
-	unlockArgsForCall    []struct{}
+	LockStub          func()
+	lockMutex         sync.RWMutex
+	lockArgsForCall   []struct{}
+	UnlockStub        func()
+	unlockMutex       sync.RWMutex
+	unlockArgsForCall []struct{}
+	SetupStub         func() error
+	setupMutex        sync.RWMutex
+	setupArgsForCall  []struct{}
+	setupReturns      struct {
+		result1 error
+	}
 	NamespaceStub        func() namespace.Namespace
 	namespaceMutex       sync.RWMutex
 	namespaceArgsForCall []struct{}
@@ -60,6 +66,30 @@ func (fake *Sandbox) UnlockCallCount() int {
 	fake.unlockMutex.RLock()
 	defer fake.unlockMutex.RUnlock()
 	return len(fake.unlockArgsForCall)
+}
+
+func (fake *Sandbox) Setup() error {
+	fake.setupMutex.Lock()
+	fake.setupArgsForCall = append(fake.setupArgsForCall, struct{}{})
+	fake.setupMutex.Unlock()
+	if fake.SetupStub != nil {
+		return fake.SetupStub()
+	} else {
+		return fake.setupReturns.result1
+	}
+}
+
+func (fake *Sandbox) SetupCallCount() int {
+	fake.setupMutex.RLock()
+	defer fake.setupMutex.RUnlock()
+	return len(fake.setupArgsForCall)
+}
+
+func (fake *Sandbox) SetupReturns(result1 error) {
+	fake.SetupStub = nil
+	fake.setupReturns = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *Sandbox) Namespace() namespace.Namespace {

@@ -104,6 +104,7 @@ func main() {
 		&sync.Mutex{},
 		sandboxNamespaceRepo,
 		sandbox.InvokeFunc(ifrit.Invoke),
+		linkFactory,
 	)
 
 	osThreadLocker := &ossupport.OSLocker{}

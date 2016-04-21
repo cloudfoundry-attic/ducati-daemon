@@ -37,6 +37,7 @@ type repository struct {
 	locker        sync.Locker
 	namespaceRepo namespace.Repository
 	invoker       Invoker
+	linkFactory   linkFactory
 }
 
 func NewRepository(
@@ -44,6 +45,7 @@ func NewRepository(
 	locker sync.Locker,
 	namespaceRepo namespace.Repository,
 	invoker Invoker,
+	linkFactory linkFactory,
 ) Repository {
 	return &repository{
 		logger:        logger,
@@ -51,6 +53,7 @@ func NewRepository(
 		locker:        locker,
 		namespaceRepo: namespaceRepo,
 		invoker:       invoker,
+		linkFactory:   linkFactory,
 	}
 }
 
@@ -67,7 +70,7 @@ func (r *repository) Create(sandboxName string) (Sandbox, error) {
 		return nil, fmt.Errorf("create namespace: %s", err)
 	}
 
-	sandbox := New(r.logger, ns, r.invoker)
+	sandbox := New(r.logger, ns, r.invoker, r.linkFactory)
 	r.sandboxes[sandboxName] = sandbox
 
 	return sandbox, nil

@@ -18,6 +18,7 @@ var _ = Describe("Sandbox Repository", func() {
 		namespaceRepo *fakes.Repository
 		invoker       *fakes.Invoker
 		sandboxRepo   sandbox.Repository
+		linkFactory   *fakes.LinkFactory
 	)
 
 	BeforeEach(func() {
@@ -27,7 +28,14 @@ var _ = Describe("Sandbox Repository", func() {
 		sboxNamespace = &fakes.Namespace{}
 		namespaceRepo = &fakes.Repository{}
 		namespaceRepo.CreateReturns(sboxNamespace, nil)
-		sandboxRepo = sandbox.NewRepository(logger, locker, namespaceRepo, invoker)
+		linkFactory = &fakes.LinkFactory{}
+		sandboxRepo = sandbox.NewRepository(
+			logger,
+			locker,
+			namespaceRepo,
+			invoker,
+			linkFactory,
+		)
 	})
 
 	Describe("Create", func() {

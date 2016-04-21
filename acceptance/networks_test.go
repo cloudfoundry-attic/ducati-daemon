@@ -212,6 +212,22 @@ var _ = Describe("Networks", func() {
 			})
 		})
 
+		It("brings up the loopback device in the sandbox", func() {
+			sandboxNS, err := sandboxRepo.Get(sandboxName)
+			Expect(err).NotTo(HaveOccurred())
+
+			sandboxNS.Execute(func(_ *os.File) error {
+				link, err := netlink.LinkByName("lo")
+				Expect(err).NotTo(HaveOccurred())
+				loopback, ok := link.(*netlink.Device)
+				Expect(ok).To(BeTrue())
+
+				Expect(loopback.LinkAttrs.Flags & net.FlagUp).To(Equal(net.FlagUp))
+
+				return nil
+			})
+		})
+
 		It("moves a vxlan adapter into the sandbox", func() {
 			sandboxNS, err := sandboxRepo.Get(sandboxName)
 			Expect(err).NotTo(HaveOccurred())

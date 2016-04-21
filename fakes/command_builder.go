@@ -11,12 +11,12 @@ import (
 )
 
 type CommandBuilder struct {
-	IdempotentlyCreateSandboxStub        func(sandboxName, vxlanDeviceName, listenAddress string) executor.Command
+	IdempotentlyCreateSandboxStub        func(sandboxName, vxlanDeviceName, dnsAddress string) executor.Command
 	idempotentlyCreateSandboxMutex       sync.RWMutex
 	idempotentlyCreateSandboxArgsForCall []struct {
 		sandboxName     string
 		vxlanDeviceName string
-		listenAddress   string
+		dnsAddress      string
 	}
 	idempotentlyCreateSandboxReturns struct {
 		result1 executor.Command
@@ -68,16 +68,16 @@ type CommandBuilder struct {
 	}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string, vxlanDeviceName string, listenAddress string) executor.Command {
+func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string, vxlanDeviceName string, dnsAddress string) executor.Command {
 	fake.idempotentlyCreateSandboxMutex.Lock()
 	fake.idempotentlyCreateSandboxArgsForCall = append(fake.idempotentlyCreateSandboxArgsForCall, struct {
 		sandboxName     string
 		vxlanDeviceName string
-		listenAddress   string
-	}{sandboxName, vxlanDeviceName, listenAddress})
+		dnsAddress      string
+	}{sandboxName, vxlanDeviceName, dnsAddress})
 	fake.idempotentlyCreateSandboxMutex.Unlock()
 	if fake.IdempotentlyCreateSandboxStub != nil {
-		return fake.IdempotentlyCreateSandboxStub(sandboxName, vxlanDeviceName, listenAddress)
+		return fake.IdempotentlyCreateSandboxStub(sandboxName, vxlanDeviceName, dnsAddress)
 	} else {
 		return fake.idempotentlyCreateSandboxReturns.result1
 	}
@@ -92,7 +92,7 @@ func (fake *CommandBuilder) IdempotentlyCreateSandboxCallCount() int {
 func (fake *CommandBuilder) IdempotentlyCreateSandboxArgsForCall(i int) (string, string, string) {
 	fake.idempotentlyCreateSandboxMutex.RLock()
 	defer fake.idempotentlyCreateSandboxMutex.RUnlock()
-	return fake.idempotentlyCreateSandboxArgsForCall[i].sandboxName, fake.idempotentlyCreateSandboxArgsForCall[i].vxlanDeviceName, fake.idempotentlyCreateSandboxArgsForCall[i].listenAddress
+	return fake.idempotentlyCreateSandboxArgsForCall[i].sandboxName, fake.idempotentlyCreateSandboxArgsForCall[i].vxlanDeviceName, fake.idempotentlyCreateSandboxArgsForCall[i].dnsAddress
 }
 
 func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 executor.Command) {
