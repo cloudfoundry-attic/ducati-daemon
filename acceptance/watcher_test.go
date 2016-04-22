@@ -68,7 +68,7 @@ var _ = Describe("Networks", func() {
 			OverlayDNSAddress: "192.168.255.254",
 			ExternalDNSServer: "8.8.8.8",
 			SandboxDir:        sandboxRepoDir,
-			Database:          AsDaemonConfig(testDatabase),
+			Database:          testDatabase.DBConfig(),
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)

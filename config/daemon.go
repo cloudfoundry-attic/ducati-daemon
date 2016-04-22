@@ -5,64 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"lib/db"
 	"net"
 	"os"
 	"strings"
 )
 
-type Database struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
-	SSLMode  string `json:"ssl_mode"`
-}
-
-func (d Database) PostgresURL() (string, error) {
-	if d.Host == "" {
-		return "", errors.New(`"host" is required`)
-	}
-
-	if d.Port == 0 {
-		return "", errors.New(`"port" is required`)
-	}
-
-	if d.Username == "" {
-		return "", errors.New(`"username" is required`)
-	}
-
-	if d.Name == "" {
-		return "", errors.New(`"name" is required`)
-	}
-
-	if d.SSLMode == "" {
-		return "", errors.New(`"ssl_mode" is required`)
-	}
-
-	return fmt.Sprintf(
-		"%s://%s:%s@%s:%d/%s?sslmode=%s",
-		"postgres",
-		d.Username,
-		d.Password,
-		d.Host,
-		d.Port,
-		d.Name,
-		d.SSLMode,
-	), nil
-}
-
 type Daemon struct {
-	ListenHost        string   `json:"listen_host"`
-	ListenPort        int      `json:"listen_port"`
-	LocalSubnet       string   `json:"local_subnet"`
-	OverlayNetwork    string   `json:"overlay_network"`
-	SandboxDir        string   `json:"sandbox_dir"`
-	Database          Database `json:"database"`
-	Index             int      `json:"index"`
-	HostAddress       string   `json:"host_address"`
-	OverlayDNSAddress string   `json:"overlay_dns_address"`
-	ExternalDNSServer string   `json:"dns_server"`
+	ListenHost        string    `json:"listen_host"`
+	ListenPort        int       `json:"listen_port"`
+	LocalSubnet       string    `json:"local_subnet"`
+	OverlayNetwork    string    `json:"overlay_network"`
+	SandboxDir        string    `json:"sandbox_dir"`
+	Database          db.Config `json:"database"`
+	Index             int       `json:"index"`
+	HostAddress       string    `json:"host_address"`
+	OverlayDNSAddress string    `json:"overlay_dns_address"`
+	ExternalDNSServer string    `json:"dns_server"`
 }
 
 func Unmarshal(input io.Reader) (Daemon, error) {

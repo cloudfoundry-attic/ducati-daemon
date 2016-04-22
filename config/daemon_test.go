@@ -3,6 +3,7 @@ package config_test
 import (
 	"bytes"
 	"io/ioutil"
+	"lib/db"
 	"net"
 	"strings"
 
@@ -43,7 +44,7 @@ var _ = Describe("Daemon config", func() {
 			LocalSubnet:    "192.168.${index}.0/16",
 			OverlayNetwork: "192.168.0.0/16",
 			SandboxDir:     "/var/vcap/data/ducati/sandbox",
-			Database: config.Database{
+			Database: db.Config{
 				Host:     "10.244.16.9",
 				Port:     5432,
 				Username: "ducati_daemon",
@@ -118,7 +119,7 @@ var _ = Describe("Daemon config", func() {
 				LocalSubnet:    "192.168.${index}.0/24",
 				OverlayNetwork: "192.168.0.0/16",
 				SandboxDir:     "/some/sandbox/repo/path",
-				Database: config.Database{
+				Database: db.Config{
 					Host:     "some-host",
 					Port:     1234,
 					Username: "some-username",
@@ -177,7 +178,7 @@ var _ = Describe("Daemon config", func() {
 				LocalSubnet:    "192.168.${index}.0/24",
 				OverlayNetwork: "192.168.0.0/16",
 				SandboxDir:     "/some/sandbox/repo/path",
-				Database: config.Database{
+				Database: db.Config{
 					Host:     "some-host",
 					Port:     1234,
 					Username: "some-username",

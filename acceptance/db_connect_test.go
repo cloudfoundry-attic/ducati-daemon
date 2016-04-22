@@ -36,7 +36,7 @@ var _ = Describe("DB Connection Retry", func() {
 			OverlayDNSAddress: "192.168.255.254",
 			ExternalDNSServer: "8.8.8.8",
 			SandboxDir:        sandboxRepoDir,
-			Database:          AsDaemonConfig(testDatabase),
+			Database:          testDatabase.DBConfig(),
 			HostAddress:       "10.11.12.13",
 		}
 

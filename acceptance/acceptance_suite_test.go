@@ -7,9 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"runtime"
-	"strconv"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	. "github.com/onsi/ginkgo"
 	gconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -31,21 +29,6 @@ func TestDucatid(t *testing.T) {
 type beforeSuiteData struct {
 	DucatidPath string
 	DBConnInfo  testsupport.DBConnectionInfo
-}
-
-func AsDaemonConfig(d *testsupport.TestDatabase) config.Database {
-	port, err := strconv.Atoi(d.ConnInfo.Port)
-	if err != nil {
-		panic(err)
-	}
-	return config.Database{
-		Host:     d.ConnInfo.Hostname,
-		Port:     port,
-		Username: d.ConnInfo.Username,
-		Password: d.ConnInfo.Password,
-		Name:     d.Name,
-		SslMode:  "disable",
-	}
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
