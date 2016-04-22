@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	lfakes "lib/fakes"
 	"lib/testsupport"
 	"net"
 	"net/http"
@@ -28,12 +29,12 @@ import (
 
 var _ = Describe("CNIAdd", func() {
 	var (
-		unmarshaler         *fakes.Unmarshaler
+		unmarshaler         *lfakes.Unmarshaler
 		logger              *lagertest.TestLogger
 		controller          *fakes.AddController
 		handler             http.Handler
 		request             *http.Request
-		marshaler           *fakes.Marshaler
+		marshaler           *lfakes.Marshaler
 		expectedResultBytes []byte
 		payload             models.CNIAddPayload
 	)
@@ -46,9 +47,9 @@ var _ = Describe("CNIAdd", func() {
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
-		marshaler = &fakes.Marshaler{}
+		marshaler = &lfakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
-		unmarshaler = &fakes.Unmarshaler{}
+		unmarshaler = &lfakes.Unmarshaler{}
 		unmarshaler.UnmarshalStub = json.Unmarshal
 		controller = &fakes.AddController{}
 

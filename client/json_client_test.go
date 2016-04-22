@@ -3,6 +3,7 @@ package client_test
 import (
 	"encoding/json"
 	"errors"
+	lfakes "lib/fakes"
 	"lib/testsupport"
 	"net/http"
 
@@ -19,8 +20,8 @@ var _ = Describe("JSON Client", func() {
 		var (
 			jsonClient  client.JSONClient
 			server      *ghttp.Server
-			marshaler   *fakes.Marshaler
-			unmarshaler *fakes.Unmarshaler
+			marshaler   *lfakes.Marshaler
+			unmarshaler *lfakes.Unmarshaler
 
 			roundTripper *fakes.RoundTripper
 			httpClient   *http.Client
@@ -38,8 +39,8 @@ var _ = Describe("JSON Client", func() {
 				ghttp.RespondWithJSONEncoded(http.StatusCreated, map[string]string{"foo": "bar"}),
 			))
 
-			marshaler = &fakes.Marshaler{}
-			unmarshaler = &fakes.Unmarshaler{}
+			marshaler = &lfakes.Marshaler{}
+			unmarshaler = &lfakes.Unmarshaler{}
 
 			roundTripper = &fakes.RoundTripper{}
 			roundTripper.RoundTripStub = http.DefaultTransport.RoundTrip

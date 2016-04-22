@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"encoding/json"
+	lfakes "lib/fakes"
 	"net/http"
 
 	"github.com/appc/cni/pkg/skel"
@@ -19,8 +20,8 @@ var _ = Describe("Client", func() {
 	var (
 		c           client.DaemonClient
 		server      *ghttp.Server
-		marshaler   *fakes.Marshaler
-		unmarshaler *fakes.Unmarshaler
+		marshaler   *lfakes.Marshaler
+		unmarshaler *lfakes.Unmarshaler
 
 		roundTripper *fakes.RoundTripper
 		httpClient   *http.Client
@@ -28,8 +29,8 @@ var _ = Describe("Client", func() {
 
 	BeforeEach(func() {
 		server = ghttp.NewServer()
-		marshaler = &fakes.Marshaler{}
-		unmarshaler = &fakes.Unmarshaler{}
+		marshaler = &lfakes.Marshaler{}
+		unmarshaler = &lfakes.Unmarshaler{}
 
 		roundTripper = &fakes.RoundTripper{}
 		roundTripper.RoundTripStub = http.DefaultTransport.RoundTrip

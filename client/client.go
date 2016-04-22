@@ -10,7 +10,7 @@ import (
 	"github.com/appc/cni/pkg/skel"
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
-	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 )
 

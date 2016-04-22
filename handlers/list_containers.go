@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
 )

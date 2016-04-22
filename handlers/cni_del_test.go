@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	lfakes "lib/fakes"
 	"lib/testsupport"
 	"net/http"
 	"net/http/httptest"
@@ -30,8 +31,8 @@ var _ = Describe("CNIDel", func() {
 		handler     http.Handler
 		controller  *fakes.DelController
 		request     *http.Request
-		unmarshaler *fakes.Unmarshaler
-		marshaler   *fakes.Marshaler
+		unmarshaler *lfakes.Unmarshaler
+		marshaler   *lfakes.Marshaler
 		payload     models.CNIDelPayload
 	)
 
@@ -42,9 +43,9 @@ var _ = Describe("CNIDel", func() {
 	}
 
 	BeforeEach(func() {
-		unmarshaler = &fakes.Unmarshaler{}
+		unmarshaler = &lfakes.Unmarshaler{}
 		unmarshaler.UnmarshalStub = json.Unmarshal
-		marshaler = &fakes.Marshaler{}
+		marshaler = &lfakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
 		logger = lagertest.NewTestLogger("test")
 		controller = &fakes.DelController{}

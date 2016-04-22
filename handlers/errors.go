@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"lib/marshal"
 )
 
 type errorBody struct {

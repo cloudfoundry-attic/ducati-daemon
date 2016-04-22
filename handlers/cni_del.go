@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/pivotal-golang/lager"
 )

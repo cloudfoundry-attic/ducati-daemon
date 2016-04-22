@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/cloudfoundry-incubator/ducati-daemon/marshal"
+	"lib/marshal"
 )
 
 type JSONClient struct {

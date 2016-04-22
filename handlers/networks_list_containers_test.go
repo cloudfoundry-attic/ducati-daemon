@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"encoding/json"
 	"errors"
+	lfakes "lib/fakes"
 	"net/http"
 	"net/http/httptest"
 
@@ -19,13 +20,13 @@ import (
 var _ = Describe("GET /networks/:network_id", func() {
 	var (
 		getHandler *handlers.NetworksListContainers
-		marshaler  *fakes.Marshaler
+		marshaler  *lfakes.Marshaler
 		logger     *lagertest.TestLogger
 		datastore  *fakes.Store
 	)
 
 	BeforeEach(func() {
-		marshaler = &fakes.Marshaler{}
+		marshaler = &lfakes.Marshaler{}
 		marshaler.MarshalStub = json.Marshal
 		datastore = &fakes.Store{}
 		logger = lagertest.NewTestLogger("test")
