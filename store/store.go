@@ -56,7 +56,12 @@ func New(dbConnectionPool db) (Store, error) {
 }
 
 func (s *store) Create(container models.Container) error {
-	_, err := s.conn.NamedExec("INSERT INTO container (id, ip, mac, host_ip, network_id, sandbox_name, app) VALUES (:id, :ip, :mac, :host_ip, :network_id, :sandbox_name, :app)", &container)
+	_, err := s.conn.NamedExec(`
+	INSERT INTO container (
+		id, ip, mac, host_ip, network_id, sandbox_name, app
+	) VALUES (
+		:id, :ip, :mac, :host_ip, :network_id, :sandbox_name, :app
+	)`, &container)
 	if err != nil {
 		pqErr, ok := err.(*pq.Error)
 		if !ok {

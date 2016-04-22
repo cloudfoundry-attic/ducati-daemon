@@ -110,7 +110,6 @@ var _ = Describe("Store", func() {
 
 		Context("when the db operation fails", func() {
 			Context("when the failure is an unexpected pq error", func() {
-
 				BeforeEach(func() {
 					mockDb.NamedExecReturns(nil,
 						&pq.Error{
@@ -128,7 +127,6 @@ var _ = Describe("Store", func() {
 			})
 
 			Context("when the failure is not a pq Error", func() {
-
 				BeforeEach(func() {
 					mockDb.NamedExecReturns(nil, errors.New("some-insert-error"))
 				})
