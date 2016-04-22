@@ -83,7 +83,7 @@ var _ = Describe("Client", func() {
 					Netns:       "/some/namespace/path",
 					IfName:      "interface-name",
 					Args:        "FOO=BAR;ABC=123",
-					StdinData:   []byte(`{"network": {"network_id": "", "app": "some-app-guid"}}`),
+					StdinData:   []byte(`{"network": {"network_id": "", "app_id": "some-app-guid"}}`),
 				})
 				Expect(err).NotTo(HaveOccurred())
 

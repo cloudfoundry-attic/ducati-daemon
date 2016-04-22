@@ -4,7 +4,7 @@ import "github.com/appc/cni/pkg/types"
 
 type NetworkPayload struct {
 	ID  string `json:"network_id"`
-	App string `json:"app"`
+	App string `json:"app_id"`
 }
 
 type CNIAddPayload struct {
