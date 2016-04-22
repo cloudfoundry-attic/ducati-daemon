@@ -16,7 +16,40 @@ type Database struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
-	SslMode  string `json:"ssl_mode"`
+	SSLMode  string `json:"ssl_mode"`
+}
+
+func (d Database) PostgresURL() (string, error) {
+	if d.Host == "" {
+		return "", errors.New(`"host" is required`)
+	}
+
+	if d.Port == 0 {
+		return "", errors.New(`"port" is required`)
+	}
+
+	if d.Username == "" {
+		return "", errors.New(`"username" is required`)
+	}
+
+	if d.Name == "" {
+		return "", errors.New(`"name" is required`)
+	}
+
+	if d.SSLMode == "" {
+		return "", errors.New(`"ssl_mode" is required`)
+	}
+
+	return fmt.Sprintf(
+		"%s://%s:%s@%s:%d/%s?sslmode=%s",
+		"postgres",
+		d.Username,
+		d.Password,
+		d.Host,
+		d.Port,
+		d.Name,
+		d.SSLMode,
+	), nil
 }
 
 type Daemon struct {
@@ -67,60 +100,41 @@ type ValidatedConfig struct {
 }
 
 func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
-	db := d.Database
-	dbURL := fmt.Sprintf("%s://%s:%s@%s:%d/%s?sslmode=%s",
-		"postgres", db.Username, db.Password, db.Host, db.Port, db.Name, db.SslMode)
+	dbURL, err := d.Database.PostgresURL()
+	if err != nil {
+		return nil, fmt.Errorf("database configuration: %s", err)
+	}
 
 	if d.ListenHost == "" {
-		return nil, errors.New(`missing required config "listen_host"`)
+		return nil, errors.New(`missing required config: "listen_host"`)
 	}
 
 	if d.ListenPort == 0 {
-		return nil, errors.New(`missing required config "listen_port"`)
+		return nil, errors.New(`missing required config: "listen_port"`)
 	}
 
 	if d.LocalSubnet == "" {
-		return nil, errors.New(`missing required config "local_subnet"`)
+		return nil, errors.New(`missing required config: "local_subnet"`)
 	}
 
 	if d.OverlayNetwork == "" {
-		return nil, errors.New(`missing required config "overlay_network"`)
+		return nil, errors.New(`missing required config: "overlay_network"`)
 	}
 
 	if d.SandboxDir == "" {
-		return nil, errors.New(`missing required config "sandbox_dir"`)
-	}
-
-	if d.Database.Host == "" {
-		return nil, errors.New(`missing required config "database.host"`)
-	}
-
-	if d.Database.Port == 0 {
-		return nil, errors.New(`missing required config "database.port"`)
-	}
-
-	if d.Database.Username == "" {
-		return nil, errors.New(`missing required config "database.username"`)
-	}
-
-	if d.Database.Name == "" {
-		return nil, errors.New(`missing required config "database.name"`)
-	}
-
-	if d.Database.SslMode == "" {
-		return nil, errors.New(`missing required config "database.ssl_mode"`)
+		return nil, errors.New(`missing required config: "sandbox_dir"`)
 	}
 
 	if d.ExternalDNSServer == "" {
-		return nil, errors.New(`missing required config "dns_server"`)
+		return nil, errors.New(`missing required config: "dns_server"`)
 	}
 
 	if d.OverlayDNSAddress == "" {
-		return nil, errors.New(`missing required config "overlay_dns_address"`)
+		return nil, errors.New(`missing required config: "overlay_dns_address"`)
 	}
 
 	if d.HostAddress == "" {
-		return nil, errors.New(`missing required config "host_address"`)
+		return nil, errors.New(`missing required config: "host_address"`)
 	}
 
 	interpolatedSubnet := strings.Replace(d.LocalSubnet, "${index}", fmt.Sprintf("%d", d.Index), -1)
@@ -141,7 +155,7 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 
 	overlayDNSAddress := net.ParseIP(d.OverlayDNSAddress)
 	if overlayDNSAddress == nil {
-		return nil, fmt.Errorf(`bad config "host_address": %s`, err)
+		return nil, fmt.Errorf(`bad config "overlay_dns_address": %s is not an IP address`, d.OverlayDNSAddress)
 	}
 
 	if !overlay.Contains(overlayDNSAddress) {
@@ -150,12 +164,12 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 
 	externalDNSServer := net.ParseIP(d.ExternalDNSServer)
 	if externalDNSServer == nil {
-		return nil, fmt.Errorf(`bad config "dns_server": %s`, err)
+		return nil, fmt.Errorf(`bad config "dns_server": %s is not an IP address`, d.ExternalDNSServer)
 	}
 
 	hostAddress := net.ParseIP(d.HostAddress)
 	if hostAddress == nil {
-		return nil, fmt.Errorf(`bad config "host_address": %s`, err)
+		return nil, fmt.Errorf(`bad config "host_address": %s is not an IP address`, d.HostAddress)
 	}
 	if hostAddress.IsUnspecified() {
 		return nil, fmt.Errorf(`bad config "host_address": must be nonzero`)

@@ -79,6 +79,13 @@ var _ = Describe("JSON Client", func() {
 			server.Close()
 		})
 
+		It("uses the provided http client", func() {
+			err := jsonClient.BuildAndDo(config)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(roundTripper.RoundTripCallCount()).To(Equal(1))
+		})
+
 		It("marshals the request payload into the request body", func() {
 			err := jsonClient.BuildAndDo(config)
 			Expect(err).NotTo(HaveOccurred())
