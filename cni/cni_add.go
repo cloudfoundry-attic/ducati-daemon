@@ -7,13 +7,14 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/network"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
 
 type AddController struct {
 	IPAllocator    ipam.IPAllocator
-	NetworkMapper  ipam.NetworkMapper
+	NetworkMapper  network.NetworkMapper
 	Creator        creator
 	Datastore      store.Store
 	OSThreadLocker ossupport.OSThreadLocker
@@ -28,19 +29,24 @@ func (c *AddController) Add(payload models.CNIAddPayload) (*types.Result, error)
 	c.OSThreadLocker.LockOSThread()
 	defer c.OSThreadLocker.UnlockOSThread()
 
-	vni, err := c.NetworkMapper.GetVNI(payload.Network.ID)
+	networkID, err := c.NetworkMapper.GetNetworkID(payload.Network)
+	if err != nil {
+		return nil, fmt.Errorf("get network id: %s", err)
+	}
+
+	vni, err := c.NetworkMapper.GetVNI(networkID)
 	if err != nil {
 		return nil, fmt.Errorf("get vni: %s", err)
 	}
 
-	ipamResult, err := c.IPAllocator.AllocateIP(payload.Network.ID, payload.ContainerID)
+	ipamResult, err := c.IPAllocator.AllocateIP(networkID, payload.ContainerID)
 	if err != nil {
 		return nil, err
 	}
 
 	containerConfig := container.CreatorConfig{
-		NetworkID:       payload.Network.ID,
-		App:             payload.Network.App,
+		NetworkID:       networkID,
+		App:             payload.Network.Properties.AppGUID,
 		ContainerNsPath: payload.ContainerNamespace,
 		ContainerID:     payload.ContainerID,
 		InterfaceName:   payload.InterfaceName,

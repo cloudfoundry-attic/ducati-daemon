@@ -70,6 +70,8 @@ var _ = Describe("CniAdd", func() {
 
 		ipAllocator.AllocateIPReturns(ipamResult, nil)
 
+		networkMapper.GetVNIReturns(99, nil)
+		networkMapper.GetNetworkIDReturns("network-id-1", nil)
 		creator.SetupReturns(models.Container{
 			ID:        "container-id",
 			NetworkID: "network-id-1",
@@ -84,16 +86,15 @@ var _ = Describe("CniAdd", func() {
 			ContainerNamespace: "/some/namespace/path",
 			InterfaceName:      "interface-name",
 			Network: models.NetworkPayload{
-				ID:  "network-id-1",
-				App: "app-id-1",
+				Properties: models.Properties{
+					AppGUID: "app-id-1",
+				},
 			},
 			ContainerID: "container-id",
 		}
 	})
 
 	It("sets up the container network", func() {
-		networkMapper.GetVNIReturns(99, nil)
-
 		_, err := controller.Add(payload)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -125,6 +126,25 @@ var _ = Describe("CniAdd", func() {
 
 		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
 		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
+	})
+
+	It("gets the networkID from the network mapper", func() {
+		_, err := controller.Add(payload)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(networkMapper.GetNetworkIDCallCount()).To(Equal(1))
+		Expect(networkMapper.GetNetworkIDArgsForCall(0)).To(Equal(payload.Network))
+	})
+
+	Context("when getting the network ID fails", func() {
+		BeforeEach(func() {
+			networkMapper.GetNetworkIDReturns("", errors.New("potato"))
+		})
+
+		It("should return an meaningful error", func() {
+			_, err := controller.Add(payload)
+			Expect(err).To(MatchError("get network id: potato"))
+		})
 	})
 
 	It("uses the network id to get the VNI", func() {

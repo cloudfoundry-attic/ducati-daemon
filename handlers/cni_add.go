@@ -6,9 +6,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"lib/marshal"
+
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
-	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/pivotal-golang/lager"
 )
@@ -48,12 +49,6 @@ func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	if payload.InterfaceName == "" {
 		logger.Error("bad-request", errors.New("missing-interface_name"))
-		resp.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if payload.Network.ID == "" {
-		logger.Error("bad-request", errors.New("missing-network_id"))
 		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}

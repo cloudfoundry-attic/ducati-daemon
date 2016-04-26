@@ -16,6 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/network"
 	"github.com/miekg/dns"
 
 	"github.com/nu7hatch/gouuid"
@@ -40,11 +41,13 @@ var _ = Describe("Networks", func() {
 	var (
 		session     *gexec.Session
 		address     string
-		network     models.NetworkPayload
 		containerID string
 		vni         int
 		sandboxName string
 		hostAddress string
+		spaceID     string
+		appID       string
+		networkID   string
 
 		sandboxRepo        namespace.Repository
 		containerRepo      namespace.Repository
@@ -90,12 +93,13 @@ var _ = Describe("Networks", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// GinkgoParallelNode() necessary to avoid test pollution in parallel
-		network.ID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
+		spaceID = fmt.Sprintf("some-space-id-%x", GinkgoParallelNode())
+		networkID = spaceID
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
-		network.App = fmt.Sprintf("some-app-id-%x", rand.Int())
+		appID = fmt.Sprintf("some-app-id-%x", rand.Int())
 
-		networkMapper := &ipam.FixedNetworkMapper{}
-		vni, err = networkMapper.GetVNI(network.ID)
+		networkMapper := &network.FixedNetworkMapper{DefaultNetworkID: "default"}
+		vni, err = networkMapper.GetVNI(spaceID)
 		Expect(err).NotTo(HaveOccurred())
 
 		sandboxName = fmt.Sprintf("vni-%d", vni)
@@ -138,8 +142,13 @@ var _ = Describe("Networks", func() {
 				Args:               "FOO=BAR;ABC=123",
 				ContainerNamespace: containerNamespace.Name(),
 				InterfaceName:      "vx-eth0",
-				Network:            network,
-				ContainerID:        containerID,
+				Network: models.NetworkPayload{
+					models.Properties{
+						AppGUID:   appID,
+						SpaceGUID: spaceID,
+					},
+				},
+				ContainerID: containerID,
 			}
 
 			downSpec = models.CNIDelPayload{
@@ -159,7 +168,7 @@ var _ = Describe("Networks", func() {
 			Expect(daemonClient.ContainerDown(downSpec)).To(Succeed())
 
 			By("checking that containers have been removed")
-			containers, err := daemonClient.ListNetworkContainers(network.ID)
+			containers, err := daemonClient.ListNetworkContainers(networkID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(0))
 
@@ -177,7 +186,7 @@ var _ = Describe("Networks", func() {
 		})
 
 		It("makes container metadata available on the list network containers endpoint", func() {
-			containers, err := daemonClient.ListNetworkContainers(network.ID)
+			containers, err := daemonClient.ListNetworkContainers(networkID)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(containers).To(HaveLen(1))
@@ -201,8 +210,8 @@ var _ = Describe("Networks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(container.HostIP).To(Equal(hostAddress))
-			Expect(container.NetworkID).To(Equal(network.ID))
-			Expect(container.App).To(Equal(network.App))
+			Expect(container.NetworkID).To(Equal(networkID))
+			Expect(container.App).To(Equal(appID))
 		})
 
 		Context("when the ADD endpoint is called a second time with the same container ID", func() {
