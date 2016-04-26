@@ -59,14 +59,18 @@ var _ = Describe("Client", func() {
 	Describe("CNIAdd", func() {
 		var expectedCNIPayload models.CNIAddPayload
 
-		Context("when network id is not provided", func() {
+		Context("when network is set", func() {
 			BeforeEach(func() {
 				expectedCNIPayload = models.CNIAddPayload{
 					Args:               "FOO=BAR;ABC=123",
 					ContainerNamespace: "/some/namespace/path",
 					InterfaceName:      "interface-name",
-					Network:            models.NetworkPayload{ID: "", App: "some-app-guid"},
 					ContainerID:        "some-container-id",
+					Network: models.NetworkPayload{
+						Properties: models.Properties{
+							AppID: "some-app-id",
+						},
+					},
 				}
 
 				server.AppendHandlers(ghttp.CombineHandlers(
@@ -77,13 +81,20 @@ var _ = Describe("Client", func() {
 				))
 			})
 
-			It("does not change network spec", func() {
+			It("passes it through", func() {
 				_, err := c.CNIAdd(&skel.CmdArgs{
 					ContainerID: "some-container-id",
 					Netns:       "/some/namespace/path",
 					IfName:      "interface-name",
 					Args:        "FOO=BAR;ABC=123",
-					StdinData:   []byte(`{"network": {"network_id": "", "app": "some-app-guid"}}`),
+					StdinData: []byte(`{
+						"network": {
+							"network_id": "",
+							"properties": {
+								"app_id": "some-app-id"
+							}
+						}
+					}`),
 				})
 				Expect(err).NotTo(HaveOccurred())
 

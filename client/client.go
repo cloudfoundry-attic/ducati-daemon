@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"path"
 
+	"lib/marshal"
+
 	"github.com/appc/cni/pkg/skel"
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
-	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 )
 
@@ -46,8 +47,7 @@ func (d *DaemonClient) CNIAdd(input *skel.CmdArgs) (types.Result, error) {
 	}
 
 	network := models.NetworkPayload{
-		ID:  stdinStruct.Network.ID,
-		App: stdinStruct.Network.App,
+		Properties: stdinStruct.Network.Properties,
 	}
 
 	return d.ContainerUp(models.CNIAddPayload{

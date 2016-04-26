@@ -12,9 +12,9 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/client"
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
-	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/network"
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -26,9 +26,11 @@ var _ = Describe("Networks", func() {
 	var (
 		session     *gexec.Session
 		address     string
-		network     models.NetworkPayload
 		containerID string
 		vni         int
+		spaceID     string
+		networkID   string
+		appID       string
 
 		sandboxRepo        namespace.Repository
 		containerRepo      namespace.Repository
@@ -76,12 +78,13 @@ var _ = Describe("Networks", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// GinkgoParallelNode() necessary to avoid test pollution in parallel
-		network.ID = fmt.Sprintf("some-network-id-%x", GinkgoParallelNode())
-		network.App = fmt.Sprintf("some-app-id-%x", rand.Int())
+		spaceID = fmt.Sprintf("some-space-id-%x", GinkgoParallelNode())
+		networkID = spaceID
+		appID = fmt.Sprintf("some-app-id-%x", rand.Int())
 		containerID = fmt.Sprintf("some-container-id-%x", rand.Int())
 
-		networkMapper := &ipam.FixedNetworkMapper{}
-		vni, err = networkMapper.GetVNI(network.ID)
+		networkMapper := &network.FixedNetworkMapper{DefaultNetworkID: "default"}
+		vni, err = networkMapper.GetVNI(networkID)
 		Expect(err).NotTo(HaveOccurred())
 
 		var serverIsAvailable = func() error {
@@ -96,8 +99,13 @@ var _ = Describe("Networks", func() {
 			Args:               "FOO=BAR;ABC=123",
 			ContainerNamespace: containerNamespace.Name(),
 			InterfaceName:      "vx-eth0",
-			Network:            network,
-			ContainerID:        containerID,
+			Network: models.NetworkPayload{
+				models.Properties{
+					AppID:   appID,
+					SpaceID: spaceID,
+				},
+			},
+			ContainerID: containerID,
 		}
 
 		downSpec = models.CNIDelPayload{

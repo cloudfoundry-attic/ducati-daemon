@@ -80,8 +80,9 @@ var _ = Describe("CNIAdd", func() {
 			InterfaceName:      "interface-name",
 			ContainerID:        "container-id",
 			Network: models.NetworkPayload{
-				ID:  "network-id-1",
-				App: "some-app-guid",
+				Properties: models.Properties{
+					AppID: "some-app-guid",
+				},
 			},
 		}
 		setPayload()
@@ -140,35 +141,16 @@ var _ = Describe("CNIAdd", func() {
 			Entry("container_id", "ContainerID", "container_id"),
 		)
 
-		DescribeTable("missing payload fields",
-			func(paramToRemove, jsonName string) {
-				field := reflect.ValueOf(&payload.Network).Elem().FieldByName(paramToRemove)
-				if !field.IsValid() {
-					Fail("invalid test: payload does not have a field named " + paramToRemove)
-				}
-				field.Set(reflect.Zero(field.Type()))
+		Context("when the app guid is missing from the payload", func() {
+			It("succeeds with 201 status code", func() {
+				payload.Network.Properties.AppID = ""
 				setPayload()
 
 				resp := httptest.NewRecorder()
 				handler.ServeHTTP(resp, request)
 
-				Expect(resp.Code).To(Equal(http.StatusBadRequest))
-				Expect(logger).To(gbytes.Say(fmt.Sprintf(
-					"cni-add.bad-request.*missing-%s", jsonName)))
-			},
-			Entry("network id", "ID", "network_id"),
-		)
-	})
-
-	Context("when app is missing from payload", func() {
-		It("succeeds with 201 status code", func() {
-			payload.Network.App = ""
-			setPayload()
-
-			resp := httptest.NewRecorder()
-			handler.ServeHTTP(resp, request)
-
-			Expect(resp.Code).To(Equal(http.StatusCreated))
+				Expect(resp.Code).To(Equal(http.StatusCreated))
+			})
 		})
 	})
 

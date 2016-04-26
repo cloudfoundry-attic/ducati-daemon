@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"lib/marshal"
+
 	"github.com/appc/cni/pkg/types"
 	"github.com/cloudfoundry-incubator/ducati-daemon/cni"
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
@@ -24,7 +26,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/neigh"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/subscriber"
-	"lib/marshal"
+	"github.com/cloudfoundry-incubator/ducati-daemon/network"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
@@ -130,7 +132,7 @@ func main() {
 		resolver,
 		arpInserter,
 	)
-	networkMapper := &ipam.FixedNetworkMapper{}
+	networkMapper := &network.FixedNetworkMapper{DefaultNetworkID: "default"}
 
 	hostNamespace, err := namespaceOpener.OpenPath("/proc/self/ns/net")
 	if err != nil {

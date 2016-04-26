@@ -6,6 +6,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
+	"github.com/cloudfoundry-incubator/ducati-daemon/network"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
@@ -23,7 +24,7 @@ type DelController struct {
 	Datastore      store.Store
 	Deletor        deletor
 	IPAllocator    ipam.IPAllocator
-	NetworkMapper  ipam.NetworkMapper
+	NetworkMapper  network.NetworkMapper
 	OSThreadLocker ossupport.OSThreadLocker
 }
 

@@ -2,9 +2,13 @@ package models
 
 import "github.com/appc/cni/pkg/types"
 
+type Properties struct {
+	AppID   string `json:"app_id"`
+	SpaceID string `json:"space_id"`
+}
+
 type NetworkPayload struct {
-	ID  string `json:"network_id"`
-	App string `json:"app"`
+	Properties Properties `json:"properties,omitempty"`
 }
 
 type CNIAddPayload struct {
