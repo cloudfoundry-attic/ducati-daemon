@@ -12,8 +12,10 @@ import (
 type DNSFactory struct {
 	Logger         lager.Logger
 	ExternalServer string
+	DucatiAPI      string
+	Suffix         string
 }
 
 func (f *DNSFactory) New(listener net.PacketConn) ifrit.Runner {
-	return runner.New( f.Logger, resolver.Config{}, f.ExternalServer, listener)
+	return runner.New(f.Logger, resolver.Config{DucatiSuffix: f.Suffix, DucatiAPI: f.DucatiAPI}, f.ExternalServer, listener)
 }

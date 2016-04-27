@@ -38,6 +38,7 @@ var _ = Describe("DB Connection Retry", func() {
 			SandboxDir:        sandboxRepoDir,
 			Database:          testDatabase.DBConfig(),
 			HostAddress:       "10.11.12.13",
+			Suffix:            "potato",
 		}
 
 		databaseURL, err := url.Parse(testDatabase.URL())

@@ -31,7 +31,8 @@ const fixtureJSON = `
 	"host_address": "10.244.16.3",
 	"index": 9,
 	"dns_server": "1.2.3.4",
-	"overlay_dns_address": "192.168.255.254"
+	"overlay_dns_address": "192.168.255.254",
+	"suffix": "potato"
 }
 `
 
@@ -56,6 +57,7 @@ var _ = Describe("Daemon config", func() {
 			Index:             9,
 			ExternalDNSServer: "1.2.3.4",
 			OverlayDNSAddress: "192.168.255.254",
+			Suffix:            "potato",
 		}
 	})
 
@@ -105,6 +107,7 @@ var _ = Describe("Daemon config", func() {
 				HostAddress:       net.ParseIP("10.244.16.3"),
 				ExternalDNSServer: net.ParseIP("1.2.3.4"),
 				OverlayDNSAddress: net.ParseIP("192.168.255.254"),
+				Suffix:            "potato",
 			}))
 		})
 	})
@@ -131,6 +134,7 @@ var _ = Describe("Daemon config", func() {
 				HostAddress:       "10.244.16.3",
 				ExternalDNSServer: "1.2.3.4",
 				OverlayDNSAddress: "192.168.255.254",
+				Suffix:            "potato",
 			}
 		})
 
@@ -154,6 +158,7 @@ var _ = Describe("Daemon config", func() {
 			Entry("missing HostAddress", `missing required config: "host_address"`, func() { conf.HostAddress = "" }),
 			Entry("missing OverlayDNSAddress", `missing required config: "overlay_dns_address"`, func() { conf.OverlayDNSAddress = "" }),
 			Entry("missing ExternalDNSServer", `missing required config: "dns_server"`, func() { conf.ExternalDNSServer = "" }),
+			Entry("missing Suffix", `missing required config: "suffix"`, func() { conf.Suffix = "" }),
 			Entry("OverlayDNSAddress not in overlay network", `bad config "overlay_dns_address": not in overlay network`, func() { conf.OverlayDNSAddress = "1.2.3.4" }),
 			Entry("unparsable LocalSubnet", `bad config "local_subnet": invalid CIDR address: foo`, func() { conf.LocalSubnet = "foo" }),
 			Entry("unparsable OverlayNetwork", `bad config "overlay_network": invalid CIDR address: bar`, func() { conf.OverlayNetwork = "bar" }),
@@ -190,6 +195,7 @@ var _ = Describe("Daemon config", func() {
 				HostAddress:       "10.244.16.3",
 				ExternalDNSServer: "1.2.3.4",
 				OverlayDNSAddress: "192.168.255.254",
+				Suffix:            "potato",
 			}
 
 			configFile, err := ioutil.TempFile("", "config")
@@ -217,6 +223,7 @@ var _ = Describe("Daemon config", func() {
 				HostAddress:       net.ParseIP("10.244.16.3"),
 				ExternalDNSServer: net.ParseIP("1.2.3.4"),
 				OverlayDNSAddress: net.ParseIP("192.168.255.254"),
+				Suffix:            "potato",
 			}))
 		})
 

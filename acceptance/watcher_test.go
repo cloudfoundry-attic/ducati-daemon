@@ -71,6 +71,7 @@ var _ = Describe("Networks", func() {
 			ExternalDNSServer: "8.8.8.8",
 			SandboxDir:        sandboxRepoDir,
 			Database:          testDatabase.DBConfig(),
+			Suffix:            "potato",
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)

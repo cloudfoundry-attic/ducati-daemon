@@ -145,6 +145,8 @@ func main() {
 	dnsFactory := &executor.DNSFactory{
 		Logger:         logger,
 		ExternalServer: fmt.Sprintf("%s:%d", conf.ExternalDNSServer, 53),
+		Suffix:         conf.Suffix,
+		DucatiAPI:      "http://" + conf.ListenAddress,
 	}
 	executor := executor.New(
 		logger,

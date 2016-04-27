@@ -22,6 +22,7 @@ type Daemon struct {
 	HostAddress       string    `json:"host_address"`
 	OverlayDNSAddress string    `json:"overlay_dns_address"`
 	ExternalDNSServer string    `json:"dns_server"`
+	Suffix            string    `json:"suffix"`
 }
 
 func Unmarshal(input io.Reader) (Daemon, error) {
@@ -56,6 +57,7 @@ type ValidatedConfig struct {
 	HostAddress       net.IP
 	OverlayDNSAddress net.IP
 	ExternalDNSServer net.IP
+	Suffix            string
 }
 
 func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
@@ -94,6 +96,10 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 
 	if d.HostAddress == "" {
 		return nil, errors.New(`missing required config: "host_address"`)
+	}
+
+	if d.Suffix == "" {
+		return nil, errors.New(`missing required config: "suffix"`)
 	}
 
 	interpolatedSubnet := strings.Replace(d.LocalSubnet, "${index}", fmt.Sprintf("%d", d.Index), -1)
@@ -143,6 +149,7 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		HostAddress:       hostAddress,
 		OverlayDNSAddress: overlayDNSAddress,
 		ExternalDNSServer: externalDNSServer,
+		Suffix:            d.Suffix,
 	}, nil
 }
 

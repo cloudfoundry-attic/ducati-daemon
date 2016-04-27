@@ -86,6 +86,7 @@ var _ = Describe("Networks", func() {
 			HostAddress:       hostAddress,
 			OverlayDNSAddress: "192.168.255.254",
 			ExternalDNSServer: "8.8.8.8",
+			Suffix:            "potato",
 		})
 
 		ducatiCmd := exec.Command(ducatidPath, "-configFile", configFilePath)
@@ -347,6 +348,7 @@ var _ = Describe("Networks", func() {
 		})
 
 		It("starts a DNS resolver in the sandbox at the configured overlay address", func() {
+			By("resolving requests to external servers")
 			err := containerNamespace.Execute(func(_ *os.File) error {
 				client := dns.Client{
 					Net: "udp",
@@ -358,6 +360,36 @@ var _ = Describe("Networks", func() {
 					Question: []dns.Question{
 						dns.Question{
 							Name:   dns.Fqdn("example.com"),
+							Qtype:  dns.TypeA,
+							Qclass: uint16(dns.ClassINET),
+						},
+					},
+				}
+				resp, _, err := client.Exchange(message, "192.168.255.254:53")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(resp).NotTo(BeNil())
+				Expect(resp.Rcode).To(Equal(dns.RcodeSuccess))
+				Expect(len(resp.Answer)).To(BeNumerically(">=", 1))
+				_, ok := resp.Answer[0].(*dns.A)
+				Expect(ok).To(BeTrue())
+
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("resolving internal requests")
+			err = containerNamespace.Execute(func(_ *os.File) error {
+				client := dns.Client{
+					Net: "udp",
+				}
+				message := &dns.Msg{
+					MsgHdr: dns.MsgHdr{
+						Id: dns.Id(),
+					},
+					Question: []dns.Question{
+						dns.Question{
+							Name:   dns.Fqdn(containerID + ".potato"),
 							Qtype:  dns.TypeA,
 							Qclass: uint16(dns.ClassINET),
 						},
