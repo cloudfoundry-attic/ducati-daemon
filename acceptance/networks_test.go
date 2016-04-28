@@ -389,7 +389,7 @@ var _ = Describe("Networks", func() {
 					},
 					Question: []dns.Question{
 						dns.Question{
-							Name:   dns.Fqdn(containerID + ".potato"),
+							Name:   dns.Fqdn(appID + ".potato"),
 							Qtype:  dns.TypeA,
 							Qclass: uint16(dns.ClassINET),
 						},
