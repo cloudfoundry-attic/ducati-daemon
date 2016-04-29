@@ -8,13 +8,13 @@ import (
 
 const FAMILY_V4 = netlink.FAMILY_V4
 
-//go:generate counterfeiter --fake-name NLSocket . NLSocket
+//go:generate counterfeiter -o fakes/nlsocket.go --fake-name NLSocket . NLSocket
 type NLSocket interface {
 	Receive() ([]syscall.NetlinkMessage, error)
 	Close()
 }
 
-//go:generate counterfeiter --fake-name Netlinker . Netlinker
+//go:generate counterfeiter -o fakes/netlinker.go --fake-name Netlinker . Netlinker
 type Netlinker interface {
 	LinkAdd(link netlink.Link) error
 	LinkDel(link netlink.Link) error

@@ -441,7 +441,6 @@ var _ = Describe("Networks", func() {
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
-
 		})
 
 		It("defines routes in the container", func() {

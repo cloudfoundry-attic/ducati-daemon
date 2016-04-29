@@ -3,11 +3,11 @@ package handlers
 import (
 	"net/http"
 
-	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
+	"lib/marshal"
 )
 
 type NetworksListContainers struct {

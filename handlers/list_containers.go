@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
+	"lib/marshal"
 )
 
 type ListContainers struct {

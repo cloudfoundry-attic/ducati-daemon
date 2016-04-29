@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"lib/marshal"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/pivotal-golang/lager"
+	"lib/marshal"
 )
 
 //go:generate counterfeiter -o ../fakes/del_controller.go --fake-name DelController . delController
