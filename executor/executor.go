@@ -47,7 +47,7 @@ func (l ListenUDPFunc) ListenUDP(network string, address *net.UDPAddr) (*net.UDP
 
 //go:generate counterfeiter -o ../fakes/dns_server_factory.go --fake-name DNSServerFactory . DNSServerFactory
 type DNSServerFactory interface {
-	New(listener net.PacketConn) ifrit.Runner
+	New(listener net.PacketConn, ns namespace.Namespace) ifrit.Runner
 }
 
 //go:generate counterfeiter -o ../fakes/command.go --fake-name Command . Command

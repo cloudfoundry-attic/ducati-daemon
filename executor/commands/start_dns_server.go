@@ -31,8 +31,10 @@ func (sd StartDNSServer) Execute(context executor.Context) error {
 	sbox.Lock()
 	defer sbox.Unlock()
 
+	namespace := sbox.Namespace()
+
 	var conn *net.UDPConn
-	err = sbox.Namespace().Execute(func(*os.File) error {
+	err = namespace.Execute(func(*os.File) error {
 		linkFactory := context.LinkFactory()
 		err := linkFactory.CreateDummy(DNS_INTERFACE_NAME)
 		if err != nil {
@@ -65,7 +67,7 @@ func (sd StartDNSServer) Execute(context executor.Context) error {
 		return fmt.Errorf("namespace execute: %s", err)
 	}
 
-	dnsServerRunner := context.DNSServerFactory().New(conn)
+	dnsServerRunner := context.DNSServerFactory().New(conn, namespace)
 
 	err = sbox.LaunchDNS(dnsServerRunner)
 	if err != nil {

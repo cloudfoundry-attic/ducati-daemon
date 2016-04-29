@@ -6,28 +6,31 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/tedsuo/ifrit"
 )
 
 type DNSServerFactory struct {
-	NewStub        func(listener net.PacketConn) ifrit.Runner
+	NewStub        func(listener net.PacketConn, ns namespace.Namespace) ifrit.Runner
 	newMutex       sync.RWMutex
 	newArgsForCall []struct {
 		listener net.PacketConn
+		ns       namespace.Namespace
 	}
 	newReturns struct {
 		result1 ifrit.Runner
 	}
 }
 
-func (fake *DNSServerFactory) New(listener net.PacketConn) ifrit.Runner {
+func (fake *DNSServerFactory) New(listener net.PacketConn, ns namespace.Namespace) ifrit.Runner {
 	fake.newMutex.Lock()
 	fake.newArgsForCall = append(fake.newArgsForCall, struct {
 		listener net.PacketConn
-	}{listener})
+		ns       namespace.Namespace
+	}{listener, ns})
 	fake.newMutex.Unlock()
 	if fake.NewStub != nil {
-		return fake.NewStub(listener)
+		return fake.NewStub(listener, ns)
 	} else {
 		return fake.newReturns.result1
 	}
@@ -39,10 +42,10 @@ func (fake *DNSServerFactory) NewCallCount() int {
 	return len(fake.newArgsForCall)
 }
 
-func (fake *DNSServerFactory) NewArgsForCall(i int) net.PacketConn {
+func (fake *DNSServerFactory) NewArgsForCall(i int) (net.PacketConn, namespace.Namespace) {
 	fake.newMutex.RLock()
 	defer fake.newMutex.RUnlock()
-	return fake.newArgsForCall[i].listener
+	return fake.newArgsForCall[i].listener, fake.newArgsForCall[i].ns
 }
 
 func (fake *DNSServerFactory) NewReturns(result1 ifrit.Runner) {

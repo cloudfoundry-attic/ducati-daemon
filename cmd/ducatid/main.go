@@ -143,10 +143,11 @@ func main() {
 		HostNamespace: hostNamespace,
 	}
 	dnsFactory := &executor.DNSFactory{
-		Logger:         logger,
-		ExternalServer: fmt.Sprintf("%s:%d", conf.ExternalDNSServer, 53),
-		Suffix:         conf.Suffix,
-		DucatiAPI:      "http://" + conf.ListenAddress,
+		Logger:           logger,
+		ExternalServer:   fmt.Sprintf("%s:%d", conf.ExternalDNSServer, 53),
+		Suffix:           conf.Suffix,
+		DucatiAPI:        "http://" + conf.ListenAddress,
+		DecoratorFactory: executor.WriterDecoratorFactoryFunc(executor.NamespaceDecoratorFactory),
 	}
 	executor := executor.New(
 		logger,

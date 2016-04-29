@@ -159,8 +159,9 @@ var _ = Describe("Start DNS Server", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(dnsServerFactory.NewCallCount()).To(Equal(1))
-		packetConn := dnsServerFactory.NewArgsForCall(0)
+		packetConn, sboxNS := dnsServerFactory.NewArgsForCall(0)
 		Expect(packetConn).To(BeIdenticalTo(returnedListener))
+		Expect(sboxNS).To(Equal(ns))
 	})
 
 	It("passes the dns server to the sandbox to be launched", func() {
