@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"lib/marshal"
+
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/pivotal-golang/lager"
 )

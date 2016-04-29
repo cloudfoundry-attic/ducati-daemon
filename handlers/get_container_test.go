@@ -46,10 +46,12 @@ var _ = Describe("GET /container/:container_id", func() {
 		}
 	})
 
-	It("should return, as json, the info for a container with given id", func() {
+	It("returns the info for the requested container as json", func() {
 		handler, request := rataWrap(getHandler, "GET", "/containers/:container_id", rata.Params{"container_id": "container-id-1"})
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)
+
+		Expect(resp.Header().Get("Content-Type")).To(Equal("application/json"))
 
 		var receivedContainer models.Container
 		err := json.Unmarshal(resp.Body.Bytes(), &receivedContainer)
@@ -61,7 +63,6 @@ var _ = Describe("GET /container/:container_id", func() {
 			IP:        "192.168.0.1",
 			NetworkID: "network-id-1",
 		}))
-
 	})
 
 	Context("when the record does not exist in the database", func() {

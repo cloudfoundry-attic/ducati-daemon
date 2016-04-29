@@ -44,10 +44,12 @@ var _ = Describe("GET /networks/:network_id", func() {
 		}, nil)
 	})
 
-	It("should return a matching set of containers as json", func() {
+	It("returns the matching set of containers as json", func() {
 		handler, request := rataWrap(getHandler, "GET", "/networks/:network_id", rata.Params{"network_id": "network-id-1"})
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)
+
+		Expect(resp.Header().Get("Content-Type")).To(Equal("application/json"))
 
 		var receivedContainers []models.Container
 		err := json.Unmarshal(resp.Body.Bytes(), &receivedContainers)

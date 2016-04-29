@@ -44,11 +44,13 @@ var _ = Describe("ListContainers", func() {
 		dataStore.AllReturns(containers, nil)
 	})
 
-	It("should return the containers as a JSON list", func() {
+	It("returns the containers as a JSON list", func() {
 		req, err := http.NewRequest("GET", "/containers", nil)
 		Expect(err).NotTo(HaveOccurred())
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
+
+		Expect(resp.Header().Get("Content-Type")).To(Equal("application/json"))
 
 		var receivedContainers []models.Container
 		err = json.Unmarshal(resp.Body.Bytes(), &receivedContainers)

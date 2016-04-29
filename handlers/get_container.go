@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"lib/marshal"
+
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
@@ -18,6 +19,8 @@ type GetContainer struct {
 func (h *GetContainer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	logger := h.Logger.Session("get-container")
 	id := rata.Param(req, "container_id")
+
+	resp.Header().Set("content-type", "application/json")
 
 	container, err := h.Datastore.Get(id)
 	if err != nil {

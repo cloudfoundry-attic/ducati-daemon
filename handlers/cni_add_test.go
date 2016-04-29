@@ -163,6 +163,13 @@ var _ = Describe("CNIAdd", func() {
 		Expect(controller.AddArgsForCall(0)).To(Equal(payload))
 	})
 
+	It("sets the content type to application/json", func() {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, request)
+
+		Expect(resp.Header().Get("Content-Type")).To(Equal("application/json"))
+	})
+
 	It("responds with the JSON encoding of the IPAM result", func() {
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, request)

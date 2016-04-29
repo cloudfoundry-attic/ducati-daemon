@@ -29,6 +29,8 @@ type CNIAdd struct {
 func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	logger := h.Logger.Session("cni-add")
 
+	resp.Header().Set("content-type", "application/json")
+
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		logger.Error("body-read-failed", err)

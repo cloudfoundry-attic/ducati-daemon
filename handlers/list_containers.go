@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"lib/marshal"
+
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
 )
@@ -16,6 +17,8 @@ type ListContainers struct {
 
 func (h *ListContainers) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	logger := h.Logger.Session("list-containers")
+
+	resp.Header().Set("content-type", "application/json")
 
 	containers, err := h.Datastore.All()
 	if err != nil {

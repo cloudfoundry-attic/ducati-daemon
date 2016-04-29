@@ -20,6 +20,8 @@ func (h *NetworksListContainers) ServeHTTP(resp http.ResponseWriter, req *http.R
 	logger := h.Logger.Session("networks-list-containers")
 	id := rata.Param(req, "network_id")
 
+	resp.Header().Set("content-type", "application/json")
+
 	allContainers, err := h.Datastore.All()
 	if err != nil {
 		logger.Error("datastore-all-failed", err)
