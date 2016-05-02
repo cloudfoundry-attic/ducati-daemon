@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Networks", func() {
@@ -31,6 +32,8 @@ var _ = Describe("Networks", func() {
 		spaceID     string
 		networkID   string
 		appID       string
+
+		logger *lagertest.TestLogger
 
 		sandboxRepo        namespace.Repository
 		containerRepo      namespace.Repository
@@ -46,13 +49,15 @@ var _ = Describe("Networks", func() {
 		sandboxRepoDir, err := ioutil.TempDir("", "sandbox")
 		Expect(err).NotTo(HaveOccurred())
 
-		sandboxRepo, err = namespace.NewRepository(sandboxRepoDir)
+		logger = lagertest.NewTestLogger("test")
+
+		sandboxRepo, err = namespace.NewRepository(logger, sandboxRepoDir)
 		Expect(err).NotTo(HaveOccurred())
 
 		containerRepoDir, err := ioutil.TempDir("", "containers")
 		Expect(err).NotTo(HaveOccurred())
 
-		containerRepo, err = namespace.NewRepository(containerRepoDir)
+		containerRepo, err = namespace.NewRepository(logger, containerRepoDir)
 		Expect(err).NotTo(HaveOccurred())
 
 		guid, err := uuid.NewV4()

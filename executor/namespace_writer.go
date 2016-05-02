@@ -3,8 +3,11 @@ package executor
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/pivotal-golang/lager"
 )
 
 type NamespaceWriter struct {

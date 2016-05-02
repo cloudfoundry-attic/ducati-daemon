@@ -1,6 +1,7 @@
 package namespace_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -124,6 +125,29 @@ var _ = Describe("Namespace", func() {
 
 			Expect(ns.Fd()).To(Equal(netns.Fd()))
 			Expect(int(ns.Fd())).To(BeNumerically(">", 0))
+		})
+	})
+
+	Describe("MarsalJSON", func() {
+		It("marshals as a name and inode", func() {
+			tempFile, err := ioutil.TempFile("", "whatever")
+			Expect(err).NotTo(HaveOccurred())
+			defer tempFile.Close()
+			defer os.Remove(tempFile.Name())
+
+			actualName := tempFile.Name()
+
+			var stat unix.Stat_t
+			err = unix.Stat(actualName, &stat)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns := &namespace.Netns{File: tempFile}
+			expectedJSON := fmt.Sprintf(`{ "name": "%s", "inode": "%d" }`, actualName, stat.Ino)
+
+			json, err := json.Marshal(ns)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(json).To(MatchJSON(expectedJSON))
 		})
 	})
 

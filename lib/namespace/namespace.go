@@ -19,11 +19,22 @@ type Netns struct {
 }
 
 func (n *Netns) String() string {
+	return fmt.Sprintf("%s:[%s]", n.Name(), n.inode())
+}
+
+func (n *Netns) inode() string {
 	var stat unix.Stat_t
-	if err := unix.Fstat(int(n.Fd()), &stat); err != nil {
-		return fmt.Sprintf("%s:[unknown]", n.Name())
+
+	err := unix.Fstat(int(n.Fd()), &stat)
+	if err != nil {
+		return "unknown"
 	}
-	return fmt.Sprintf("%s:[%d]", n.Name(), stat.Ino)
+
+	return fmt.Sprintf("%d", stat.Ino)
+}
+
+func (n *Netns) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`{ "name": "%s", "inode": "%s" }`, n.Name(), n.inode())), nil
 }
 
 //go:generate counterfeiter -o ../../fakes/opener.go --fake-name Opener . Opener

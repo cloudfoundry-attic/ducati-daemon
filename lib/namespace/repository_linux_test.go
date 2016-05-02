@@ -13,15 +13,20 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("NamespaceRepo", func() {
 	var repoDir string
+	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
 		var err error
 		repoDir, err = ioutil.TempDir("", "ns-repo")
 		Expect(err).NotTo(HaveOccurred())
+
+		logger = lagertest.NewTestLogger("test")
 	})
 
 	AfterEach(func() {
@@ -31,7 +36,7 @@ var _ = Describe("NamespaceRepo", func() {
 
 	Describe("NewRepository", func() {
 		It("returns a repository", func() {
-			repo, err := namespace.NewRepository(repoDir)
+			repo, err := namespace.NewRepository(logger, repoDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(repo).NotTo(BeNil())
 		})
@@ -43,7 +48,7 @@ var _ = Describe("NamespaceRepo", func() {
 			})
 
 			It("creates the directory", func() {
-				_, err := namespace.NewRepository(repoDir)
+				_, err := namespace.NewRepository(logger, repoDir)
 				Expect(err).NotTo(HaveOccurred())
 
 				info, err := os.Stat(repoDir)
@@ -55,18 +60,21 @@ var _ = Describe("NamespaceRepo", func() {
 
 	Describe("Create", func() {
 		var repo namespace.Repository
+		var name string
 
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository(repoDir)
+			repo, err = namespace.NewRepository(logger, repoDir)
 			Expect(err).NotTo(HaveOccurred())
+
+			name = fmt.Sprintf("test-ns-%d", GinkgoParallelNode())
 		})
 
 		It("creates a namespace in the repository", func() {
-			ns, err := repo.Create("test-ns")
+			ns, err := repo.Create(name)
 			Expect(err).NotTo(HaveOccurred())
 
-			nsPath := filepath.Join(repoDir, "test-ns")
+			nsPath := filepath.Join(repoDir, name)
 			defer unix.Unmount(nsPath, unix.MNT_DETACH)
 
 			Expect(ns.Name()).To(Equal(nsPath))
@@ -86,6 +94,19 @@ var _ = Describe("NamespaceRepo", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(namespaceInode).To(Equal(fmt.Sprintf("%d", repoStat.Ino)))
+
+			err = repo.Destroy(ns)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("logs the operation", func() {
+			ns, err := repo.Create(name)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(logger).To(gbytes.Say("create.created.*namespace.*test-ns"))
+
+			err = repo.Destroy(ns)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should not show up in ip netns list", func() {
@@ -119,6 +140,12 @@ var _ = Describe("NamespaceRepo", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(os.IsExist(err)).To(BeTrue())
 			})
+
+			It("logs the failure", func() {
+				repo.Create(nsName)
+
+				Expect(logger).To(gbytes.Say("create.bind-mount-failed"))
+			})
 		})
 	})
 
@@ -127,7 +154,7 @@ var _ = Describe("NamespaceRepo", func() {
 
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository(repoDir)
+			repo, err = namespace.NewRepository(logger, repoDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -136,6 +163,12 @@ var _ = Describe("NamespaceRepo", func() {
 				_, err := repo.Get("test-ns")
 				Expect(err).To(HaveOccurred())
 				Expect(os.IsNotExist(err)).To(BeTrue())
+			})
+
+			It("logs the failure", func() {
+				repo.Get("test-ns")
+
+				Expect(logger).To(gbytes.Say("get.open-failed.*test-ns"))
 			})
 		})
 
@@ -163,6 +196,13 @@ var _ = Describe("NamespaceRepo", func() {
 
 				netns := ns.(*namespace.Netns)
 				Expect(int(netns.Fd())).To(BeNumerically(">", 0))
+			})
+
+			It("logs the operation", func() {
+				_, err := repo.Get("test-ns")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(logger).To(gbytes.Say("get.complete.*namespace.*test-ns.*inode"))
 			})
 		})
 	})

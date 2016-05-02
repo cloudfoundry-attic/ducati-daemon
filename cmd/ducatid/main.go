@@ -96,7 +96,7 @@ func main() {
 	addressManager := &ip.AddressManager{Netlinker: nl.Netlink}
 	routeManager := &ip.RouteManager{Netlinker: nl.Netlink}
 	linkFactory := &links.Factory{Netlinker: nl.Netlink}
-	sandboxNamespaceRepo, err := namespace.NewRepository(conf.SandboxRepoDir)
+	sandboxNamespaceRepo, err := namespace.NewRepository(logger, conf.SandboxRepoDir)
 	if err != nil {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
