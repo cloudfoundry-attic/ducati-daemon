@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/pivotal-golang/lager"
 )
 
 //go:generate counterfeiter --fake-name Repository -o ../../fakes/repository.go . Repository
@@ -24,26 +26,37 @@ func init() {
 }
 
 type repository struct {
-	root string
+	logger lager.Logger
+	root   string
 }
 
-func NewRepository(root string) (Repository, error) {
+func NewRepository(logger lager.Logger, root string) (Repository, error) {
 	err := os.MkdirAll(root, 0755)
 	if err != nil {
 		return nil, err
 	}
 	return &repository{
-		root: root,
+		logger: logger,
+		root:   root,
 	}, nil
 }
 
 func (r *repository) Get(name string) (Namespace, error) {
+	logger := r.logger.Session("get")
+	var ns *Netns
+
+	logger.Info("start", lager.Data{"name": name})
+	defer logger.Info("complete", lager.Data{"namespace": ns})
+
 	file, err := r.open(name)
 	if err != nil {
+		logger.Error("open-failed", err)
 		return nil, err
 	}
 
-	return &Netns{file}, nil
+	ns = &Netns{file}
+
+	return ns, nil
 }
 
 func (r *repository) PathOf(path string) string {
@@ -51,24 +64,35 @@ func (r *repository) PathOf(path string) string {
 }
 
 func (r *repository) Create(name string) (Namespace, error) {
+	logger := r.logger.Session("create")
+	var ns *Netns
+
+	logger.Info("start", lager.Data{"name": name})
+	defer logger.Info("complete", lager.Data{"namespace": ns})
+
 	tempName := fmt.Sprintf("ns-%.08x", random())
 	err := exec.Command("ip", "netns", "add", tempName).Run()
 	if err != nil {
+		logger.Error("ip-netns-add-failed", err)
 		return nil, err
 	}
 
 	netnsPath := filepath.Join("/var/run/netns", tempName)
 	bindMountedFile, err := bindMountFile(netnsPath, r.PathOf(name))
 	if err != nil {
+		logger.Error("bind-mount-failed", err)
 		return nil, err
 	}
 
 	err = unlinkNetworkNamespace(netnsPath)
 	if err != nil {
+		logger.Error("unlink-failed", err)
 		return nil, err
 	}
 
-	return &Netns{File: bindMountedFile}, nil
+	ns = &Netns{File: bindMountedFile}
+
+	return ns, nil
 }
 
 func (r *repository) Destroy(namespace Namespace) error {

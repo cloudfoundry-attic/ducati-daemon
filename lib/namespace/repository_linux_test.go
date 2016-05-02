@@ -13,15 +13,19 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("NamespaceRepo", func() {
 	var repoDir string
+	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
 		var err error
 		repoDir, err = ioutil.TempDir("", "ns-repo")
 		Expect(err).NotTo(HaveOccurred())
+
+		logger = lagertest.NewTestLogger("test")
 	})
 
 	AfterEach(func() {
@@ -31,7 +35,7 @@ var _ = Describe("NamespaceRepo", func() {
 
 	Describe("NewRepository", func() {
 		It("returns a repository", func() {
-			repo, err := namespace.NewRepository(repoDir)
+			repo, err := namespace.NewRepository(logger, repoDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(repo).NotTo(BeNil())
 		})
@@ -43,7 +47,7 @@ var _ = Describe("NamespaceRepo", func() {
 			})
 
 			It("creates the directory", func() {
-				_, err := namespace.NewRepository(repoDir)
+				_, err := namespace.NewRepository(logger, repoDir)
 				Expect(err).NotTo(HaveOccurred())
 
 				info, err := os.Stat(repoDir)
@@ -58,7 +62,7 @@ var _ = Describe("NamespaceRepo", func() {
 
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository(repoDir)
+			repo, err = namespace.NewRepository(logger, repoDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -127,7 +131,7 @@ var _ = Describe("NamespaceRepo", func() {
 
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository(repoDir)
+			repo, err = namespace.NewRepository(logger, repoDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

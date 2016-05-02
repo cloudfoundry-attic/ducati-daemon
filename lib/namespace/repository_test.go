@@ -10,12 +10,14 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Repository", func() {
 	var (
-		repo namespace.Repository
-		dir  string
+		repo   namespace.Repository
+		logger *lagertest.TestLogger
+		dir    string
 	)
 
 	BeforeEach(func() {
@@ -23,7 +25,9 @@ var _ = Describe("Repository", func() {
 		dir, err = ioutil.TempDir("", "path")
 		Expect(err).NotTo(HaveOccurred())
 
-		repo, err = namespace.NewRepository(dir)
+		logger = lagertest.NewTestLogger("test")
+
+		repo, err = namespace.NewRepository(logger, dir)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -40,7 +44,7 @@ var _ = Describe("Repository", func() {
 	Describe("Destroy", func() {
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository("/var/run/netns")
+			repo, err = namespace.NewRepository(logger, "/var/run/netns")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
