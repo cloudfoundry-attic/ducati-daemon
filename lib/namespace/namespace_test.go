@@ -126,4 +126,23 @@ var _ = Describe("Namespace", func() {
 			Expect(int(ns.Fd())).To(BeNumerically(">", 0))
 		})
 	})
+
+	Describe("String", func() {
+		It("returns the name and the inode of the underlying namespace file", func() {
+			tempFile, err := ioutil.TempFile("", "whatever")
+			Expect(err).NotTo(HaveOccurred())
+			defer tempFile.Close()
+			defer os.Remove(tempFile.Name())
+
+			actualName := tempFile.Name()
+
+			var stat unix.Stat_t
+			err = unix.Stat(actualName, &stat)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns := &namespace.Netns{File: tempFile}
+
+			Expect(ns.String()).To(Equal(fmt.Sprintf("%s:[%d]", actualName, stat.Ino)))
+		})
+	})
 })
