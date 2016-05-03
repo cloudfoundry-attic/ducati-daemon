@@ -32,7 +32,9 @@ var _ = Describe("DNS Factory", func() {
 			dnsFactory.New(nil, ns)
 
 			Expect(decoratorFactory.DecorateCallCount()).To(Equal(1))
-			Expect(decoratorFactory.DecorateArgsForCall(0)).To(Equal(ns))
+			l, targetNS := decoratorFactory.DecorateArgsForCall(0)
+			Expect(l).To(Equal(logger))
+			Expect(targetNS).To(Equal(ns))
 		})
 	})
 })

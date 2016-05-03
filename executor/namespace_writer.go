@@ -11,13 +11,16 @@ import (
 )
 
 type NamespaceWriter struct {
+	Logger    lager.Logger
 	Namespace namespace.Namespace
 	Writer    writer
 }
 
-var logger = lager.NewLogger("namespace-writer")
-
 func (nsw *NamespaceWriter) Write(contents []byte) (int, error) {
+	logger := nsw.Logger.Session("write", lager.Data{"namespace": nsw.Namespace})
+	logger.Info("write-called")
+	defer logger.Info("write-complete")
+
 	var bytesWritten int
 	var err, nsErr error
 
@@ -36,6 +39,7 @@ func (nsw *NamespaceWriter) Write(contents []byte) (int, error) {
 	wg.Wait()
 
 	if nsErr != nil {
+		logger.Error("namespace-execute-failed", nsErr)
 		return 0, fmt.Errorf("namespace execute: %s", nsErr)
 	}
 

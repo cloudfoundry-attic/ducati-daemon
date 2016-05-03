@@ -6,27 +6,30 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/miekg/dns"
+	"github.com/pivotal-golang/lager"
 )
 
 type WriterDecoratorFactory struct {
-	DecorateStub        func(namespace.Namespace) dns.DecorateWriter
+	DecorateStub        func(lager.Logger, namespace.Namespace) dns.DecorateWriter
 	decorateMutex       sync.RWMutex
 	decorateArgsForCall []struct {
-		arg1 namespace.Namespace
+		arg1 lager.Logger
+		arg2 namespace.Namespace
 	}
 	decorateReturns struct {
 		result1 dns.DecorateWriter
 	}
 }
 
-func (fake *WriterDecoratorFactory) Decorate(arg1 namespace.Namespace) dns.DecorateWriter {
+func (fake *WriterDecoratorFactory) Decorate(arg1 lager.Logger, arg2 namespace.Namespace) dns.DecorateWriter {
 	fake.decorateMutex.Lock()
 	fake.decorateArgsForCall = append(fake.decorateArgsForCall, struct {
-		arg1 namespace.Namespace
-	}{arg1})
+		arg1 lager.Logger
+		arg2 namespace.Namespace
+	}{arg1, arg2})
 	fake.decorateMutex.Unlock()
 	if fake.DecorateStub != nil {
-		return fake.DecorateStub(arg1)
+		return fake.DecorateStub(arg1, arg2)
 	} else {
 		return fake.decorateReturns.result1
 	}
@@ -38,10 +41,10 @@ func (fake *WriterDecoratorFactory) DecorateCallCount() int {
 	return len(fake.decorateArgsForCall)
 }
 
-func (fake *WriterDecoratorFactory) DecorateArgsForCall(i int) namespace.Namespace {
+func (fake *WriterDecoratorFactory) DecorateArgsForCall(i int) (lager.Logger, namespace.Namespace) {
 	fake.decorateMutex.RLock()
 	defer fake.decorateMutex.RUnlock()
-	return fake.decorateArgsForCall[i].arg1
+	return fake.decorateArgsForCall[i].arg1, fake.decorateArgsForCall[i].arg2
 }
 
 func (fake *WriterDecoratorFactory) DecorateReturns(result1 dns.DecorateWriter) {

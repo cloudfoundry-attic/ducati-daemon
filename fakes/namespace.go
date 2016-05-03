@@ -4,8 +4,6 @@ package fakes
 import (
 	"os"
 	"sync"
-
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 )
 
 type Namespace struct {
@@ -28,6 +26,13 @@ type Namespace struct {
 	fdArgsForCall []struct{}
 	fdReturns     struct {
 		result1 uintptr
+	}
+	MarshalJSONStub        func() ([]byte, error)
+	marshalJSONMutex       sync.RWMutex
+	marshalJSONArgsForCall []struct{}
+	marshalJSONReturns     struct {
+		result1 []byte
+		result2 error
 	}
 }
 
@@ -111,4 +116,27 @@ func (fake *Namespace) FdReturns(result1 uintptr) {
 	}{result1}
 }
 
-var _ namespace.Namespace = new(Namespace)
+func (fake *Namespace) MarshalJSON() ([]byte, error) {
+	fake.marshalJSONMutex.Lock()
+	fake.marshalJSONArgsForCall = append(fake.marshalJSONArgsForCall, struct{}{})
+	fake.marshalJSONMutex.Unlock()
+	if fake.MarshalJSONStub != nil {
+		return fake.MarshalJSONStub()
+	} else {
+		return fake.marshalJSONReturns.result1, fake.marshalJSONReturns.result2
+	}
+}
+
+func (fake *Namespace) MarshalJSONCallCount() int {
+	fake.marshalJSONMutex.RLock()
+	defer fake.marshalJSONMutex.RUnlock()
+	return len(fake.marshalJSONArgsForCall)
+}
+
+func (fake *Namespace) MarshalJSONReturns(result1 []byte, result2 error) {
+	fake.MarshalJSONStub = nil
+	fake.marshalJSONReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}

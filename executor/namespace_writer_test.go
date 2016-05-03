@@ -6,24 +6,33 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("NamespaceWriter", func() {
-	var nsWriter *executor.NamespaceWriter
-	var ns *fakes.Namespace
-	var writer *fakes.Writer
+	var (
+		nsWriter *executor.NamespaceWriter
+		ns       *fakes.Namespace
+		writer   *fakes.Writer
+		logger   *lagertest.TestLogger
+	)
 
 	BeforeEach(func() {
 		ns = &fakes.Namespace{}
+		ns.MarshalJSONReturns([]byte(`{ "namespace": "my-namespace", "inode": "some-inode" }`), nil)
 		ns.ExecuteStub = func(callback func(*os.File) error) error {
 			return callback(nil)
 		}
 
+		logger = lagertest.NewTestLogger("test")
+
 		writer = &fakes.Writer{}
 		nsWriter = &executor.NamespaceWriter{
+			Logger:    logger,
 			Namespace: ns,
 			Writer:    writer,
 		}
@@ -52,6 +61,13 @@ var _ = Describe("NamespaceWriter", func() {
 		Expect(written).To(Equal(100))
 	})
 
+	It("logs the operation", func() {
+		nsWriter.Write([]byte{})
+
+		Expect(logger).To(gbytes.Say("write.write-called.*namespace.*some-inode"))
+		Expect(logger).To(gbytes.Say("write.write-complete.*namespace.*some-inode"))
+	})
+
 	Context("when setting the namespae fails", func() {
 		BeforeEach(func() {
 			ns.ExecuteReturns(errors.New("peanuts"))
@@ -60,6 +76,12 @@ var _ = Describe("NamespaceWriter", func() {
 		It("returns a meaningful error", func() {
 			_, err := nsWriter.Write([]byte{})
 			Expect(err).To(MatchError("namespace execute: peanuts"))
+		})
+
+		It("logs the error", func() {
+			nsWriter.Write([]byte{})
+
+			Expect(logger).To(gbytes.Say("write.namespace-execute-failed.*peanuts"))
 		})
 	})
 

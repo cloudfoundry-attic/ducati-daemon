@@ -14,18 +14,22 @@ import (
 
 //go:generate counterfeiter -o ../fakes/writer_decorator_factory.go --fake-name WriterDecoratorFactory . writerDecoratorFactory
 type writerDecoratorFactory interface {
-	Decorate(namespace.Namespace) dns.DecorateWriter
+	Decorate(lager.Logger, namespace.Namespace) dns.DecorateWriter
 }
 
-type WriterDecoratorFactoryFunc func(ns namespace.Namespace) dns.DecorateWriter
+type WriterDecoratorFactoryFunc func(logger lager.Logger, ns namespace.Namespace) dns.DecorateWriter
 
-func (wdf WriterDecoratorFactoryFunc) Decorate(ns namespace.Namespace) dns.DecorateWriter {
-	return wdf(ns)
+func (wdf WriterDecoratorFactoryFunc) Decorate(logger lager.Logger, ns namespace.Namespace) dns.DecorateWriter {
+	return wdf(logger, ns)
 }
 
-func NamespaceDecoratorFactory(ns namespace.Namespace) dns.DecorateWriter {
+func NamespaceDecoratorFactory(logger lager.Logger, ns namespace.Namespace) dns.DecorateWriter {
 	return func(w dns.Writer) dns.Writer {
-		return &NamespaceWriter{Namespace: ns, Writer: w}
+		return &NamespaceWriter{
+			Logger:    logger,
+			Namespace: ns,
+			Writer:    w,
+		}
 	}
 }
 
@@ -48,5 +52,11 @@ func (f *DNSFactory) New(listener net.PacketConn, sandboxNS namespace.Namespace)
 		DucatiAPI:    f.DucatiAPI,
 	}
 
-	return runner.New(f.Logger, resolverConfig, f.ExternalServer, listener, f.DecoratorFactory.Decorate(sandboxNS))
+	return runner.New(
+		f.Logger,
+		resolverConfig,
+		f.ExternalServer,
+		listener,
+		f.DecoratorFactory.Decorate(f.Logger, sandboxNS),
+	)
 }
