@@ -15,14 +15,26 @@ type NamespaceWriter struct {
 	Writer    writer
 }
 
+var logger = lager.NewLogger("namespace-writer")
+
 func (nsw *NamespaceWriter) Write(contents []byte) (int, error) {
 	var bytesWritten int
-	var err error
+	var err, nsErr error
 
-	nsErr := nsw.Namespace.Execute(func(*os.File) error {
-		bytesWritten, err = nsw.Writer.Write(contents)
-		return nil
-	})
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	go func() {
+		runtime.LockOSThread()
+		nsErr = nsw.Namespace.Execute(func(*os.File) error {
+			bytesWritten, err = nsw.Writer.Write(contents)
+			return nil
+		})
+		wg.Done()
+	}()
+
+	wg.Wait()
+
 	if nsErr != nil {
 		return 0, fmt.Errorf("namespace execute: %s", nsErr)
 	}

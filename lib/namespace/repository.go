@@ -50,7 +50,7 @@ func (r *repository) Get(name string) (Namespace, error) {
 		return nil, err
 	}
 
-	ns := &Netns{file}
+	ns := &Netns{File: file, Logger: logger}
 
 	logger.Info("complete", lager.Data{"namespace": ns})
 
@@ -84,7 +84,7 @@ func (r *repository) Create(name string) (Namespace, error) {
 		return nil, err
 	}
 
-	ns := &Netns{File: bindMountedFile}
+	ns := &Netns{File: bindMountedFile, Logger: logger}
 
 	logger.Info("created", lager.Data{"namespace": ns})
 

@@ -111,7 +111,9 @@ func main() {
 
 	osThreadLocker := &ossupport.OSLocker{}
 
-	namespaceOpener := &namespace.PathOpener{}
+	namespaceOpener := &namespace.PathOpener{
+		Logger: logger,
+	}
 
 	subscriber := &subscriber.Subscriber{
 		Logger:    logger.Session("subscriber"),

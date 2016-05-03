@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pivotal-golang/lager"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -16,6 +18,7 @@ type Namespace interface {
 
 type Netns struct {
 	*os.File
+	Logger lager.Logger
 }
 
 func (n *Netns) String() string {
@@ -42,15 +45,18 @@ type Opener interface {
 	OpenPath(path string) (Namespace, error)
 }
 
-type PathOpener struct{}
+type PathOpener struct {
+	Logger lager.Logger
+}
 
-func (*PathOpener) OpenPath(path string) (Namespace, error) {
+func (po *PathOpener) OpenPath(path string) (Namespace, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Netns{
-		File: file,
+		File:   file,
+		Logger: po.Logger,
 	}, nil
 }

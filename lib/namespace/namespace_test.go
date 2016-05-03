@@ -2,6 +2,7 @@ package namespace_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,12 +12,20 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Namespace", func() {
+	var logger *lagertest.TestLogger
+
+	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("test")
+	})
+
 	Describe("Name", func() {
 		It("returns the file Name()", func() {
 			tempFile, err := ioutil.TempFile("", "whatever")
@@ -25,34 +34,41 @@ var _ = Describe("Namespace", func() {
 			defer os.Remove(tempFile.Name())
 
 			actualName := tempFile.Name()
-			Expect(namespace.Netns{File: tempFile}.Name()).To(Equal(actualName))
+			Expect(namespace.Netns{File: tempFile, Logger: logger}.Name()).To(Equal(actualName))
 		})
 	})
 
 	Describe("Execute", func() {
-		var nsInode uint64
+		var (
+			nsInode uint64
+			ns      *namespace.Netns
+			nsName  string
+			nsPath  string
+		)
 
 		BeforeEach(func() {
-			err := exec.Command("ip", "netns", "add", "ns-test-ns").Run()
+			nsName = fmt.Sprintf("ns-test-ns-%d", GinkgoParallelNode())
+			nsPath = fmt.Sprintf("/var/run/netns/%s", nsName)
+			err := exec.Command("ip", "netns", "add", nsName).Run()
 			Expect(err).NotTo(HaveOccurred())
 
 			var stat unix.Stat_t
-			err = unix.Stat("/var/run/netns/ns-test-ns", &stat)
+			err = unix.Stat(nsPath, &stat)
 			Expect(err).NotTo(HaveOccurred())
 
 			nsInode = stat.Ino
+
+			nsFile, err := os.Open(nsPath)
+			Expect(err).NotTo(HaveOccurred())
+			ns = &namespace.Netns{File: nsFile, Logger: logger}
 		})
 
 		AfterEach(func() {
-			err := exec.Command("ip", "netns", "delete", "ns-test-ns").Run()
+			err := exec.Command("ip", "netns", "delete", nsName).Run()
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("runs the closure in the namespace", func() {
-			nsFile, err := os.Open("/var/run/netns/ns-test-ns")
-			Expect(err).NotTo(HaveOccurred())
-			ns := namespace.Netns{File: nsFile}
-
 			var namespaceInode string
 			closure := func(f *os.File) error {
 				// Stat of "/proc/self/ns/net" flakey due to fs caching
@@ -61,9 +77,25 @@ var _ = Describe("Namespace", func() {
 				return err
 			}
 
-			err = ns.Execute(closure)
+			err := ns.Execute(closure)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(namespaceInode).To(Equal(fmt.Sprintf("%d", nsInode)))
+		})
+
+		It("logs the operation and namespace", func() {
+			err := ns.Execute(func(*os.File) error { return nil })
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(logger).To(gbytes.Say("execute.callback-invoked.*ns-test-ns.*inode"))
+			Expect(logger).To(gbytes.Say("execute.callback-complete.*ns-test-ns.*inode"))
+		})
+
+		Context("when the callback fails", func() {
+			It("logs the error", func() {
+				ns.Execute(func(*os.File) error { return errors.New("potato") })
+
+				Expect(logger).To(gbytes.Say("execute.callback-failed.*potato"))
+			})
 		})
 	})
 
@@ -74,7 +106,9 @@ var _ = Describe("Namespace", func() {
 		)
 
 		BeforeEach(func() {
-			opener = &namespace.PathOpener{}
+			opener = &namespace.PathOpener{
+				Logger: logger,
+			}
 
 			var err error
 			tempFile, err = ioutil.TempFile("", "OpenPath")
@@ -94,6 +128,7 @@ var _ = Describe("Namespace", func() {
 			netns, ok := ns.(*namespace.Netns)
 			Expect(ok).To(BeTrue())
 			Expect(int(netns.Fd())).To(BeNumerically(">", 0))
+			Expect(netns.Logger).To(Equal(logger))
 		})
 
 		Context("when the file cannot be opened", func() {
@@ -141,7 +176,7 @@ var _ = Describe("Namespace", func() {
 			err = unix.Stat(actualName, &stat)
 			Expect(err).NotTo(HaveOccurred())
 
-			ns := &namespace.Netns{File: tempFile}
+			ns := &namespace.Netns{File: tempFile, Logger: logger}
 			expectedJSON := fmt.Sprintf(`{ "name": "%s", "inode": "%d" }`, actualName, stat.Ino)
 
 			json, err := json.Marshal(ns)
@@ -164,7 +199,7 @@ var _ = Describe("Namespace", func() {
 			err = unix.Stat(actualName, &stat)
 			Expect(err).NotTo(HaveOccurred())
 
-			ns := &namespace.Netns{File: tempFile}
+			ns := &namespace.Netns{File: tempFile, Logger: logger}
 
 			Expect(ns.String()).To(Equal(fmt.Sprintf("%s:[%d]", actualName, stat.Ino)))
 		})
