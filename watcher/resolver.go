@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"net"
+	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/pivotal-golang/lager"
@@ -33,6 +34,10 @@ func (d *Resolver) ResolveMisses(misses <-chan Neighbor, knownNeighbors chan<- N
 
 		found := false
 		for _, container := range containers {
+			if container.SandboxName != filepath.Base(msg.SandboxName) {
+				continue
+			}
+
 			if container.IP == msg.Neigh.IP.String() {
 				mac, err := net.ParseMAC(container.MAC)
 				if err != nil {

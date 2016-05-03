@@ -47,7 +47,7 @@ var _ = Describe("Resolver", func() {
 
 		BeforeEach(func() {
 			msg = watcher.Neighbor{
-				SandboxName: "some-sandbox-name",
+				SandboxName: "/path/to/some-sandbox-name",
 				Neigh: watcher.Neigh{
 					IP: net.ParseIP("192.168.1.2"),
 				},
@@ -55,13 +55,15 @@ var _ = Describe("Resolver", func() {
 
 			fakeStore.AllReturns([]models.Container{
 				models.Container{
-					IP:     "1.2.3.4",
-					HostIP: "10.10.10.10",
+					IP:          "1.2.3.4",
+					HostIP:      "10.10.10.10",
+					SandboxName: "some-sandbox-name",
 				},
 				models.Container{
-					IP:     "192.168.1.2",
-					MAC:    "ff:ff:ff:ff:ff:ff",
-					HostIP: "10.11.12.13",
+					IP:          "192.168.1.2",
+					MAC:         "ff:ff:ff:ff:ff:ff",
+					HostIP:      "10.11.12.13",
+					SandboxName: "some-sandbox-name",
 				},
 			}, nil)
 		})
@@ -72,18 +74,37 @@ var _ = Describe("Resolver", func() {
 			Eventually(fakeStore.AllCallCount).Should(Equal(1))
 		})
 
-		It("puts a resolved neighbor message into the output channel", func() {
-			missesChannel <- msg
+		Context("when the IP and sandbox match", func() {
+			It("puts a resolved neighbor message into the output channel", func() {
+				missesChannel <- msg
 
-			expectedMAC, _ := net.ParseMAC("ff:ff:ff:ff:ff:ff")
-			Eventually(knownNeighborsChannel).Should(Receive(Equal(watcher.Neighbor{
-				SandboxName: "some-sandbox-name",
-				VTEP:        net.ParseIP("10.11.12.13"),
-				Neigh: watcher.Neigh{
-					IP:           net.ParseIP("192.168.1.2"),
-					HardwareAddr: expectedMAC,
-				},
-			})))
+				expectedMAC, _ := net.ParseMAC("ff:ff:ff:ff:ff:ff")
+				Eventually(knownNeighborsChannel).Should(Receive(Equal(watcher.Neighbor{
+					SandboxName: "/path/to/some-sandbox-name",
+					VTEP:        net.ParseIP("10.11.12.13"),
+					Neigh: watcher.Neigh{
+						IP:           net.ParseIP("192.168.1.2"),
+						HardwareAddr: expectedMAC,
+					},
+				})))
+			})
+		})
+
+		Context("when the IP matches but the sandbox name does not", func() {
+			BeforeEach(func() {
+				msg = watcher.Neighbor{
+					SandboxName: "/path/to/some-other-sandbox-name",
+					Neigh: watcher.Neigh{
+						IP: net.ParseIP("192.168.1.2"),
+					},
+				}
+			})
+
+			It("does not write to the output channel", func() {
+				missesChannel <- msg
+
+				Consistently(knownNeighborsChannel).ShouldNot(Receive())
+			})
 		})
 
 		Context("when store fails", func() {
@@ -116,8 +137,9 @@ var _ = Describe("Resolver", func() {
 			BeforeEach(func() {
 				fakeStore.AllReturns([]models.Container{
 					models.Container{
-						IP:  "192.168.1.2",
-						MAC: "bad-mac",
+						IP:          "192.168.1.2",
+						MAC:         "bad-mac",
+						SandboxName: "some-sandbox-name",
 					},
 				}, nil)
 
