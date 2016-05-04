@@ -248,7 +248,6 @@ func main() {
 		{"http_server", httpServer},
 	}
 
-	fmt.Printf("!!MJS: adding the debug server to %q\n", conf.DebugAddress)
 	if conf.DebugAddress != "" {
 		members = append(grouper.Members{
 			{"debug-server", cf_debug_server.Runner(conf.DebugAddress, reconfigurableSink)},
