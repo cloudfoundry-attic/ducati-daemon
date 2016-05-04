@@ -14,6 +14,8 @@ import (
 	"lib/marshal"
 
 	"github.com/appc/cni/pkg/types"
+	"github.com/cloudfoundry-incubator/cf-debug-server"
+	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/ducati-daemon/cni"
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	"github.com/cloudfoundry-incubator/ducati-daemon/container"
@@ -31,7 +33,6 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
-	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -42,6 +43,8 @@ import (
 func main() {
 	var configFilePath string
 	const configFileFlag = "configFile"
+
+	cf_lager.AddFlags(flag.CommandLine)
 	flag.StringVar(&configFilePath, configFileFlag, "", "")
 	flag.Parse()
 
@@ -75,8 +78,7 @@ func main() {
 		log.Fatalf("failed to construct datastore: %s", err)
 	}
 
-	logger := lager.NewLogger("ducati-d")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	logger, reconfigurableSink := cf_lager.New("ducatid")
 
 	configFactory := &ipam.ConfigFactory{
 		Config: types.IPConfig{
@@ -244,6 +246,13 @@ func main() {
 
 	members := grouper.Members{
 		{"http_server", httpServer},
+	}
+
+	fmt.Printf("!!MJS: adding the debug server to %q\n", conf.DebugAddress)
+	if conf.DebugAddress != "" {
+		members = append(grouper.Members{
+			{"debug-server", cf_debug_server.Runner(conf.DebugAddress, reconfigurableSink)},
+		}, members...)
 	}
 
 	group := grouper.NewOrdered(os.Interrupt, members)

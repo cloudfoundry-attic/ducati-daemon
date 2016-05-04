@@ -143,6 +143,6 @@ var _ = Describe("Networks", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(session.Out, "5s").Should(gbytes.Say("ducati-d.sandbox-miss.*dest_ip.*192.168.1.100.*sandbox.*vni-%d", vni))
+		Eventually(session.Out, "5s").Should(gbytes.Say("ducatid.sandbox-miss.*dest_ip.*192.168.1.100.*sandbox.*vni-%d", vni))
 	})
 })

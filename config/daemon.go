@@ -23,6 +23,7 @@ type Daemon struct {
 	OverlayDNSAddress string    `json:"overlay_dns_address"`
 	ExternalDNSServer string    `json:"dns_server"`
 	Suffix            string    `json:"suffix"`
+	DebugAddress      string    `json:"debug_address"`
 }
 
 func Unmarshal(input io.Reader) (Daemon, error) {
@@ -58,6 +59,7 @@ type ValidatedConfig struct {
 	OverlayDNSAddress net.IP
 	ExternalDNSServer net.IP
 	Suffix            string
+	DebugAddress      string
 }
 
 func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
@@ -150,6 +152,7 @@ func (d Daemon) ParseAndValidate() (*ValidatedConfig, error) {
 		OverlayDNSAddress: overlayDNSAddress,
 		ExternalDNSServer: externalDNSServer,
 		Suffix:            d.Suffix,
+		DebugAddress:      d.DebugAddress,
 	}, nil
 }
 

@@ -32,7 +32,8 @@ const fixtureJSON = `
 	"index": 9,
 	"dns_server": "1.2.3.4",
 	"overlay_dns_address": "192.168.255.254",
-	"suffix": "potato"
+	"suffix": "potato",
+	"debug_address": "127.0.0.1:19000"
 }
 `
 
@@ -58,6 +59,7 @@ var _ = Describe("Daemon config", func() {
 			ExternalDNSServer: "1.2.3.4",
 			OverlayDNSAddress: "192.168.255.254",
 			Suffix:            "potato",
+			DebugAddress:      "127.0.0.1:19000",
 		}
 	})
 
@@ -108,6 +110,7 @@ var _ = Describe("Daemon config", func() {
 				ExternalDNSServer: net.ParseIP("1.2.3.4"),
 				OverlayDNSAddress: net.ParseIP("192.168.255.254"),
 				Suffix:            "potato",
+				DebugAddress:      "127.0.0.1:19000",
 			}))
 		})
 	})
@@ -196,6 +199,7 @@ var _ = Describe("Daemon config", func() {
 				ExternalDNSServer: "1.2.3.4",
 				OverlayDNSAddress: "192.168.255.254",
 				Suffix:            "potato",
+				DebugAddress:      "0.0.0.0:19001",
 			}
 
 			configFile, err := ioutil.TempFile("", "config")
@@ -224,6 +228,7 @@ var _ = Describe("Daemon config", func() {
 				ExternalDNSServer: net.ParseIP("1.2.3.4"),
 				OverlayDNSAddress: net.ParseIP("192.168.255.254"),
 				Suffix:            "potato",
+				DebugAddress:      "0.0.0.0:19001",
 			}))
 		})
 
