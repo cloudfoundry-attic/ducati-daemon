@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,6 +21,7 @@ import (
 var _ = Describe("NamespaceRepo", func() {
 	var repoDir string
 	var logger *lagertest.TestLogger
+	var threadLocker *fakes.OSThreadLocker
 
 	BeforeEach(func() {
 		var err error
@@ -27,6 +29,7 @@ var _ = Describe("NamespaceRepo", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		logger = lagertest.NewTestLogger("test")
+		threadLocker = &fakes.OSThreadLocker{}
 	})
 
 	AfterEach(func() {
@@ -36,7 +39,7 @@ var _ = Describe("NamespaceRepo", func() {
 
 	Describe("NewRepository", func() {
 		It("returns a repository", func() {
-			repo, err := namespace.NewRepository(logger, repoDir)
+			repo, err := namespace.NewRepository(logger, repoDir, threadLocker)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(repo).NotTo(BeNil())
 		})
@@ -48,7 +51,7 @@ var _ = Describe("NamespaceRepo", func() {
 			})
 
 			It("creates the directory", func() {
-				_, err := namespace.NewRepository(logger, repoDir)
+				_, err := namespace.NewRepository(logger, repoDir, threadLocker)
 				Expect(err).NotTo(HaveOccurred())
 
 				info, err := os.Stat(repoDir)
@@ -64,7 +67,7 @@ var _ = Describe("NamespaceRepo", func() {
 
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository(logger, repoDir)
+			repo, err = namespace.NewRepository(logger, repoDir, threadLocker)
 			Expect(err).NotTo(HaveOccurred())
 
 			name = fmt.Sprintf("test-ns-%d", GinkgoParallelNode())
@@ -154,7 +157,21 @@ var _ = Describe("NamespaceRepo", func() {
 
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository(logger, repoDir)
+			repo, err = namespace.NewRepository(logger, repoDir, threadLocker)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns the correct namespace", func() {
+			ns, err := repo.Create("some-namespace")
+			Expect(err).NotTo(HaveOccurred())
+			defer repo.Destroy(ns)
+
+			nsFromGet, err := repo.Get("some-namespace")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(ns.Name()).To(Equal(nsFromGet.Name()))
+
+			err = nsFromGet.Execute(func(*os.File) error { return nil })
 			Expect(err).NotTo(HaveOccurred())
 		})
 

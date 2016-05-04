@@ -17,9 +17,10 @@ import (
 
 var _ = Describe("Repository", func() {
 	var (
-		repo   namespace.Repository
-		logger *lagertest.TestLogger
-		dir    string
+		repo         namespace.Repository
+		logger       *lagertest.TestLogger
+		threadLocker *fakes.OSThreadLocker
+		dir          string
 	)
 
 	BeforeEach(func() {
@@ -28,8 +29,8 @@ var _ = Describe("Repository", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		logger = lagertest.NewTestLogger("test")
-
-		repo, err = namespace.NewRepository(logger, dir)
+		threadLocker = &fakes.OSThreadLocker{}
+		repo, err = namespace.NewRepository(logger, dir, threadLocker)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -46,7 +47,7 @@ var _ = Describe("Repository", func() {
 	Describe("Destroy", func() {
 		BeforeEach(func() {
 			var err error
-			repo, err = namespace.NewRepository(logger, "/var/run/netns")
+			repo, err = namespace.NewRepository(logger, "/var/run/netns", threadLocker)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -65,14 +66,30 @@ var _ = Describe("Repository", func() {
 		})
 
 		Context("when the namespace is not located within this repository", func() {
-			var ns namespace.Namespace
+			var (
+				ns          namespace.Namespace
+				anotherRepo namespace.Repository
+				repoDir     string
+			)
 
 			BeforeEach(func() {
-				tempFile, err := ioutil.TempFile(dir, "namespace")
+				var err error
+				repoDir, err = ioutil.TempDir("", "repo")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(tempFile.Close()).To(Succeed())
 
-				ns = &namespace.Netns{File: tempFile}
+				anotherRepo, err = namespace.NewRepository(logger, repoDir, threadLocker)
+				Expect(err).NotTo(HaveOccurred())
+
+				ns, err = anotherRepo.Create("outside")
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := anotherRepo.Destroy(ns)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.RemoveAll(repoDir)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns a meaningful error", func() {
@@ -128,29 +145,32 @@ var _ = Describe("Repository", func() {
 		})
 
 		Context("when the namespace file is not a bind mount", func() {
-			var nsPath string
-			var nsFile *os.File
+			var ns namespace.Namespace
 
 			BeforeEach(func() {
-				Expect(os.MkdirAll("/var/run/netns", 0644)).To(Succeed())
-				nsPath = filepath.Join("/var/run/netns", "simple-file")
 				var err error
-				nsFile, err = os.Create(nsPath)
+				ns, err = repo.Create("already-destroyed")
 				Expect(err).NotTo(HaveOccurred())
+
+				err = repo.Destroy(ns)
+				Expect(err).NotTo(HaveOccurred())
+
+				f, err := os.Create(ns.Name())
+				Expect(err).NotTo(HaveOccurred())
+				f.Close()
 			})
 
 			AfterEach(func() {
-				os.Remove(nsPath)
+				os.Remove(ns.Name())
 			})
 
 			It("returns an error", func() {
-				ns := &namespace.Netns{File: nsFile}
 				err := repo.Destroy(ns)
 				Expect(err).To(HaveOccurred())
 			})
 
 			It("does not remove the file", func() {
-				Expect(nsPath).To(BeAnExistingFile())
+				Expect(ns.Name()).To(BeAnExistingFile())
 			})
 		})
 	})

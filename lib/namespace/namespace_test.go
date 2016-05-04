@@ -8,9 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -21,9 +23,11 @@ import (
 
 var _ = Describe("Namespace", func() {
 	var logger *lagertest.TestLogger
+	var threadLocker *fakes.OSThreadLocker
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
+		threadLocker = &fakes.OSThreadLocker{}
 	})
 
 	Describe("Name", func() {
@@ -34,7 +38,7 @@ var _ = Describe("Namespace", func() {
 			defer os.Remove(tempFile.Name())
 
 			actualName := tempFile.Name()
-			Expect(namespace.Netns{File: tempFile, Logger: logger}.Name()).To(Equal(actualName))
+			Expect(namespace.Netns{File: tempFile, Logger: logger, ThreadLocker: threadLocker}.Name()).To(Equal(actualName))
 		})
 	})
 
@@ -60,7 +64,12 @@ var _ = Describe("Namespace", func() {
 
 			nsFile, err := os.Open(nsPath)
 			Expect(err).NotTo(HaveOccurred())
-			ns = &namespace.Netns{File: nsFile, Logger: logger}
+
+			ns = &namespace.Netns{
+				File:         nsFile,
+				Logger:       logger,
+				ThreadLocker: threadLocker,
+			}
 		})
 
 		AfterEach(func() {
@@ -71,7 +80,6 @@ var _ = Describe("Namespace", func() {
 		It("runs the closure in the namespace", func() {
 			var namespaceInode string
 			closure := func(f *os.File) error {
-				// Stat of "/proc/self/ns/net" flakey due to fs caching
 				output, err := exec.Command("stat", "-L", "-c", "%i", "/proc/self/ns/net").CombinedOutput()
 				namespaceInode = strings.TrimSpace(string(output))
 				return err
@@ -86,8 +94,31 @@ var _ = Describe("Namespace", func() {
 			err := ns.Execute(func(*os.File) error { return nil })
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(logger).To(gbytes.Say("execute.callback-invoked.*ns-test-ns.*inode"))
+			Expect(logger).To(gbytes.Say("execute.invoking-callback.*ns-test-ns.*inode"))
 			Expect(logger).To(gbytes.Say("execute.callback-complete.*ns-test-ns.*inode"))
+		})
+
+		It("locks and unlocks the os thread", func() {
+			err := ns.Execute(func(*os.File) error {
+				defer GinkgoRecover()
+				Expect(threadLocker.LockOSThreadCallCount()).To(Equal(1))
+				Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(0))
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(threadLocker.LockOSThreadCallCount()).To(Equal(1))
+			Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(1))
+		})
+
+		It("runs the callback on a separate os task", func() {
+			var ttid int
+			err := ns.Execute(func(*os.File) error {
+				ttid = syscall.Gettid()
+				return nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(syscall.Gettid()).NotTo(Equal(ttid))
 		})
 
 		Context("when the callback fails", func() {
@@ -107,7 +138,8 @@ var _ = Describe("Namespace", func() {
 
 		BeforeEach(func() {
 			opener = &namespace.PathOpener{
-				Logger: logger,
+				Logger:       logger,
+				ThreadLocker: threadLocker,
 			}
 
 			var err error
@@ -129,6 +161,7 @@ var _ = Describe("Namespace", func() {
 			Expect(ok).To(BeTrue())
 			Expect(int(netns.Fd())).To(BeNumerically(">", 0))
 			Expect(netns.Logger).To(Equal(logger))
+			Expect(netns.ThreadLocker).NotTo(BeNil())
 		})
 
 		Context("when the file cannot be opened", func() {
@@ -176,7 +209,7 @@ var _ = Describe("Namespace", func() {
 			err = unix.Stat(actualName, &stat)
 			Expect(err).NotTo(HaveOccurred())
 
-			ns := &namespace.Netns{File: tempFile, Logger: logger}
+			ns := &namespace.Netns{File: tempFile, Logger: logger, ThreadLocker: threadLocker}
 			expectedJSON := fmt.Sprintf(`{ "name": "%s", "inode": "%d" }`, actualName, stat.Ino)
 
 			json, err := json.Marshal(ns)
@@ -199,7 +232,7 @@ var _ = Describe("Namespace", func() {
 			err = unix.Stat(actualName, &stat)
 			Expect(err).NotTo(HaveOccurred())
 
-			ns := &namespace.Netns{File: tempFile, Logger: logger}
+			ns := &namespace.Netns{File: tempFile, Logger: logger, ThreadLocker: threadLocker}
 
 			Expect(ns.String()).To(Equal(fmt.Sprintf("%s:[%d]", actualName, stat.Ino)))
 		})

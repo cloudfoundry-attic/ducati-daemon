@@ -17,6 +17,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/network"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/miekg/dns"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -62,14 +63,15 @@ var _ = Describe("Networks", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		logger = lagertest.NewTestLogger("test")
+		threadLocker := &ossupport.OSLocker{}
 
-		sandboxRepo, err = namespace.NewRepository(logger, sandboxRepoDir)
+		sandboxRepo, err = namespace.NewRepository(logger, sandboxRepoDir, threadLocker)
 		Expect(err).NotTo(HaveOccurred())
 
 		containerRepoDir, err := ioutil.TempDir("", "containers")
 		Expect(err).NotTo(HaveOccurred())
 
-		containerRepo, err = namespace.NewRepository(logger, containerRepoDir)
+		containerRepo, err = namespace.NewRepository(logger, containerRepoDir, threadLocker)
 		Expect(err).NotTo(HaveOccurred())
 
 		guid, err := uuid.NewV4()

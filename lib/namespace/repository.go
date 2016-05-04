@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -26,18 +27,20 @@ func init() {
 }
 
 type repository struct {
-	logger lager.Logger
-	root   string
+	logger       lager.Logger
+	root         string
+	threadLocker ossupport.OSThreadLocker
 }
 
-func NewRepository(logger lager.Logger, root string) (Repository, error) {
+func NewRepository(logger lager.Logger, root string, threadLocker ossupport.OSThreadLocker) (Repository, error) {
 	err := os.MkdirAll(root, 0755)
 	if err != nil {
 		return nil, err
 	}
 	return &repository{
-		logger: logger,
-		root:   root,
+		logger:       logger,
+		root:         root,
+		threadLocker: threadLocker,
 	}, nil
 }
 
@@ -50,7 +53,7 @@ func (r *repository) Get(name string) (Namespace, error) {
 		return nil, err
 	}
 
-	ns := &Netns{File: file, Logger: logger}
+	ns := &Netns{Logger: logger, File: file, ThreadLocker: r.threadLocker}
 
 	logger.Info("complete", lager.Data{"namespace": ns})
 
@@ -84,7 +87,7 @@ func (r *repository) Create(name string) (Namespace, error) {
 		return nil, err
 	}
 
-	ns := &Netns{File: bindMountedFile, Logger: logger}
+	ns := &Netns{Logger: logger, File: bindMountedFile, ThreadLocker: r.threadLocker}
 
 	logger.Info("created", lager.Data{"namespace": ns})
 

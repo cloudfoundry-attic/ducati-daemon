@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/config"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,14 +36,15 @@ var _ = Describe("Debug Server Test", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		logger = lagertest.NewTestLogger("test")
+		threadLocker := &ossupport.OSLocker{}
 
-		sandboxRepo, err = namespace.NewRepository(logger, sandboxRepoDir)
+		sandboxRepo, err = namespace.NewRepository(logger, sandboxRepoDir, threadLocker)
 		Expect(err).NotTo(HaveOccurred())
 
 		containerRepoDir, err := ioutil.TempDir("", "containers")
 		Expect(err).NotTo(HaveOccurred())
 
-		containerRepo, err = namespace.NewRepository(logger, containerRepoDir)
+		containerRepo, err = namespace.NewRepository(logger, containerRepoDir, threadLocker)
 		Expect(err).NotTo(HaveOccurred())
 
 		guid, err := uuid.NewV4()

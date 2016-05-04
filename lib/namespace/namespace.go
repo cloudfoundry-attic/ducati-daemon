@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/pivotal-golang/lager"
 
 	"golang.org/x/sys/unix"
@@ -23,7 +24,8 @@ type jsonNamespace interface {
 
 type Netns struct {
 	*os.File
-	Logger lager.Logger
+	Logger       lager.Logger
+	ThreadLocker ossupport.OSThreadLocker
 }
 
 func (n *Netns) String() string {
@@ -51,7 +53,8 @@ type Opener interface {
 }
 
 type PathOpener struct {
-	Logger lager.Logger
+	Logger       lager.Logger
+	ThreadLocker ossupport.OSThreadLocker
 }
 
 func (po *PathOpener) OpenPath(path string) (Namespace, error) {
@@ -61,7 +64,8 @@ func (po *PathOpener) OpenPath(path string) (Namespace, error) {
 	}
 
 	return &Netns{
-		File:   file,
-		Logger: po.Logger,
+		Logger:       po.Logger,
+		File:         file,
+		ThreadLocker: po.ThreadLocker,
 	}, nil
 }

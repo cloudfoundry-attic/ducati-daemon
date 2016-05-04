@@ -98,7 +98,9 @@ func main() {
 	addressManager := &ip.AddressManager{Netlinker: nl.Netlink}
 	routeManager := &ip.RouteManager{Netlinker: nl.Netlink}
 	linkFactory := &links.Factory{Netlinker: nl.Netlink}
-	sandboxNamespaceRepo, err := namespace.NewRepository(logger, conf.SandboxRepoDir)
+	osThreadLocker := &ossupport.OSLocker{}
+
+	sandboxNamespaceRepo, err := namespace.NewRepository(logger, conf.SandboxRepoDir, osThreadLocker)
 	if err != nil {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
@@ -111,10 +113,9 @@ func main() {
 		linkFactory,
 	)
 
-	osThreadLocker := &ossupport.OSLocker{}
-
 	namespaceOpener := &namespace.PathOpener{
-		Logger: logger,
+		Logger:       logger,
+		ThreadLocker: osThreadLocker,
 	}
 
 	subscriber := &subscriber.Subscriber{
