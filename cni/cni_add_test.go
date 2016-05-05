@@ -19,15 +19,12 @@ var _ = Describe("CniAdd", func() {
 		ipamResult    *types.Result
 		creator       *fakes.Creator
 		controller    *cni.AddController
-		osLocker      *fakes.OSThreadLocker
 		ipAllocator   *fakes.IPAllocator
 		networkMapper *fakes.NetworkMapper
 		payload       models.CNIAddPayload
 	)
 
 	BeforeEach(func() {
-		osLocker = &fakes.OSThreadLocker{}
-
 		datastore = &fakes.Store{}
 		creator = &fakes.Creator{}
 
@@ -35,11 +32,10 @@ var _ = Describe("CniAdd", func() {
 		networkMapper = &fakes.NetworkMapper{}
 
 		controller = &cni.AddController{
-			Datastore:      datastore,
-			Creator:        creator,
-			OSThreadLocker: osLocker,
-			IPAllocator:    ipAllocator,
-			NetworkMapper:  networkMapper,
+			Datastore:     datastore,
+			Creator:       creator,
+			IPAllocator:   ipAllocator,
+			NetworkMapper: networkMapper,
 		}
 
 		ipamResult = &types.Result{
@@ -118,14 +114,6 @@ var _ = Describe("CniAdd", func() {
 			HostIP:    "10.12.100.4",
 			IP:        "192.168.160.3",
 		}))
-	})
-
-	It("locks and unlocks the os thread", func() {
-		_, err := controller.Add(payload)
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
-		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
 	})
 
 	It("gets the networkID from the network mapper", func() {

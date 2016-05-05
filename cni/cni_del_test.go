@@ -16,15 +16,12 @@ var _ = Describe("CniDel", func() {
 		datastore     *fakes.Store
 		deletor       *fakes.Deletor
 		controller    *cni.DelController
-		osLocker      *fakes.OSThreadLocker
 		ipAllocator   *fakes.IPAllocator
 		networkMapper *fakes.NetworkMapper
 		payload       models.CNIDelPayload
 	)
 
 	BeforeEach(func() {
-		osLocker = &fakes.OSThreadLocker{}
-
 		datastore = &fakes.Store{}
 		deletor = &fakes.Deletor{}
 		ipAllocator = &fakes.IPAllocator{}
@@ -36,11 +33,10 @@ var _ = Describe("CniDel", func() {
 		}, nil)
 
 		controller = &cni.DelController{
-			Datastore:      datastore,
-			Deletor:        deletor,
-			OSThreadLocker: osLocker,
-			IPAllocator:    ipAllocator,
-			NetworkMapper:  networkMapper,
+			Datastore:     datastore,
+			Deletor:       deletor,
+			IPAllocator:   ipAllocator,
+			NetworkMapper: networkMapper,
 		}
 
 		payload = models.CNIDelPayload{
@@ -48,14 +44,6 @@ var _ = Describe("CniDel", func() {
 			ContainerNamespace: "/some/container/namespace/path",
 			ContainerID:        "some-container-id",
 		}
-	})
-
-	It("locks and unlocks the os thread", func() {
-		err := controller.Del(payload)
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(osLocker.LockOSThreadCallCount()).To(Equal(1))
-		Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
 	})
 
 	It("gets the network id from the datastore", func() {
@@ -125,10 +113,6 @@ var _ = Describe("CniDel", func() {
 			Expect(err).To(MatchError("deletor: some-deletor-error"))
 			Expect(datastore.DeleteCallCount()).To(Equal(0))
 		})
-		It("unlocks the thread", func() {
-			controller.Del(payload)
-			Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
-		})
 	})
 
 	It("deletes the container from the datastore", func() {
@@ -148,11 +132,6 @@ var _ = Describe("CniDel", func() {
 		It("returns a wrapped error", func() {
 			err := controller.Del(payload)
 			Expect(err).To(MatchError("datastore delete: some-datastore-error"))
-		})
-
-		It("unlocks the thread", func() {
-			controller.Del(payload)
-			Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
 		})
 	})
 
@@ -175,11 +154,6 @@ var _ = Describe("CniDel", func() {
 		It("returns a wrapped error", func() {
 			err := controller.Del(payload)
 			Expect(err).To(MatchError("release ip: mango"))
-		})
-
-		It("unlocks the thread", func() {
-			controller.Del(payload)
-			Expect(osLocker.UnlockOSThreadCallCount()).To(Equal(1))
 		})
 	})
 })

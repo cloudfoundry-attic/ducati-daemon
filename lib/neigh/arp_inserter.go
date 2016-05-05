@@ -6,7 +6,6 @@ import (
 	"syscall"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
-	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	"github.com/pivotal-golang/lager"
 	"github.com/vishvananda/netlink"
@@ -18,15 +17,11 @@ type netlinker interface {
 }
 
 type ARPInserter struct {
-	Logger         lager.Logger
-	Netlinker      netlinker
-	OSThreadLocker ossupport.OSThreadLocker
+	Logger    lager.Logger
+	Netlinker netlinker
 }
 
 func (a *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Namespace, vxlanDeviceName string, resolvedChan <-chan watcher.Neighbor) {
-	a.OSThreadLocker.LockOSThread()
-	defer a.OSThreadLocker.UnlockOSThread()
-
 	err := ns.Execute(func(f *os.File) error {
 		vxlanLink, err := a.Netlinker.LinkByName(vxlanDeviceName)
 		if err != nil {

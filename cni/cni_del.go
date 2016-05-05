@@ -29,9 +29,6 @@ type DelController struct {
 }
 
 func (c *DelController) Del(payload models.CNIDelPayload) error {
-	c.OSThreadLocker.LockOSThread()
-	defer c.OSThreadLocker.UnlockOSThread()
-
 	dbRecord, err := c.Datastore.Get(payload.ContainerID)
 	if err != nil {
 		return fmt.Errorf("datastore get: %s", err)

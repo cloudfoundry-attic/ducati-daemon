@@ -20,19 +20,17 @@ import (
 
 var _ = Describe("ARPInserter", func() {
 	var (
-		inserter     *neigh.ARPInserter
-		ns           *fakes.Namespace
-		netlinker    *nl_fakes.Netlinker
-		vxlanLink    *netlink.Vxlan
-		logger       *lagertest.TestLogger
-		threadLocker *fakes.OSThreadLocker
+		inserter  *neigh.ARPInserter
+		ns        *fakes.Namespace
+		netlinker *nl_fakes.Netlinker
+		vxlanLink *netlink.Vxlan
+		logger    *lagertest.TestLogger
 	)
 
 	BeforeEach(func() {
 		ns = &fakes.Namespace{}
 		netlinker = &nl_fakes.Netlinker{}
 		logger = lagertest.NewTestLogger("test")
-		threadLocker = &fakes.OSThreadLocker{}
 		vxlanLink = &netlink.Vxlan{
 			LinkAttrs: netlink.LinkAttrs{
 				Index: 9876,
@@ -48,9 +46,8 @@ var _ = Describe("ARPInserter", func() {
 		}
 
 		inserter = &neigh.ARPInserter{
-			Logger:         logger,
-			Netlinker:      netlinker,
-			OSThreadLocker: threadLocker,
+			Logger:    logger,
+			Netlinker: netlinker,
 		}
 	})
 
@@ -166,22 +163,6 @@ var _ = Describe("ARPInserter", func() {
 				Flags:        netlink.NTF_SELF,
 				IP:           neighbor.VTEP,
 			}))
-		})
-
-		It("locks and unlocks the OS thread", func() {
-			ns.ExecuteStub = func(callback func(ns *os.File) error) error {
-				callback(nil)
-				Expect(threadLocker.LockOSThreadCallCount()).To(Equal(1))
-				Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(0))
-				return nil
-			}
-
-			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
-			Eventually(ready).Should(BeClosed())
-
-			Expect(ns.ExecuteCallCount()).To(Equal(1))
-			Expect(threadLocker.LockOSThreadCallCount()).To(Equal(1))
-			Expect(threadLocker.UnlockOSThreadCallCount()).To(Equal(1))
 		})
 
 		Context("when executing in namespace fails", func() {

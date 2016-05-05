@@ -127,9 +127,8 @@ func main() {
 		Store:  dataStore,
 	}
 	arpInserter := &neigh.ARPInserter{
-		Logger:         logger,
-		Netlinker:      nl.Netlink,
-		OSThreadLocker: osThreadLocker,
+		Logger:    logger,
+		Netlinker: nl.Netlink,
 	}
 	missWatcher := watcher.New(
 		subscriber,
@@ -180,19 +179,17 @@ func main() {
 	}
 
 	addController := &cni.AddController{
-		IPAllocator:    ipAllocator,
-		NetworkMapper:  networkMapper,
-		Creator:        creator,
-		Datastore:      dataStore,
-		OSThreadLocker: osThreadLocker,
+		IPAllocator:   ipAllocator,
+		NetworkMapper: networkMapper,
+		Creator:       creator,
+		Datastore:     dataStore,
 	}
 
 	delController := &cni.DelController{
-		Datastore:      dataStore,
-		Deletor:        deletor,
-		IPAllocator:    ipAllocator,
-		NetworkMapper:  networkMapper,
-		OSThreadLocker: osThreadLocker,
+		Datastore:     dataStore,
+		Deletor:       deletor,
+		IPAllocator:   ipAllocator,
+		NetworkMapper: networkMapper,
 	}
 
 	marshaler := marshal.MarshalFunc(json.Marshal)

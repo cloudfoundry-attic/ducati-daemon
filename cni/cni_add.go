@@ -8,16 +8,14 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/ipam"
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/cloudfoundry-incubator/ducati-daemon/network"
-	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 )
 
 type AddController struct {
-	IPAllocator    ipam.IPAllocator
-	NetworkMapper  network.NetworkMapper
-	Creator        creator
-	Datastore      store.Store
-	OSThreadLocker ossupport.OSThreadLocker
+	IPAllocator   ipam.IPAllocator
+	NetworkMapper network.NetworkMapper
+	Creator       creator
+	Datastore     store.Store
 }
 
 //go:generate counterfeiter -o ../fakes/creator.go --fake-name Creator . creator
@@ -26,9 +24,6 @@ type creator interface {
 }
 
 func (c *AddController) Add(payload models.CNIAddPayload) (*types.Result, error) {
-	c.OSThreadLocker.LockOSThread()
-	defer c.OSThreadLocker.UnlockOSThread()
-
 	networkID, err := c.NetworkMapper.GetNetworkID(payload.Network)
 	if err != nil {
 		return nil, fmt.Errorf("get network id: %s", err)

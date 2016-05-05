@@ -3,8 +3,6 @@ package executor
 import (
 	"fmt"
 	"os"
-	"runtime"
-	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/pivotal-golang/lager"
@@ -23,20 +21,10 @@ func (nsw *NamespaceWriter) Write(contents []byte) (int, error) {
 
 	var bytesWritten int
 	var err, nsErr error
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-
-	go func() {
-		runtime.LockOSThread()
-		nsErr = nsw.Namespace.Execute(func(*os.File) error {
-			bytesWritten, err = nsw.Writer.Write(contents)
-			return nil
-		})
-		wg.Done()
-	}()
-
-	wg.Wait()
+	nsErr = nsw.Namespace.Execute(func(*os.File) error {
+		bytesWritten, err = nsw.Writer.Write(contents)
+		return nil
+	})
 
 	if nsErr != nil {
 		logger.Error("namespace-execute-failed", nsErr)
