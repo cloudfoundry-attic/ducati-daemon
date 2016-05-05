@@ -131,6 +131,7 @@ func main() {
 		Netlinker: nl.Netlink,
 	}
 	missWatcher := watcher.New(
+		logger,
 		subscriber,
 		&sync.Mutex{},
 		resolver,

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/pivotal-golang/lager"
 )
 
 type Neigh struct {
@@ -35,8 +36,9 @@ type arpInserter interface {
 	HandleResolvedNeighbors(ready chan error, ns namespace.Namespace, vxlanName string, resolvedNeighbors <-chan Neighbor)
 }
 
-func New(subscriber sub, locker sync.Locker, resolver resolver, arpInserter arpInserter) MissWatcher {
+func New(logger lager.Logger, subscriber sub, locker sync.Locker, resolver resolver, arpInserter arpInserter) MissWatcher {
 	w := &missWatcher{
+		Logger:      logger,
 		Subscriber:  subscriber,
 		DoneChans:   make(map[string]chan struct{}),
 		Locker:      locker,
@@ -48,6 +50,7 @@ func New(subscriber sub, locker sync.Locker, resolver resolver, arpInserter arpI
 }
 
 type missWatcher struct {
+	Logger      lager.Logger
 	Subscriber  sub
 	DoneChans   map[string]chan struct{}
 	Locker      sync.Locker
@@ -63,8 +66,11 @@ type Neighbor struct {
 }
 
 func (w *missWatcher) StartMonitor(ns namespace.Namespace, vxlanName string) error {
-	subChan := make(chan *Neigh)
+	logger := w.Logger.Session("start-monitor", lager.Data{"namespace": ns})
+	logger.Info("called")
+	defer logger.Info("complete")
 
+	subChan := make(chan *Neigh)
 	unresolvedMisses := make(chan Neighbor)
 	resolvedNeighbors := make(chan Neighbor)
 
@@ -92,12 +98,15 @@ func (w *missWatcher) StartMonitor(ns namespace.Namespace, vxlanName string) err
 	}
 
 	go func() {
+		logger := logger.Session("forward-neighbor-messages")
+		logger.Info("starting")
 		for neigh := range subChan {
 			unresolvedMisses <- Neighbor{
 				SandboxName: ns.Name(),
 				Neigh:       *neigh,
 			}
 		}
+		logger.Info("complete")
 	}()
 
 	go w.Resolver.ResolveMisses(unresolvedMisses, resolvedNeighbors)
@@ -109,14 +118,19 @@ func (w *missWatcher) StopMonitor(ns namespace.Namespace) error {
 	w.Locker.Lock()
 	defer w.Locker.Unlock()
 
+	logger := w.Logger.Session("stop-monitor", lager.Data{"namespace": ns})
+	logger.Info("called")
+	defer logger.Info("complete")
+
 	doneChan, ok := w.DoneChans[ns.Name()]
 	if !ok {
-		return fmt.Errorf("namespace %s not monitored", ns.Name())
+		err := fmt.Errorf("namespace %s not monitored", ns.Name())
+		logger.Error("done-channel-missing", err)
+		return err
 	}
 
 	delete(w.DoneChans, ns.Name())
-
-	doneChan <- struct{}{}
+	close(doneChan)
 
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
@@ -30,7 +31,10 @@ var _ = Describe("Watcher", func() {
 		sub = &fakes.Subscriber{}
 		logger = lagertest.NewTestLogger("test")
 		locker = &fakes.Locker{}
+
 		ns = &fakes.Namespace{}
+		ns.MarshalJSONReturns([]byte("{}"), nil)
+
 		vxlanLinkName = "some-vxlan-name"
 		resolver = &fakes.Resolver{}
 
@@ -39,7 +43,7 @@ var _ = Describe("Watcher", func() {
 			close(ready)
 		}
 
-		missWatcher = watcher.New(sub, locker, resolver, arpInserter)
+		missWatcher = watcher.New(logger, sub, locker, resolver, arpInserter)
 
 		ns.ExecuteStub = func(callback func(ns *os.File) error) error {
 			err := callback(nil)
@@ -56,6 +60,13 @@ var _ = Describe("Watcher", func() {
 			missWatcher.StartMonitor(ns, vxlanLinkName)
 
 			Expect(sub.SubscribeCallCount()).To(Equal(1))
+		})
+
+		It("logs entry and exit", func() {
+			missWatcher.StartMonitor(ns, vxlanLinkName)
+
+			Expect(logger).To(gbytes.Say("start-monitor.called.*"))
+			Expect(logger).To(gbytes.Say("start-monitor.complete.*"))
 		})
 
 		It("invokes the subscribe call from within the namespace", func() {
@@ -85,6 +96,29 @@ var _ = Describe("Watcher", func() {
 			Expect(resolved).NotTo(BeNil())
 
 			Eventually(misses).Should(Receive())
+		})
+
+		It("logs the start and end of the neigbor forwarding routine", func() {
+			stubComplete := make(chan struct{})
+			sub.SubscribeStub = func(subChan chan<- *watcher.Neigh, done <-chan struct{}) error {
+				go func() {
+					subChan <- &watcher.Neigh{IP: net.ParseIP("1.2.3.4")}
+					close(subChan)
+					close(stubComplete)
+				}()
+				return nil
+			}
+
+			err := missWatcher.StartMonitor(ns, vxlanLinkName)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(resolver.ResolveMissesCallCount).Should(Equal(1))
+			unresolved, _ := resolver.ResolveMissesArgsForCall(0)
+			Eventually(unresolved).Should(Receive())
+
+			Eventually(stubComplete).Should(BeClosed())
+			Eventually(logger).Should(gbytes.Say("forward-neighbor-messages.starting.*"))
+			Eventually(logger).Should(gbytes.Say("forward-neighbor-messages.complete.*"))
 		})
 
 		It("starts the APRInserter and waits on the ready channel", func() {
@@ -165,27 +199,40 @@ var _ = Describe("Watcher", func() {
 
 	Describe("StopMonitor", func() {
 		var complete chan struct{}
+
 		BeforeEach(func() {
 			complete = make(chan struct{})
+
 			sub.SubscribeStub = func(ch chan<- *watcher.Neigh, done <-chan struct{}) error {
 				go func() {
 					<-done
-					complete <- struct{}{}
+					close(complete)
 				}()
 				return nil
 			}
 			missWatcher.StartMonitor(ns, vxlanLinkName)
 		})
 
-		It("sends a done signal to the subscribed channel", func() {
+		AfterEach(func() {
+			Eventually(complete).Should(BeClosed())
+		})
+
+		It("logs entry and exit", func() {
 			missWatcher.StopMonitor(ns)
 
-			Eventually(complete).Should(Receive())
+			Expect(logger).To(gbytes.Say("stop-monitor.called.*"))
+			Expect(logger).To(gbytes.Say("stop-monitor.complete.*"))
+		})
+
+		It("closes the done channel for the subscriber", func() {
+			Consistently(complete).ShouldNot(BeClosed())
+			missWatcher.StopMonitor(ns)
+			Eventually(complete).Should(BeClosed())
 		})
 
 		It("locks and unlocks to protect the map", func() {
 			missWatcher.StopMonitor(ns)
-			Eventually(complete).Should(Receive())
+			Eventually(complete).Should(BeClosed())
 
 			Expect(locker.LockCallCount()).To(Equal(2))
 			Expect(locker.UnlockCallCount()).To(Equal(2))
@@ -194,9 +241,17 @@ var _ = Describe("Watcher", func() {
 		Context("when StopMonitor called many times", func() {
 			It("returns a channel not found error", func() {
 				Expect(missWatcher.StopMonitor(ns)).To(Succeed())
-				Eventually(complete).Should(Receive())
+				Eventually(complete).Should(BeClosed())
 
 				Expect(missWatcher.StopMonitor(ns)).To(MatchError("namespace some-namespace not monitored"))
+			})
+
+			It("logs the error", func() {
+				Expect(missWatcher.StopMonitor(ns)).To(Succeed())
+				Eventually(complete).Should(BeClosed())
+
+				Expect(missWatcher.StopMonitor(ns)).NotTo(Succeed())
+				Expect(logger).To(gbytes.Say("stop-monitor.done-channel-missing.*"))
 			})
 		})
 	})
@@ -207,6 +262,5 @@ var _ = Describe("Watcher", func() {
 				Expect(missWatcher.StopMonitor(ns)).To(MatchError("namespace some-namespace not monitored"))
 			})
 		})
-
 	})
 })
