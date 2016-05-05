@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 
 	"lib/marshal"
 
@@ -27,6 +28,8 @@ type CNIAdd struct {
 }
 
 func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	runtime.LockOSThread()
+
 	logger := h.Logger.Session("cni-add")
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)

@@ -4,10 +4,12 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"runtime"
+
+	"lib/marshal"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/models"
 	"github.com/pivotal-golang/lager"
-	"lib/marshal"
 )
 
 //go:generate counterfeiter -o ../fakes/del_controller.go --fake-name DelController . delController
@@ -23,6 +25,9 @@ type CNIDel struct {
 }
 
 func (h *CNIDel) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
+
+	runtime.LockOSThread()
+
 	logger := h.Logger.Session("cni-del")
 
 	bodyBytes, err := ioutil.ReadAll(request.Body)
