@@ -188,12 +188,12 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		BeforeEach(func() {
 			fakeSocket.ReceiveReturns(nil, errors.New("some error"))
 		})
-		It("closes the output channel and logs the error", func() {
+		It("closes the output channel but does not log the error", func() {
 			err := mySubscriber.Subscribe(neighChan, doneChan)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(neighChan).Should(BeClosed())
-			Expect(logger).To(gbytes.Say("socket receive.*some error"))
+			Expect(logger).NotTo(gbytes.Say("some error"))
 		})
 	})
 

@@ -1,20 +1,45 @@
 package namespace
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"runtime"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/appc/cni/pkg/ns"
 	"github.com/pivotal-golang/lager"
 )
 
+var hostNamespaceInode string
+
+func inode(f *os.File) string {
+	var stat unix.Stat_t
+
+	err := unix.Fstat(int(f.Fd()), &stat)
+	if err != nil {
+		return "unknown"
+	}
+
+	return fmt.Sprintf("%d", stat.Ino)
+}
+
+func init() {
+	var hostNamespace, err = os.Open(taskNamespacePath())
+	if err != nil {
+		panic(err)
+	}
+	defer hostNamespace.Close()
+	hostNamespaceInode = inode(hostNamespace)
+}
+
 func (n *Netns) Execute(callback func(*os.File) error) error {
 	resultCh := make(chan error)
 
-	go func() { resultCh <- n.execute(callback) }()
+	go func() {
+		n.ThreadLocker.LockOSThread()
+		resultCh <- n.execute(callback)
+	}()
 
 	err := <-resultCh
 	if err != nil {
@@ -24,10 +49,7 @@ func (n *Netns) Execute(callback func(*os.File) error) error {
 }
 
 func (n *Netns) execute(callback func(*os.File) error) error {
-	logger := n.Logger.Session("execute", lager.Data{"namespace": n})
-
-	n.ThreadLocker.LockOSThread()
-	//defer n.ThreadLocker.UnlockOSThread()
+	logger := n.Logger.Session("execute", lager.Data{"namespace": n, "thread": os.Getpid()})
 
 	originalNamespace, err := os.Open(taskNamespacePath())
 	if err != nil {
@@ -35,25 +57,27 @@ func (n *Netns) execute(callback func(*os.File) error) error {
 	}
 	defer originalNamespace.Close()
 
+	originalNamespaceInode := inode(originalNamespace)
+	if originalNamespaceInode != hostNamespaceInode {
+		logger.Info("error-original-netns-mismatch", lager.Data{
+			"local":  originalNamespaceInode,
+			"global": hostNamespaceInode,
+		})
+	}
+
+	logger.Info("ns-set")
 	if err := ns.SetNS(n.File, syscall.CLONE_NEWNET); err != nil {
 		return fmt.Errorf("set ns failed: %s", err)
 	}
 	defer func() {
+		logger.Info("ns-restore", lager.Data{"restore-to-inode": originalNamespaceInode})
 		if err := ns.SetNS(originalNamespace, syscall.CLONE_NEWNET); err != nil {
-			logger.Error("returning to original namespace", err)
+			logger.Error("restore", err)
 			panic(err)
 		}
 	}()
 
 	logger.Info("invoking-callback")
-
-	// TODO: remove
-	buf := make([]byte, 1<<16)
-	runtime.Stack(buf, false)
-	buf = bytes.Trim(buf, "\x00")
-	trace := fmt.Sprintf("%s", buf)
-	logger.Info("stacktrace:\n" + trace)
-
 	if err := callback(originalNamespace); err != nil {
 		logger.Error("callback-failed", err)
 		return err

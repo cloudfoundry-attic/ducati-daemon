@@ -38,7 +38,6 @@ func (s *Subscriber) Subscribe(neighChan chan<- *watcher.Neigh, doneChan <-chan 
 		for {
 			msgs, err := sock.Receive()
 			if err != nil {
-				s.Logger.Error("socket receive", err)
 				return
 			}
 

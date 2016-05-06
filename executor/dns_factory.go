@@ -53,7 +53,7 @@ func (f *DNSFactory) New(listener net.PacketConn, sandboxNS namespace.Namespace)
 	}
 
 	return runner.New(
-		f.Logger,
+		f.Logger.Session("dns"),
 		resolverConfig,
 		f.ExternalServer,
 		listener,

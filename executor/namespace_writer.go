@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/debug"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/pivotal-golang/lager"
 )
@@ -16,8 +17,10 @@ type NamespaceWriter struct {
 
 func (nsw *NamespaceWriter) Write(contents []byte) (int, error) {
 	logger := nsw.Logger.Session("write", lager.Data{"namespace": nsw.Namespace})
-	logger.Info("write-called")
-	defer logger.Info("write-complete")
+	logger.Info("write-called", debug.NetNS())
+	defer func() {
+		logger.Info("write-complete", debug.NetNS())
+	}()
 
 	var bytesWritten int
 	var err, nsErr error
