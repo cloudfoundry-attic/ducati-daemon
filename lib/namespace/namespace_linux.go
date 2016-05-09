@@ -25,11 +25,13 @@ func (n *Netns) execute(callback func(*os.File) error) error {
 
 	originalNamespace, err := os.Open(taskNamespacePath())
 	if err != nil {
+		logger.Error("open", err)
 		return fmt.Errorf("open failed: %s", err)
 	}
 	defer originalNamespace.Close()
 
 	if err := ns.SetNS(n.File, syscall.CLONE_NEWNET); err != nil {
+		logger.Error("set ns", err)
 		return fmt.Errorf("set ns failed: %s", err)
 	}
 	defer func() {

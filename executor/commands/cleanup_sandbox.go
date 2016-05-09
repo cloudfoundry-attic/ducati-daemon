@@ -24,6 +24,7 @@ func (c CleanupSandbox) Execute(context executor.Context) error {
 	sbox, err := context.SandboxRepository().Get(c.SandboxName)
 	if err != nil {
 		if err == sandbox.NotFoundError {
+			logger.Error("get-sandbox-failed", err)
 			return nil
 		}
 
@@ -33,6 +34,7 @@ func (c CleanupSandbox) Execute(context executor.Context) error {
 	sbox.Lock()
 	defer sbox.Unlock()
 
+	logger.Info("starting-namespace-execute")
 	var vethLinkCount = 0
 	err = sbox.Namespace().Execute(func(ns *os.File) error {
 		var err error
@@ -55,8 +57,10 @@ func (c CleanupSandbox) Execute(context executor.Context) error {
 		return nil
 	})
 	if err != nil {
+		logger.Error("namespace-execute", err)
 		return fmt.Errorf("in namespace %s: %s", c.SandboxName, err)
 	}
+	logger.Info("namespace-execute-complete")
 
 	namespaceRepo := context.SandboxNamespaceRepository()
 

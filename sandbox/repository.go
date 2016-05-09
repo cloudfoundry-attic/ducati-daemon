@@ -3,6 +3,9 @@ package sandbox
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -18,6 +21,7 @@ type Repository interface {
 	Create(sandboxName string) (Sandbox, error)
 	Get(sandboxName string) (Sandbox, error)
 	Remove(sandboxName string)
+	Load(string) error
 }
 
 //go:generate counterfeiter -o ../fakes/invoker.go --fake-name Invoker . Invoker
@@ -55,6 +59,34 @@ func NewRepository(
 		invoker:       invoker,
 		linkFactory:   linkFactory,
 	}
+}
+
+func (r *repository) Load(sandboxRepoDir string) error {
+	r.locker.Lock()
+	defer r.locker.Unlock()
+
+	err := filepath.Walk(sandboxRepoDir, func(filePath string, f os.FileInfo, err error) error {
+		// skip root dir
+		if sandboxRepoDir == filePath {
+			return nil
+		}
+
+		sandboxName := path.Base(filePath)
+
+		ns, err := r.namespaceRepo.Get(sandboxName)
+		if err != nil {
+			return fmt.Errorf("loading sandbox repo: %s", err)
+		}
+		sandbox := New(r.logger, ns, r.invoker, r.linkFactory)
+		r.sandboxes[sandboxName] = sandbox
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *repository) Create(sandboxName string) (Sandbox, error) {

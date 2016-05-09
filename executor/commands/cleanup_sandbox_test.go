@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
@@ -83,6 +84,9 @@ var _ = Describe("CleanupSandbox", func() {
 
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
+
+			By("logging the error")
+			Expect(logger).To(gbytes.Say("get-sandbox-failed.*not found"))
 		})
 	})
 

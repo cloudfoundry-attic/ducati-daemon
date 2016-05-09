@@ -112,6 +112,10 @@ func main() {
 		sandbox.InvokeFunc(ifrit.Invoke),
 		linkFactory,
 	)
+	err = sandboxRepo.Load(conf.SandboxRepoDir)
+	if err != nil {
+		log.Fatalf("unable to load sandboxRepo: %s", err)
+	}
 
 	namespaceOpener := &namespace.PathOpener{
 		Logger:       logger,

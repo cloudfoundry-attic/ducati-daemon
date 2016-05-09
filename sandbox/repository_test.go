@@ -2,6 +2,9 @@ package sandbox_test
 
 import (
 	"errors"
+	"io/ioutil"
+	"os"
+	"path"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
@@ -12,13 +15,16 @@ import (
 
 var _ = Describe("Sandbox Repository", func() {
 	var (
-		logger        *lagertest.TestLogger
-		locker        *fakes.Locker
-		sboxNamespace *fakes.Namespace
-		namespaceRepo *fakes.Repository
-		invoker       *fakes.Invoker
-		sandboxRepo   sandbox.Repository
-		linkFactory   *fakes.LinkFactory
+		logger           *lagertest.TestLogger
+		locker           *fakes.Locker
+		sboxNamespaceDir string
+		sboxFile         *os.File
+		sboxFileName     string
+		sboxNamespace    *fakes.Namespace
+		namespaceRepo    *fakes.Repository
+		invoker          *fakes.Invoker
+		sandboxRepo      sandbox.Repository
+		linkFactory      *fakes.LinkFactory
 	)
 
 	BeforeEach(func() {
@@ -36,6 +42,52 @@ var _ = Describe("Sandbox Repository", func() {
 			invoker,
 			linkFactory,
 		)
+	})
+
+	Describe("Load", func() {
+		BeforeEach(func() {
+			var err error
+			sboxNamespaceDir, err = ioutil.TempDir("", "")
+			Expect(err).NotTo(HaveOccurred())
+			sboxFile, err = ioutil.TempFile(sboxNamespaceDir, "test")
+			sboxFileName = path.Base(sboxFile.Name())
+			Expect(err).NotTo(HaveOccurred())
+
+			namespaceRepo.GetReturns(sboxNamespace, nil)
+		})
+
+		It("reads in files from the sanboxNamespaceDir into memory", func() {
+			sbox, err := sandboxRepo.Get(sboxFileName)
+			Expect(err).To(Equal(sandbox.NotFoundError))
+			Expect(sbox).To(BeNil())
+
+			err = sandboxRepo.Load(sboxNamespaceDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(namespaceRepo.GetCallCount()).To(Equal(1))
+			Expect(namespaceRepo.GetArgsForCall(0)).To(Equal(sboxFileName))
+
+			sbox, err = sandboxRepo.Get(sboxFileName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sbox).NotTo(BeNil())
+		})
+
+		It("locks and unlocks", func() {
+			err := sandboxRepo.Load(sboxNamespaceDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(locker.LockCallCount()).To(Equal(1))
+			Expect(locker.UnlockCallCount()).To(Equal(1))
+		})
+
+		Context("when namespace repo fails to get sandbox", func() {
+			It("returns an error", func() {
+				namespaceRepo.GetReturns(nil, errors.New("potato"))
+
+				err := sandboxRepo.Load(sboxNamespaceDir)
+				Expect(err).To(MatchError(ContainSubstring("loading sandbox repo: potato")))
+			})
+		})
 	})
 
 	Describe("Create", func() {

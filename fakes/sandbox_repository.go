@@ -31,6 +31,14 @@ type SandboxRepository struct {
 	removeArgsForCall []struct {
 		sandboxName string
 	}
+	LoadStub        func(string) error
+	loadMutex       sync.RWMutex
+	loadArgsForCall []struct {
+		arg1 string
+	}
+	loadReturns struct {
+		result1 error
+	}
 }
 
 func (fake *SandboxRepository) Create(sandboxName string) (sandbox.Sandbox, error) {
@@ -120,6 +128,38 @@ func (fake *SandboxRepository) RemoveArgsForCall(i int) string {
 	fake.removeMutex.RLock()
 	defer fake.removeMutex.RUnlock()
 	return fake.removeArgsForCall[i].sandboxName
+}
+
+func (fake *SandboxRepository) Load(arg1 string) error {
+	fake.loadMutex.Lock()
+	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.loadMutex.Unlock()
+	if fake.LoadStub != nil {
+		return fake.LoadStub(arg1)
+	} else {
+		return fake.loadReturns.result1
+	}
+}
+
+func (fake *SandboxRepository) LoadCallCount() int {
+	fake.loadMutex.RLock()
+	defer fake.loadMutex.RUnlock()
+	return len(fake.loadArgsForCall)
+}
+
+func (fake *SandboxRepository) LoadArgsForCall(i int) string {
+	fake.loadMutex.RLock()
+	defer fake.loadMutex.RUnlock()
+	return fake.loadArgsForCall[i].arg1
+}
+
+func (fake *SandboxRepository) LoadReturns(result1 error) {
+	fake.LoadStub = nil
+	fake.loadReturns = struct {
+		result1 error
+	}{result1}
 }
 
 var _ sandbox.Repository = new(SandboxRepository)
