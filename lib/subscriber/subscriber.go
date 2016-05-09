@@ -16,36 +16,47 @@ type netlinker interface {
 }
 
 type Subscriber struct {
-	Netlinker netlinker
 	Logger    lager.Logger
+	Netlinker netlinker
 }
 
 func (s *Subscriber) Subscribe(neighChan chan<- *watcher.Neigh, doneChan <-chan struct{}) error {
+	logger := s.Logger.Session("subscribe")
+	logger.Info("called")
+	defer logger.Info("complete")
+
 	sock, err := s.Netlinker.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_NEIGH)
 	if err != nil {
+		logger.Error("netlink-subscribe-failed", err)
 		return fmt.Errorf("failed to acquire netlink socket: %s", err)
 	}
 
-	if doneChan != nil {
-		go func() {
-			<-doneChan
-			sock.Close()
-		}()
-	}
+	go func() {
+		<-doneChan
+		logger.Info("closing-netlink-socket")
+		sock.Close()
+		logger.Info("closed-netlink-socket")
+	}()
 
 	go func() {
-		defer close(neighChan)
+		defer func() {
+			logger.Info("closing-neigh-chan")
+			close(neighChan)
+			logger.Info("closed-neigh-chan")
+		}()
+
 		for {
 			msgs, err := sock.Receive()
+			logger.Info("receive-message-count", lager.Data{"message-count": len(msgs)})
 			if err != nil {
-				s.Logger.Error("socket receive", err)
+				s.Logger.Error("socket-receive", err)
 				return
 			}
 
 			for _, m := range msgs {
 				n, err := s.Netlinker.NeighDeserialize(m.Data)
 				if err != nil {
-					s.Logger.Error("neighbor deserialize", err)
+					s.Logger.Error("neighbor-deserialize", err)
 					return
 				}
 

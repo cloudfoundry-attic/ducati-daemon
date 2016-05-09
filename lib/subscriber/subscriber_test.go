@@ -160,6 +160,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 				return []syscall.NetlinkMessage{{Data: []byte("something")}}, nil
 			}
 		})
+
 		It("closes the output channel", func() {
 			err := mySubscriber.Subscribe(neighChan, doneChan)
 			Expect(err).NotTo(HaveOccurred())
@@ -176,11 +177,17 @@ var _ = Describe("Subscriber (mock messages)", func() {
 
 	Context("when netlink Subscribe fails", func() {
 		BeforeEach(func() {
-			fakeNetlinker.SubscribeReturns(nil, errors.New("some error"))
+			fakeNetlinker.SubscribeReturns(nil, errors.New("squiddies"))
 		})
+
 		It("returns the error", func() {
 			err := mySubscriber.Subscribe(neighChan, doneChan)
-			Expect(err).To(MatchError("failed to acquire netlink socket: some error"))
+			Expect(err).To(MatchError("failed to acquire netlink socket: squiddies"))
+		})
+
+		It("logs the failure", func() {
+			mySubscriber.Subscribe(neighChan, doneChan)
+			Expect(logger).To(gbytes.Say("subscribe.netlink-subscribe-failed.*squiddies"))
 		})
 	})
 
@@ -188,12 +195,13 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		BeforeEach(func() {
 			fakeSocket.ReceiveReturns(nil, errors.New("some error"))
 		})
+
 		It("closes the output channel and logs the error", func() {
 			err := mySubscriber.Subscribe(neighChan, doneChan)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(neighChan).Should(BeClosed())
-			Expect(logger).To(gbytes.Say("socket receive.*some error"))
+			Expect(logger).To(gbytes.Say("socket-receive.*some error"))
 		})
 	})
 
@@ -201,12 +209,13 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		BeforeEach(func() {
 			fakeNetlinker.NeighDeserializeReturns(nil, errors.New("some error"))
 		})
+
 		It("closes the output channel and logs the error", func() {
 			err := mySubscriber.Subscribe(neighChan, doneChan)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(neighChan).Should(BeClosed())
-			Eventually(logger).Should(gbytes.Say("neighbor deserialize.*some error"))
+			Eventually(logger).Should(gbytes.Say("neighbor-deserialize.*some error"))
 		})
 	})
 })
