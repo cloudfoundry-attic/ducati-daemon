@@ -519,15 +519,10 @@ func (fake *Netlinker) SubscribeReturns(result1 nl.NLSocket, result2 error) {
 }
 
 func (fake *Netlinker) NeighDeserialize(arg1 []byte) (*netlink.Neigh, error) {
-	var arg1Copy []byte
-	if arg1 != nil {
-		arg1Copy = make([]byte, len(arg1))
-		copy(arg1Copy, arg1)
-	}
 	fake.neighDeserializeMutex.Lock()
 	fake.neighDeserializeArgsForCall = append(fake.neighDeserializeArgsForCall, struct {
 		arg1 []byte
-	}{arg1Copy})
+	}{arg1})
 	fake.neighDeserializeMutex.Unlock()
 	if fake.NeighDeserializeStub != nil {
 		return fake.NeighDeserializeStub(arg1)

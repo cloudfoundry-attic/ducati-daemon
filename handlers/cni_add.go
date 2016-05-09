@@ -28,6 +28,7 @@ type CNIAdd struct {
 
 func (h *CNIAdd) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	logger := h.Logger.Session("cni-add")
+	logger.Info("container-add-start")
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
