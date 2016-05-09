@@ -164,6 +164,14 @@ var _ = Describe("Namespace", func() {
 			Expect(netns.ThreadLocker).NotTo(BeNil())
 		})
 
+		It("logs entry and exit", func() {
+			_, err := opener.OpenPath(tempFile.Name())
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(logger).To(gbytes.Say("open-path.opening.*path"))
+			Expect(logger).To(gbytes.Say("open-path.complete.*namespace"))
+		})
+
 		Context("when the file cannot be opened", func() {
 			BeforeEach(func() {
 				tempFile.Close()
@@ -174,12 +182,23 @@ var _ = Describe("Namespace", func() {
 				_, err := opener.OpenPath(tempFile.Name())
 				Expect(err).To(MatchError(HavePrefix(fmt.Sprintf("open %s:", tempFile.Name()))))
 			})
+
+			It("logs the failure", func() {
+				_, err := opener.OpenPath(tempFile.Name())
+				Expect(err).To(HaveOccurred())
+
+				Expect(logger).To(gbytes.Say("open-failed"))
+			})
 		})
 	})
 
 	Describe("Fd", func() {
 		It("returns the file descriptor of the open namespace", func() {
-			opener := &namespace.PathOpener{}
+			opener := &namespace.PathOpener{
+				Logger:       logger,
+				ThreadLocker: threadLocker,
+			}
+
 			temp, err := ioutil.TempFile("", "whatever")
 			Expect(err).NotTo(HaveOccurred())
 			temp.Close()

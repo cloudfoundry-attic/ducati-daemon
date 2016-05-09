@@ -58,14 +58,22 @@ type PathOpener struct {
 }
 
 func (po *PathOpener) OpenPath(path string) (Namespace, error) {
+	logger := po.Logger.Session("open-path")
+	logger.Info("opening", lager.Data{"path": path})
+
 	file, err := os.Open(path)
 	if err != nil {
+		logger.Error("open-failed", err)
 		return nil, err
 	}
 
-	return &Netns{
+	ns := &Netns{
 		Logger:       po.Logger,
 		File:         file,
 		ThreadLocker: po.ThreadLocker,
-	}, nil
+	}
+
+	logger.Info("complete", lager.Data{"namespace": ns})
+
+	return ns, nil
 }

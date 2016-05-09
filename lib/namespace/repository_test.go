@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
+	"path"
 	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
@@ -45,23 +45,14 @@ var _ = Describe("Repository", func() {
 	})
 
 	Describe("Destroy", func() {
-		BeforeEach(func() {
-			var err error
-			repo, err = namespace.NewRepository(logger, "/var/run/netns", threadLocker)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
 		It("removes the namespace bind mount and file and logs the operation", func() {
-			err := exec.Command("ip", "netns", "add", "destroy-ns-test").Run()
-			Expect(err).NotTo(HaveOccurred())
-
-			ns, err := repo.Get("destroy-ns-test")
+			ns, err := repo.Create("destroy-ns-test")
 			Expect(err).NotTo(HaveOccurred())
 
 			err = repo.Destroy(ns)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect("/var/run/netns/destroy-ns-test").NotTo(BeAnExistingFile())
+			Expect(path.Join(dir, "destroy-ns-test")).NotTo(BeAnExistingFile())
 			Expect(logger).To(gbytes.Say("destroy.destroying.*destroy-ns-test"))
 		})
 
