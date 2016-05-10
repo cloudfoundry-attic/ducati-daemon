@@ -2,8 +2,10 @@ package subscriber
 
 import (
 	"fmt"
+	"os"
 	"syscall"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	"github.com/pivotal-golang/lager"
@@ -20,15 +22,27 @@ type Subscriber struct {
 	Netlinker netlinker
 }
 
-func (s *Subscriber) Subscribe(neighChan chan<- *watcher.Neigh, doneChan <-chan struct{}) error {
+func (s *Subscriber) Subscribe(
+	sandboxNS namespace.Namespace,
+	neighChan chan<- *watcher.Neigh,
+	doneChan <-chan struct{},
+) error {
 	logger := s.Logger.Session("subscribe")
 	logger.Info("called")
 	defer logger.Info("complete")
 
-	sock, err := s.Netlinker.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_NEIGH)
+	var sock nl.NLSocket
+	err := sandboxNS.Execute(func(*os.File) error {
+		var err error
+		sock, err = s.Netlinker.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_NEIGH)
+		if err != nil {
+			logger.Error("netlink-subscribe-failed", err)
+			return fmt.Errorf("failed to acquire netlink socket: %s", err)
+		}
+		return nil
+	})
 	if err != nil {
-		logger.Error("netlink-subscribe-failed", err)
-		return fmt.Errorf("failed to acquire netlink socket: %s", err)
+		return fmt.Errorf("namespace execute: %s", err)
 	}
 
 	go func() {

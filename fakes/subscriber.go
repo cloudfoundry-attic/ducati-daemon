@@ -4,13 +4,15 @@ package fakes
 import (
 	"sync"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type Subscriber struct {
-	SubscribeStub        func(ch chan<- *watcher.Neigh, done <-chan struct{}) error
+	SubscribeStub        func(ns namespace.Namespace, ch chan<- *watcher.Neigh, done <-chan struct{}) error
 	subscribeMutex       sync.RWMutex
 	subscribeArgsForCall []struct {
+		ns   namespace.Namespace
 		ch   chan<- *watcher.Neigh
 		done <-chan struct{}
 	}
@@ -19,15 +21,16 @@ type Subscriber struct {
 	}
 }
 
-func (fake *Subscriber) Subscribe(ch chan<- *watcher.Neigh, done <-chan struct{}) error {
+func (fake *Subscriber) Subscribe(ns namespace.Namespace, ch chan<- *watcher.Neigh, done <-chan struct{}) error {
 	fake.subscribeMutex.Lock()
 	fake.subscribeArgsForCall = append(fake.subscribeArgsForCall, struct {
+		ns   namespace.Namespace
 		ch   chan<- *watcher.Neigh
 		done <-chan struct{}
-	}{ch, done})
+	}{ns, ch, done})
 	fake.subscribeMutex.Unlock()
 	if fake.SubscribeStub != nil {
-		return fake.SubscribeStub(ch, done)
+		return fake.SubscribeStub(ns, ch, done)
 	} else {
 		return fake.subscribeReturns.result1
 	}
@@ -39,10 +42,10 @@ func (fake *Subscriber) SubscribeCallCount() int {
 	return len(fake.subscribeArgsForCall)
 }
 
-func (fake *Subscriber) SubscribeArgsForCall(i int) (chan<- *watcher.Neigh, <-chan struct{}) {
+func (fake *Subscriber) SubscribeArgsForCall(i int) (namespace.Namespace, chan<- *watcher.Neigh, <-chan struct{}) {
 	fake.subscribeMutex.RLock()
 	defer fake.subscribeMutex.RUnlock()
-	return fake.subscribeArgsForCall[i].ch, fake.subscribeArgsForCall[i].done
+	return fake.subscribeArgsForCall[i].ns, fake.subscribeArgsForCall[i].ch, fake.subscribeArgsForCall[i].done
 }
 
 func (fake *Subscriber) SubscribeReturns(result1 error) {

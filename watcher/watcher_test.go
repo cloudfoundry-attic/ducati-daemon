@@ -60,6 +60,10 @@ var _ = Describe("Watcher", func() {
 			missWatcher.StartMonitor(ns, vxlanLinkName)
 
 			Expect(sub.SubscribeCallCount()).To(Equal(1))
+
+			targetNS, _, doneCh := sub.SubscribeArgsForCall(0)
+			Expect(targetNS).To(Equal(ns))
+			Consistently(doneCh).ShouldNot(BeClosed())
 		})
 
 		It("logs entry and exit", func() {
@@ -69,20 +73,8 @@ var _ = Describe("Watcher", func() {
 			Expect(logger).To(gbytes.Say("start-monitor.complete.*"))
 		})
 
-		It("invokes the subscribe call from within the namespace", func() {
-			ns.ExecuteStub = func(callback func(ns *os.File) error) error {
-				Expect(sub.SubscribeCallCount()).To(Equal(0))
-				callback(nil)
-				Expect(sub.SubscribeCallCount()).To(Equal(1))
-				return nil
-			}
-
-			missWatcher.StartMonitor(ns, vxlanLinkName)
-			Expect(ns.ExecuteCallCount()).To(Equal(1))
-		})
-
 		It("forwards Neighbor messages to the resolver, running in a separate goroutine", func() {
-			sub.SubscribeStub = func(subChan chan<- *watcher.Neigh, done <-chan struct{}) error {
+			sub.SubscribeStub = func(_ namespace.Namespace, subChan chan<- *watcher.Neigh, _ <-chan struct{}) error {
 				go func() {
 					subChan <- &watcher.Neigh{IP: net.ParseIP("1.2.3.4")}
 				}()
@@ -100,7 +92,7 @@ var _ = Describe("Watcher", func() {
 
 		It("logs the start and end of the neigbor forwarding routine", func() {
 			stubComplete := make(chan struct{})
-			sub.SubscribeStub = func(subChan chan<- *watcher.Neigh, done <-chan struct{}) error {
+			sub.SubscribeStub = func(_ namespace.Namespace, subChan chan<- *watcher.Neigh, _ <-chan struct{}) error {
 				go func() {
 					subChan <- &watcher.Neigh{IP: net.ParseIP("1.2.3.4")}
 					close(subChan)
@@ -185,14 +177,7 @@ var _ = Describe("Watcher", func() {
 			It("returns the error", func() {
 				sub.SubscribeReturns(errors.New("some subscribe error"))
 				err := missWatcher.StartMonitor(ns, vxlanLinkName)
-				Expect(err).To(MatchError("callback failed: subscribe in some-namespace: some subscribe error"))
-			})
-		})
-
-		Context("when Execute fails", func() {
-			It("returns the error", func() {
-				ns.ExecuteReturns(errors.New("boom"))
-				Expect(missWatcher.StartMonitor(ns, vxlanLinkName)).To(MatchError("boom"))
+				Expect(err).To(MatchError("subscribe in some-namespace: some subscribe error"))
 			})
 		})
 	})
@@ -203,7 +188,7 @@ var _ = Describe("Watcher", func() {
 		BeforeEach(func() {
 			complete = make(chan struct{})
 
-			sub.SubscribeStub = func(ch chan<- *watcher.Neigh, done <-chan struct{}) error {
+			sub.SubscribeStub = func(_ namespace.Namespace, _ chan<- *watcher.Neigh, done <-chan struct{}) error {
 				go func() {
 					<-done
 					close(complete)

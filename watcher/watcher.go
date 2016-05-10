@@ -3,7 +3,6 @@ package watcher
 import (
 	"fmt"
 	"net"
-	"os"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
@@ -22,7 +21,7 @@ type Neigh struct {
 
 //go:generate counterfeiter -o ../fakes/subscriber.go --fake-name Subscriber . sub
 type sub interface {
-	Subscribe(ch chan<- *Neigh, done <-chan struct{}) error
+	Subscribe(ns namespace.Namespace, ch chan<- *Neigh, done <-chan struct{}) error
 }
 
 //go:generate counterfeiter -o ../fakes/watcher.go --fake-name MissWatcher . MissWatcher
@@ -85,16 +84,9 @@ func (w *missWatcher) StartMonitor(ns namespace.Namespace, vxlanName string) err
 		return fmt.Errorf("arp inserter failed: %s", err)
 	}
 
-	err = ns.Execute(func(f *os.File) error {
-		err := w.Subscriber.Subscribe(subChan, doneChan)
-		if err != nil {
-			return fmt.Errorf("subscribe in %s: %s", ns.Name(), err)
-		}
-
-		return nil
-	})
+	err = w.Subscriber.Subscribe(ns, subChan, doneChan)
 	if err != nil {
-		return err
+		return fmt.Errorf("subscribe in %s: %s", ns.Name(), err)
 	}
 
 	go func() {

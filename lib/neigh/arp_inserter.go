@@ -22,37 +22,31 @@ type ARPInserter struct {
 }
 
 func (a *ARPInserter) HandleResolvedNeighbors(ready chan error, ns namespace.Namespace, vxlanDeviceName string, resolvedChan <-chan watcher.Neighbor) {
+
+	var vxlanLink netlink.Link
 	err := ns.Execute(func(f *os.File) error {
-		vxlanLink, err := a.Netlinker.LinkByName(vxlanDeviceName)
+		var err error
+		vxlanLink, err = a.Netlinker.LinkByName(vxlanDeviceName)
 		if err != nil {
 			return fmt.Errorf("find link %q: %s", vxlanDeviceName, err)
 		}
-
-		close(ready)
-
-		a.addNeighbors(vxlanLink.Attrs().Index, resolvedChan)
 		return nil
 	})
-
 	if err != nil {
 		ready <- fmt.Errorf("namespace execute failed: %s", err)
 		close(ready)
+		return
 	}
+
+	close(ready)
+
+	a.addNeighbors(vxlanLink.Attrs().Index, ns, resolvedChan)
 }
 
-func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watcher.Neighbor) {
+func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, ns namespace.Namespace, resolvedChan <-chan watcher.Neighbor) {
 	for msg := range resolvedChan {
 		neigh := reverseConvert(msg.Neigh)
 		neigh.State = netlink.NUD_REACHABLE
-
-		err := a.Netlinker.SetNeigh(neigh)
-		if err != nil {
-			a.Logger.Error("set-l3-neighbor-failed", err)
-			continue
-		}
-		a.Logger.Info("inserted-neigh", lager.Data{
-			"neigh": neigh.String(),
-		})
 
 		fdb := &netlink.Neigh{
 			LinkIndex:    vxlanLinkIndex,
@@ -63,16 +57,28 @@ func (a *ARPInserter) addNeighbors(vxlanLinkIndex int, resolvedChan <-chan watch
 			State:        netlink.NUD_REACHABLE,
 		}
 
-		err = a.Netlinker.SetNeigh(fdb)
-		if err != nil {
-			a.Logger.Error("set-l2-forward-failed", err)
-			continue
-		}
-
-		a.Logger.Info("inserted-fdb", lager.Data{
+		a.Logger.Info("adding-neigbor", lager.Data{
+			"neigh":   neigh.String(),
 			"fdb":     fdb,
 			"hw_addr": neigh.HardwareAddr.String(),
 		})
+
+		err := ns.Execute(func(*os.File) error {
+			err := a.Netlinker.SetNeigh(neigh)
+			if err != nil {
+				return fmt.Errorf("set L3 neighbor failed: %s", err)
+			}
+
+			err = a.Netlinker.SetNeigh(fdb)
+			if err != nil {
+				return fmt.Errorf("set L2 forward failed: %s", err)
+			}
+
+			return nil
+		})
+		if err != nil {
+			a.Logger.Error("add-neighbor-failed", err)
+		}
 	}
 }
 

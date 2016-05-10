@@ -95,16 +95,20 @@ var _ = Describe("ARPInserter", func() {
 
 		It("finds the vxlan device in the sandbox namespace", func() {
 			ns.ExecuteStub = func(callback func(_ *os.File) error) error {
-				Expect(netlinker.LinkByNameCallCount()).To(Equal(0))
+				if ns.ExecuteCallCount() == 1 {
+					Expect(netlinker.LinkByNameCallCount()).To(Equal(0))
+				}
 				callback(nil)
-				Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+				if ns.ExecuteCallCount() == 1 {
+					Expect(netlinker.LinkByNameCallCount()).To(Equal(1))
+				}
 				return nil
 			}
 
 			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
 			Eventually(ready).Should(BeClosed())
 
-			Expect(ns.ExecuteCallCount()).To(Equal(1))
+			Expect(ns.ExecuteCallCount()).To(Equal(2))
 			Expect(netlinker.LinkByNameArgsForCall(0)).To(Equal("some-vxlan-name"))
 		})
 
@@ -123,14 +127,16 @@ var _ = Describe("ARPInserter", func() {
 			ns.ExecuteStub = func(callback func(ns *os.File) error) error {
 				Expect(netlinker.SetNeighCallCount()).To(Equal(0))
 				callback(nil)
-				Expect(netlinker.SetNeighCallCount()).To(Equal(2))
+				if ns.ExecuteCallCount() == 2 {
+					Expect(netlinker.SetNeighCallCount()).To(Equal(2))
+				}
 				return nil
 			}
 
 			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
 			Eventually(ready).Should(BeClosed())
 
-			Expect(ns.ExecuteCallCount()).To(Equal(1))
+			Expect(ns.ExecuteCallCount()).To(Equal(2))
 			Expect(netlinker.SetNeighArgsForCall(0)).To(Equal(&netlink.Neigh{
 				LinkIndex:    neigh.LinkIndex,
 				Family:       neigh.Family,
@@ -146,14 +152,16 @@ var _ = Describe("ARPInserter", func() {
 			ns.ExecuteStub = func(callback func(_ *os.File) error) error {
 				Expect(netlinker.SetNeighCallCount()).To(Equal(0))
 				callback(nil)
-				Expect(netlinker.SetNeighCallCount()).To(Equal(2))
+				if ns.ExecuteCallCount() == 2 {
+					Expect(netlinker.SetNeighCallCount()).To(Equal(2))
+				}
 				return nil
 			}
 
 			inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
 			Eventually(ready).Should(BeClosed())
 
-			Expect(ns.ExecuteCallCount()).To(Equal(1))
+			Expect(ns.ExecuteCallCount()).To(Equal(2))
 			Expect(netlinker.SetNeighArgsForCall(1)).To(Equal(&netlink.Neigh{
 				LinkIndex:    9876,
 				HardwareAddr: neigh.HardwareAddr,
@@ -192,7 +200,7 @@ var _ = Describe("ARPInserter", func() {
 				inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
 				Eventually(ready).Should(BeClosed())
 
-				Eventually(logger).Should(gbytes.Say("set-l3-neighbor-failed.*huskies"))
+				Eventually(logger).Should(gbytes.Say("add-neighbor-failed.*set L3.*huskies"))
 				Expect(netlinker.SetNeighCallCount()).To(Equal(3))
 			})
 		})
@@ -212,7 +220,7 @@ var _ = Describe("ARPInserter", func() {
 				inserter.HandleResolvedNeighbors(ready, ns, "some-vxlan-name", resolved)
 				Eventually(ready).Should(BeClosed())
 
-				Eventually(logger).Should(gbytes.Say("set-l2-forward-failed.*fail-on-two"))
+				Eventually(logger).Should(gbytes.Say("add-neighbor-failed.*set L2 forward failed.*fail-on-two"))
 				Expect(netlinker.SetNeighCallCount()).To(Equal(4))
 			})
 		})

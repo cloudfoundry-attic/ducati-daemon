@@ -3,12 +3,16 @@ package subscriber_test
 import (
 	"errors"
 	"net"
+	"os"
 	"syscall"
 	"time"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/fakes"
+	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl"
-	"github.com/cloudfoundry-incubator/ducati-daemon/lib/nl/fakes"
+	nlfakes "github.com/cloudfoundry-incubator/ducati-daemon/lib/nl/fakes"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/subscriber"
+	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,6 +23,7 @@ import (
 
 var _ = Describe("Subscriber (real messages)", func() {
 	var (
+		hostNS       namespace.Namespace
 		neighChan    chan *watcher.Neigh
 		doneChan     chan struct{}
 		mySubscriber *subscriber.Subscriber
@@ -34,10 +39,19 @@ var _ = Describe("Subscriber (real messages)", func() {
 			Netlinker: nl.Netlink,
 			Logger:    logger,
 		}
+
+		pathOpener := &namespace.PathOpener{
+			Logger:       logger,
+			ThreadLocker: &ossupport.OSLocker{},
+		}
+
+		var err error
+		hostNS, err = pathOpener.OpenPath("/proc/self/ns/net")
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("catches tcp connection misses", func() {
-		err := mySubscriber.Subscribe(neighChan, doneChan)
+		err := mySubscriber.Subscribe(hostNS, neighChan, doneChan)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = net.Dial("tcp", "172.17.0.105:1234")
@@ -49,8 +63,9 @@ var _ = Describe("Subscriber (real messages)", func() {
 
 var _ = Describe("Subscriber (mock messages)", func() {
 	var (
-		fakeNetlinker *fakes.Netlinker
-		fakeSocket    *fakes.NLSocket
+		fakeNetlinker *nlfakes.Netlinker
+		fakeSocket    *nlfakes.NLSocket
+		targetNS      *fakes.Namespace
 		mySubscriber  *subscriber.Subscriber
 		neighChan     chan *watcher.Neigh
 		doneChan      chan struct{}
@@ -58,11 +73,15 @@ var _ = Describe("Subscriber (mock messages)", func() {
 	)
 
 	BeforeEach(func() {
-		fakeNetlinker = &fakes.Netlinker{}
-		fakeSocket = &fakes.NLSocket{}
+		fakeNetlinker = &nlfakes.Netlinker{}
+		fakeSocket = &nlfakes.NLSocket{}
 		neighChan = make(chan *watcher.Neigh, 100)
 		doneChan = make(chan struct{})
 		logger = lagertest.NewTestLogger("test")
+		targetNS = &fakes.Namespace{}
+		targetNS.ExecuteStub = func(callback func(*os.File) error) error {
+			return callback(nil)
+		}
 
 		mySubscriber = &subscriber.Subscriber{
 			Netlinker: fakeNetlinker,
@@ -72,6 +91,21 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		fakeNetlinker.SubscribeReturns(fakeSocket, nil)
 		fakeSocket.ReceiveReturns([]syscall.NetlinkMessage{{Data: []byte("something")}}, nil)
 		fakeNetlinker.NeighDeserializeReturns(&netlink.Neigh{}, nil)
+	})
+
+	It("subscribes in the sandbox namespace", func() {
+		targetNS.ExecuteStub = func(callback func(*os.File) error) error {
+			defer GinkgoRecover()
+			Expect(fakeNetlinker.SubscribeCallCount()).To(Equal(0))
+			err := callback(nil)
+			Expect(fakeNetlinker.SubscribeCallCount()).To(Equal(1))
+			return err
+		}
+
+		err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(targetNS.ExecuteCallCount()).To(Equal(1))
 	})
 
 	It("faithfully represents the netlink Neighbor in the return type", func() {
@@ -86,7 +120,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 			HardwareAddr: someMac,
 		}, nil)
 
-		err := mySubscriber.Subscribe(neighChan, doneChan)
+		err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(neighChan).Should(Receive(Equal(&watcher.Neigh{
@@ -122,7 +156,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		Context("when message does not have a destination IP", func() {
 			It("will not be forwarded to neigh chan", func() {
 				neigh.IP = nil
-				err := mySubscriber.Subscribe(neighChan, doneChan)
+				err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 				Expect(err).NotTo(HaveOccurred())
 
 				Consistently(neighChan).ShouldNot(Receive())
@@ -132,7 +166,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		Context("when message does have dest IP and a hardware address and its neigh state is NOT stale", func() {
 			It("will not be forwarded to neigh chan", func() {
 				neigh.State = netlink.NUD_REACHABLE
-				err := mySubscriber.Subscribe(neighChan, doneChan)
+				err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 				Expect(err).NotTo(HaveOccurred())
 
 				Consistently(neighChan).ShouldNot(Receive())
@@ -142,7 +176,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		Context("when message does have dest IP and a hardware address and its neigh state is stale", func() {
 			It("will be forwarded to neigh chan", func() {
 				neigh.State = netlink.NUD_STALE
-				err := mySubscriber.Subscribe(neighChan, doneChan)
+				err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(neighChan).Should(Receive())
@@ -162,7 +196,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		})
 
 		It("closes the output channel", func() {
-			err := mySubscriber.Subscribe(neighChan, doneChan)
+			err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 			Expect(err).NotTo(HaveOccurred())
 
 			Consistently(neighChan).ShouldNot(BeClosed())
@@ -181,12 +215,12 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		})
 
 		It("returns the error", func() {
-			err := mySubscriber.Subscribe(neighChan, doneChan)
-			Expect(err).To(MatchError("failed to acquire netlink socket: squiddies"))
+			err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
+			Expect(err).To(MatchError("namespace execute: failed to acquire netlink socket: squiddies"))
 		})
 
 		It("logs the failure", func() {
-			mySubscriber.Subscribe(neighChan, doneChan)
+			mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 			Expect(logger).To(gbytes.Say("subscribe.netlink-subscribe-failed.*squiddies"))
 		})
 	})
@@ -197,7 +231,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		})
 
 		It("closes the output channel and logs the error", func() {
-			err := mySubscriber.Subscribe(neighChan, doneChan)
+			err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(neighChan).Should(BeClosed())
@@ -211,7 +245,7 @@ var _ = Describe("Subscriber (mock messages)", func() {
 		})
 
 		It("closes the output channel and logs the error", func() {
-			err := mySubscriber.Subscribe(neighChan, doneChan)
+			err := mySubscriber.Subscribe(targetNS, neighChan, doneChan)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(neighChan).Should(BeClosed())
