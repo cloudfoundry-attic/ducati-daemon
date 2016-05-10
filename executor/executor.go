@@ -50,6 +50,13 @@ type DNSServerFactory interface {
 	New(listener net.PacketConn, ns namespace.Namespace) ifrit.Runner
 }
 
+//go:generate counterfeiter -o ../fakes/sandbox_repository.go --fake-name SandboxRepository . SandboxRepository
+type SandboxRepository interface {
+	Create(sandboxName string) (sandbox.Sandbox, error)
+	Get(sandboxName string) (sandbox.Sandbox, error)
+	Destroy(sandboxName string) error
+}
+
 //go:generate counterfeiter -o ../fakes/command.go --fake-name Command . Command
 type Command interface {
 	Execute(context Context) error
@@ -74,7 +81,7 @@ type Context interface {
 	LinkFactory() LinkFactory
 	RouteManager() RouteManager
 	SandboxNamespaceRepository() namespace.Repository
-	SandboxRepository() sandbox.Repository
+	SandboxRepository() SandboxRepository
 	ListenerFactory() ListenerFactory
 	DNSServerFactory() DNSServerFactory
 }
@@ -89,7 +96,7 @@ func New(
 	routeManager RouteManager,
 	linkFactory LinkFactory,
 	sandboxNamespaceRepository namespace.Repository,
-	sandboxRepository sandbox.Repository,
+	sandboxRepository SandboxRepository,
 	listenerFactory ListenerFactory,
 	dnsServerFactory DNSServerFactory,
 ) Executor {
@@ -123,7 +130,7 @@ type context struct {
 	routeManager               RouteManager
 	linkFactory                LinkFactory
 	sandboxNamespaceRepository namespace.Repository
-	sandboxRepository          sandbox.Repository
+	sandboxRepository          SandboxRepository
 	listenerFactory            ListenerFactory
 	dnsServerFactory           DNSServerFactory
 }
@@ -144,7 +151,7 @@ func (e *context) SandboxNamespaceRepository() namespace.Repository {
 	return e.sandboxNamespaceRepository
 }
 
-func (e *context) SandboxRepository() sandbox.Repository {
+func (e *context) SandboxRepository() SandboxRepository {
 	return e.sandboxRepository
 }
 

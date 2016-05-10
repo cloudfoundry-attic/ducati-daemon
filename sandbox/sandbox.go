@@ -42,7 +42,7 @@ type Sandbox interface {
 	VethDeviceCount() (int, error)
 }
 
-type sandbox struct {
+type NetworkSandbox struct {
 	sync.Mutex
 	namespace   namespace.Namespace
 	invoker     Invoker
@@ -60,10 +60,10 @@ func New(
 	invoker Invoker,
 	linkFactory linkFactory,
 	watcher watcher.MissWatcher,
-) *sandbox {
-	logger = logger.Session("sandbox", lager.Data{"namespace": namespace.Name()})
+) *NetworkSandbox {
+	logger = logger.Session("network-sandbox", lager.Data{"namespace": namespace.Name()})
 
-	return &sandbox{
+	return &NetworkSandbox{
 		logger:      logger,
 		namespace:   namespace,
 		invoker:     invoker,
@@ -72,11 +72,11 @@ func New(
 	}
 }
 
-func (s *sandbox) Namespace() namespace.Namespace {
+func (s *NetworkSandbox) Namespace() namespace.Namespace {
 	return s.namespace
 }
 
-func (s *sandbox) Setup() error {
+func (s *NetworkSandbox) Setup() error {
 	err := s.namespace.Execute(func(*os.File) error {
 		err := s.linkFactory.SetUp(LOOPBACK_DEVICE_NAME)
 		if err != nil {
@@ -92,7 +92,7 @@ func (s *sandbox) Setup() error {
 	return nil
 }
 
-func (s *sandbox) LaunchDNS(dns ifrit.Runner) error {
+func (s *NetworkSandbox) LaunchDNS(dns ifrit.Runner) error {
 	s.logger.Info("launch-dns")
 	s.dnsProcess = s.invoker.Invoke(dns)
 
@@ -107,7 +107,7 @@ func (s *sandbox) LaunchDNS(dns ifrit.Runner) error {
 	}
 }
 
-func (s *sandbox) VethDeviceCount() (int, error) {
+func (s *NetworkSandbox) VethDeviceCount() (int, error) {
 	var count int
 	var err error
 	nserr := s.namespace.Execute(func(*os.File) error {
@@ -125,7 +125,7 @@ func (s *sandbox) VethDeviceCount() (int, error) {
 	return count, nil
 }
 
-func (s *sandbox) Teardown() error {
+func (s *NetworkSandbox) Teardown() error {
 	if s.destroyed {
 		return AlreadyDestroyedError
 	}
@@ -133,6 +133,10 @@ func (s *sandbox) Teardown() error {
 	err := s.watcher.StopMonitor(s.namespace)
 	if err != nil {
 		return fmt.Errorf("stop monitor: %s", err)
+	}
+
+	if s.dnsProcess != nil {
+		s.dnsProcess.Signal(os.Kill)
 	}
 
 	s.destroyed = true

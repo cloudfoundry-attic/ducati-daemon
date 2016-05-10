@@ -6,7 +6,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
-	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -41,11 +40,11 @@ type Context struct {
 	sandboxNamespaceRepositoryReturns     struct {
 		result1 namespace.Repository
 	}
-	SandboxRepositoryStub        func() sandbox.Repository
+	SandboxRepositoryStub        func() executor.SandboxRepository
 	sandboxRepositoryMutex       sync.RWMutex
 	sandboxRepositoryArgsForCall []struct{}
 	sandboxRepositoryReturns     struct {
-		result1 sandbox.Repository
+		result1 executor.SandboxRepository
 	}
 	ListenerFactoryStub        func() executor.ListenerFactory
 	listenerFactoryMutex       sync.RWMutex
@@ -181,7 +180,7 @@ func (fake *Context) SandboxNamespaceRepositoryReturns(result1 namespace.Reposit
 	}{result1}
 }
 
-func (fake *Context) SandboxRepository() sandbox.Repository {
+func (fake *Context) SandboxRepository() executor.SandboxRepository {
 	fake.sandboxRepositoryMutex.Lock()
 	fake.sandboxRepositoryArgsForCall = append(fake.sandboxRepositoryArgsForCall, struct{}{})
 	fake.sandboxRepositoryMutex.Unlock()
@@ -198,10 +197,10 @@ func (fake *Context) SandboxRepositoryCallCount() int {
 	return len(fake.sandboxRepositoryArgsForCall)
 }
 
-func (fake *Context) SandboxRepositoryReturns(result1 sandbox.Repository) {
+func (fake *Context) SandboxRepositoryReturns(result1 executor.SandboxRepository) {
 	fake.SandboxRepositoryStub = nil
 	fake.sandboxRepositoryReturns = struct {
-		result1 sandbox.Repository
+		result1 executor.SandboxRepository
 	}{result1}
 }
 

@@ -24,9 +24,13 @@ type commandBuilder interface {
 	IdempotentlySetupBridge(vxlanName, sandboxLinkName, bridgeName string, sandboxNS namespace.Namespace, ipamResult *types.Result) executor.Command
 }
 
+type sandboxRepository interface {
+	Get(sandboxName string) (sandbox.Sandbox, error)
+}
+
 type Creator struct {
 	Executor        executor.Executor
-	SandboxRepo     sandbox.Repository
+	SandboxRepo     sandboxRepository
 	Watcher         watcher.MissWatcher
 	CommandBuilder  commandBuilder
 	DNSAddress      string

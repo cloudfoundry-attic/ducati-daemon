@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
@@ -23,7 +24,7 @@ var _ = Describe("Sandbox Repository", func() {
 		sboxNamespace    *fakes.Namespace
 		namespaceRepo    *fakes.Repository
 		invoker          *fakes.Invoker
-		sandboxRepo      sandbox.Repository
+		sandboxRepo      *sandbox.Repository
 		linkFactory      *fakes.LinkFactory
 		sandboxCallback  *fakes.SandboxCallback
 	)
@@ -38,14 +39,15 @@ var _ = Describe("Sandbox Repository", func() {
 		linkFactory = &fakes.LinkFactory{}
 		sandboxCallback = &fakes.SandboxCallback{}
 		watcher := &fakes.MissWatcher{}
-		sandboxRepo = sandbox.NewRepository(
-			logger,
-			locker,
-			namespaceRepo,
-			invoker,
-			linkFactory,
-			watcher,
-		)
+		sandboxRepo = &sandbox.Repository{
+			Logger:        logger,
+			Locker:        locker,
+			NamespaceRepo: namespaceRepo,
+			Invoker:       invoker,
+			LinkFactory:   linkFactory,
+			Watcher:       watcher,
+			Sandboxes:     map[string]sandbox.Sandbox{},
+		}
 	})
 
 	Describe("ForEach", func() {
@@ -141,6 +143,14 @@ var _ = Describe("Sandbox Repository", func() {
 			Expect(sbox).NotTo(BeNil())
 		})
 
+		It("logs entry and exit", func() {
+			_, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(logger).To(gbytes.Say("create.starting.*some-sandbox-name"))
+			Expect(logger).To(gbytes.Say("create.complete.*some-sandbox-name"))
+		})
+
 		It("locks and unlocks", func() {
 			_, err := sandboxRepo.Create("some-sandbox-name")
 			Expect(err).NotTo(HaveOccurred())
@@ -184,7 +194,7 @@ var _ = Describe("Sandbox Repository", func() {
 
 			It("returns an error", func() {
 				_, err := sandboxRepo.Create("some-sandbox-name")
-				Expect(err).To(MatchError(`sandbox "some-sandbox-name" already exists`))
+				Expect(err).To(Equal(sandbox.AlreadyExistsError))
 			})
 
 			It("locks and unlocks", func() {
@@ -223,37 +233,115 @@ var _ = Describe("Sandbox Repository", func() {
 		})
 	})
 
-	Describe("Remove", func() {
-		var otherSandbox sandbox.Sandbox
+	Describe("Destroy", func() {
+		var sbox, otherSbox *fakes.Sandbox
 
 		BeforeEach(func() {
-			_, err := sandboxRepo.Create("some-sandbox-name")
-			Expect(err).NotTo(HaveOccurred())
+			sbox = &fakes.Sandbox{}
+			sbox.NamespaceReturns(sboxNamespace)
+			sandboxRepo.Sandboxes["some-sandbox-name"] = sbox
 
-			otherSandbox, err = sandboxRepo.Create("some-other-sandbox-name")
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("removes the sandbox by name", func() {
-			sandboxRepo.Remove("some-sandbox-name")
-
-			sbox, err := sandboxRepo.Get("some-sandbox-name")
-			Expect(err).To(BeIdenticalTo(sandbox.NotFoundError))
-			Expect(sbox).To(BeNil())
+			otherSbox = &fakes.Sandbox{}
+			sandboxRepo.Sandboxes["some-other-sandbox-name"] = otherSbox
 		})
 
 		It("locks and unlocks", func() {
-			sandboxRepo.Remove("some-other-sandbox-name")
-			Expect(locker.LockCallCount()).To(Equal(3))
-			Expect(locker.UnlockCallCount()).To(Equal(3))
+			err := sandboxRepo.Destroy("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(locker.LockCallCount()).To(Equal(1))
+			Expect(locker.UnlockCallCount()).To(Equal(1))
+		})
+
+		It("logs entry and exit", func() {
+			err := sandboxRepo.Destroy("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(logger).To(gbytes.Say("destroy.starting.*some-sandbox-name"))
+			Expect(logger).To(gbytes.Say("destroy.complete.*some-sandbox-name"))
+		})
+
+		It("tears down the sandbox", func() {
+			err := sandboxRepo.Destroy("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sbox.TeardownCallCount()).To(Equal(1))
+		})
+
+		It("removes the sandbox by name", func() {
+			err := sandboxRepo.Destroy("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sandboxRepo.Sandboxes).NotTo(HaveKey("some-sandbox-name"))
+		})
+
+		It("removes the sandbox namespace", func() {
+			err := sandboxRepo.Destroy("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sbox.NamespaceCallCount()).To(Equal(1))
+			Expect(namespaceRepo.DestroyCallCount()).To(Equal(1))
+
+			ns := namespaceRepo.DestroyArgsForCall(0)
+			Expect(ns).To(Equal(sboxNamespace))
 		})
 
 		It("does not remove other sandbox", func() {
-			sandboxRepo.Remove("some-sandbox-name")
-
-			sbox, err := sandboxRepo.Get("some-other-sandbox-name")
+			err := sandboxRepo.Destroy("some-sandbox-name")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(sbox).To(Equal(otherSandbox))
+
+			sb, err := sandboxRepo.Get("some-other-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sb).To(Equal(otherSbox))
+		})
+
+		Context("when the sandbox does not exist", func() {
+			It("returns a NotFoundError", func() {
+				err := sandboxRepo.Destroy("some-non-existent-name")
+				Expect(err).To(BeIdenticalTo(sandbox.NotFoundError))
+			})
+		})
+
+		Context("when teardown fails", func() {
+			BeforeEach(func() {
+				sbox.TeardownReturns(errors.New("papaya"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := sandboxRepo.Destroy("some-sandbox-name")
+				Expect(err).To(MatchError("teardown: papaya"))
+			})
+
+			It("does not remove the sandbox entry", func() {
+				sandboxRepo.Destroy("some-sandbox-name")
+				Expect(sbox.TeardownCallCount()).To(Equal(1))
+
+				Expect(sandboxRepo.Sandboxes).To(HaveKey("some-sandbox-name"))
+			})
+
+			It("does not destroy the namespace", func() {
+				sandboxRepo.Destroy("some-sandbox-name")
+				Expect(sbox.TeardownCallCount()).To(Equal(1))
+				Expect(namespaceRepo.DestroyCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when destroying the namespace fails", func() {
+			BeforeEach(func() {
+				namespaceRepo.DestroyReturns(errors.New("clementine"))
+			})
+
+			It("returns a meaningful error", func() {
+				err := sandboxRepo.Destroy("some-sandbox-name")
+				Expect(err).To(MatchError("namespace destroy: clementine"))
+			})
+
+			It("does not remove the sandbox entry", func() {
+				sandboxRepo.Destroy("some-sandbox-name")
+				Expect(namespaceRepo.DestroyCallCount()).To(Equal(1))
+
+				Expect(sandboxRepo.Sandboxes).To(HaveKey("some-sandbox-name"))
+			})
 		})
 	})
 })

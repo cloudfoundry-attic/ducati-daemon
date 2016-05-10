@@ -136,14 +136,15 @@ func main() {
 		Watcher: missWatcher,
 	}
 
-	sandboxRepo := sandbox.NewRepository(
-		logger,
-		&sync.Mutex{},
-		sandboxNamespaceRepo,
-		sandbox.InvokeFunc(ifrit.Invoke),
-		linkFactory,
-		missWatcher,
-	)
+	sandboxRepo := &sandbox.Repository{
+		Logger:        logger.Session("sandbox-repository"),
+		Locker:        &sync.Mutex{},
+		NamespaceRepo: sandboxNamespaceRepo,
+		Invoker:       sandbox.InvokeFunc(ifrit.Invoke),
+		LinkFactory:   linkFactory,
+		Watcher:       missWatcher,
+		Sandboxes:     map[string]sandbox.Sandbox{},
+	}
 
 	hostNamespace, err := namespaceOpener.OpenPath("/proc/self/ns/net")
 	if err != nil {

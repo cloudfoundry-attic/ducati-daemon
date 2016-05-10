@@ -4,6 +4,7 @@ package fakes
 import (
 	"sync"
 
+	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 )
 
@@ -26,25 +27,12 @@ type SandboxRepository struct {
 		result1 sandbox.Sandbox
 		result2 error
 	}
-	RemoveStub        func(sandboxName string)
-	removeMutex       sync.RWMutex
-	removeArgsForCall []struct {
+	DestroyStub        func(sandboxName string) error
+	destroyMutex       sync.RWMutex
+	destroyArgsForCall []struct {
 		sandboxName string
 	}
-	LoadStub        func(string) error
-	loadMutex       sync.RWMutex
-	loadArgsForCall []struct {
-		arg1 string
-	}
-	loadReturns struct {
-		result1 error
-	}
-	ForEachStub        func(sandbox.SandboxCallback) error
-	forEachMutex       sync.RWMutex
-	forEachArgsForCall []struct {
-		arg1 sandbox.SandboxCallback
-	}
-	forEachReturns struct {
+	destroyReturns struct {
 		result1 error
 	}
 }
@@ -115,91 +103,36 @@ func (fake *SandboxRepository) GetReturns(result1 sandbox.Sandbox, result2 error
 	}{result1, result2}
 }
 
-func (fake *SandboxRepository) Remove(sandboxName string) {
-	fake.removeMutex.Lock()
-	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
+func (fake *SandboxRepository) Destroy(sandboxName string) error {
+	fake.destroyMutex.Lock()
+	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct {
 		sandboxName string
 	}{sandboxName})
-	fake.removeMutex.Unlock()
-	if fake.RemoveStub != nil {
-		fake.RemoveStub(sandboxName)
-	}
-}
-
-func (fake *SandboxRepository) RemoveCallCount() int {
-	fake.removeMutex.RLock()
-	defer fake.removeMutex.RUnlock()
-	return len(fake.removeArgsForCall)
-}
-
-func (fake *SandboxRepository) RemoveArgsForCall(i int) string {
-	fake.removeMutex.RLock()
-	defer fake.removeMutex.RUnlock()
-	return fake.removeArgsForCall[i].sandboxName
-}
-
-func (fake *SandboxRepository) Load(arg1 string) error {
-	fake.loadMutex.Lock()
-	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.loadMutex.Unlock()
-	if fake.LoadStub != nil {
-		return fake.LoadStub(arg1)
+	fake.destroyMutex.Unlock()
+	if fake.DestroyStub != nil {
+		return fake.DestroyStub(sandboxName)
 	} else {
-		return fake.loadReturns.result1
+		return fake.destroyReturns.result1
 	}
 }
 
-func (fake *SandboxRepository) LoadCallCount() int {
-	fake.loadMutex.RLock()
-	defer fake.loadMutex.RUnlock()
-	return len(fake.loadArgsForCall)
+func (fake *SandboxRepository) DestroyCallCount() int {
+	fake.destroyMutex.RLock()
+	defer fake.destroyMutex.RUnlock()
+	return len(fake.destroyArgsForCall)
 }
 
-func (fake *SandboxRepository) LoadArgsForCall(i int) string {
-	fake.loadMutex.RLock()
-	defer fake.loadMutex.RUnlock()
-	return fake.loadArgsForCall[i].arg1
+func (fake *SandboxRepository) DestroyArgsForCall(i int) string {
+	fake.destroyMutex.RLock()
+	defer fake.destroyMutex.RUnlock()
+	return fake.destroyArgsForCall[i].sandboxName
 }
 
-func (fake *SandboxRepository) LoadReturns(result1 error) {
-	fake.LoadStub = nil
-	fake.loadReturns = struct {
+func (fake *SandboxRepository) DestroyReturns(result1 error) {
+	fake.DestroyStub = nil
+	fake.destroyReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *SandboxRepository) ForEach(arg1 sandbox.SandboxCallback) error {
-	fake.forEachMutex.Lock()
-	fake.forEachArgsForCall = append(fake.forEachArgsForCall, struct {
-		arg1 sandbox.SandboxCallback
-	}{arg1})
-	fake.forEachMutex.Unlock()
-	if fake.ForEachStub != nil {
-		return fake.ForEachStub(arg1)
-	} else {
-		return fake.forEachReturns.result1
-	}
-}
-
-func (fake *SandboxRepository) ForEachCallCount() int {
-	fake.forEachMutex.RLock()
-	defer fake.forEachMutex.RUnlock()
-	return len(fake.forEachArgsForCall)
-}
-
-func (fake *SandboxRepository) ForEachArgsForCall(i int) sandbox.SandboxCallback {
-	fake.forEachMutex.RLock()
-	defer fake.forEachMutex.RUnlock()
-	return fake.forEachArgsForCall[i].arg1
-}
-
-func (fake *SandboxRepository) ForEachReturns(result1 error) {
-	fake.ForEachStub = nil
-	fake.forEachReturns = struct {
-		result1 error
-	}{result1}
-}
-
-var _ sandbox.Repository = new(SandboxRepository)
+var _ executor.SandboxRepository = new(SandboxRepository)

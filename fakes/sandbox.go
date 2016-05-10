@@ -22,6 +22,12 @@ type Sandbox struct {
 	setupReturns      struct {
 		result1 error
 	}
+	TeardownStub        func() error
+	teardownMutex       sync.RWMutex
+	teardownArgsForCall []struct{}
+	teardownReturns     struct {
+		result1 error
+	}
 	NamespaceStub        func() namespace.Namespace
 	namespaceMutex       sync.RWMutex
 	namespaceArgsForCall []struct{}
@@ -42,12 +48,6 @@ type Sandbox struct {
 	vethDeviceCountReturns     struct {
 		result1 int
 		result2 error
-	}
-	TeardownStub        func() error
-	teardownMutex       sync.RWMutex
-	teardownArgsForCall []struct{}
-	teardownReturns     struct {
-		result1 error
 	}
 }
 
@@ -101,6 +101,30 @@ func (fake *Sandbox) SetupCallCount() int {
 func (fake *Sandbox) SetupReturns(result1 error) {
 	fake.SetupStub = nil
 	fake.setupReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Sandbox) Teardown() error {
+	fake.teardownMutex.Lock()
+	fake.teardownArgsForCall = append(fake.teardownArgsForCall, struct{}{})
+	fake.teardownMutex.Unlock()
+	if fake.TeardownStub != nil {
+		return fake.TeardownStub()
+	} else {
+		return fake.teardownReturns.result1
+	}
+}
+
+func (fake *Sandbox) TeardownCallCount() int {
+	fake.teardownMutex.RLock()
+	defer fake.teardownMutex.RUnlock()
+	return len(fake.teardownArgsForCall)
+}
+
+func (fake *Sandbox) TeardownReturns(result1 error) {
+	fake.TeardownStub = nil
+	fake.teardownReturns = struct {
 		result1 error
 	}{result1}
 }
@@ -184,30 +208,6 @@ func (fake *Sandbox) VethDeviceCountReturns(result1 int, result2 error) {
 		result1 int
 		result2 error
 	}{result1, result2}
-}
-
-func (fake *Sandbox) Teardown() error {
-	fake.teardownMutex.Lock()
-	fake.teardownArgsForCall = append(fake.teardownArgsForCall, struct{}{})
-	fake.teardownMutex.Unlock()
-	if fake.TeardownStub != nil {
-		return fake.TeardownStub()
-	} else {
-		return fake.teardownReturns.result1
-	}
-}
-
-func (fake *Sandbox) TeardownCallCount() int {
-	fake.teardownMutex.RLock()
-	defer fake.teardownMutex.RUnlock()
-	return len(fake.teardownArgsForCall)
-}
-
-func (fake *Sandbox) TeardownReturns(result1 error) {
-	fake.TeardownStub = nil
-	fake.teardownReturns = struct {
-		result1 error
-	}{result1}
 }
 
 var _ sandbox.Sandbox = new(Sandbox)

@@ -84,22 +84,27 @@ var _ = Describe("CleanupSandbox", func() {
 
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
-
-			By("logging the error")
-			Expect(logger).To(gbytes.Say("get-sandbox-failed.*not found"))
 		})
 	})
 
 	Context("when getting the sandbox fails", func() {
-		It("returns an error", func() {
+		BeforeEach(func() {
 			sandboxRepo.GetReturns(nil, errors.New("raisins"))
+		})
 
+		It("returns an error", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).To(MatchError("get sandbox: raisins"))
 		})
+
+		It("logs the error", func() {
+			cleanupSandboxCommand.Execute(context)
+
+			Expect(logger).To(gbytes.Say("get-sandbox-failed.*raisins"))
+		})
 	})
 
-	It("locks and unlocks on the namespace", func() {
+	It("locks and unlocks on the sandbox", func() {
 		err := cleanupSandboxCommand.Execute(context)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -108,38 +113,33 @@ var _ = Describe("CleanupSandbox", func() {
 	})
 
 	It("counts the veth devices inside the sandbox", func() {
-		sandboxNS.ExecuteStub = func(callback func(ns *os.File) error) error {
-			Expect(linkFactory.VethDeviceCountCallCount()).To(Equal(0))
-			callback(nil)
-			Expect(linkFactory.VethDeviceCountCallCount()).To(Equal(1))
-			return nil
-		}
+		err := cleanupSandboxCommand.Execute(context)
+		Expect(err).NotTo(HaveOccurred())
 
-		Expect(cleanupSandboxCommand.Execute(context)).To(Succeed())
-		Expect(sandboxNS.ExecuteCallCount()).To(Equal(1))
+		Expect(sbox.VethDeviceCountCallCount()).To(Equal(1))
 	})
 
 	Context("when counting the veth devices fails", func() {
 		BeforeEach(func() {
-			linkFactory.VethDeviceCountReturns(0, errors.New("some error"))
+			sbox.VethDeviceCountReturns(0, errors.New("some error"))
 		})
 
 		It("wraps and returns an error", func() {
 			err := cleanupSandboxCommand.Execute(context)
-			Expect(err).To(MatchError("in namespace sandbox-name: callback failed: counting veth devices: some error"))
+			Expect(err).To(MatchError("counting veth devices: some error"))
 		})
 	})
 
 	Context("when there is STILL a veth device in the sandbox", func() {
 		BeforeEach(func() {
-			linkFactory.VethDeviceCountReturns(1, nil)
+			sbox.VethDeviceCountReturns(1, nil)
 		})
 
 		It("does NOT destroy the namespace", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(namespaceRepository.DestroyCallCount()).To(Equal(0))
+			Expect(sandboxRepo.DestroyCallCount()).To(Equal(0))
 		})
 
 		It("does NOT destroy the vxlan device", func() {
@@ -149,51 +149,69 @@ var _ = Describe("CleanupSandbox", func() {
 			Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(0))
 		})
 
-		It("does NOT remove the sandbox from the repository", func() {
+		It("does NOT destroy the sandbox", func() {
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sandboxRepo.RemoveCallCount()).To(Equal(0))
+			Expect(sandboxRepo.DestroyCallCount()).To(Equal(0))
 		})
 	})
 
-	Context("when there are no more veth devices in the sandbox", func() {
-		It("stops monitoring the namespace", func() {
-			err := cleanupSandboxCommand.Execute(context)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(missWatcher.StopMonitorCallCount()).To(Equal(1))
-			Expect(missWatcher.StopMonitorArgsForCall(0)).To(Equal(sandboxNS))
-		})
-
-		Context("when stopping monitoring fails", func() {
-			BeforeEach(func() {
-				missWatcher.StopMonitorReturns(errors.New("potato"))
-			})
-
-			It("wraps and returns the error", func() {
-				err := cleanupSandboxCommand.Execute(context)
-				Expect(err).To(MatchError("watcher stop monitor: potato"))
-			})
-
-			It("does not attempt to destroy the namespace", func() {
-				cleanupSandboxCommand.Execute(context)
-
-				Expect(namespaceRepository.DestroyCallCount()).To(Equal(0))
-			})
-		})
-
-		It("destroys the vxlan device in the sandbox namespace", func() {
+	Context("when there are no veth devices in the sandbox", func() {
+		It("removes the vxlan device in the sandbox namespace", func() {
 			sandboxNS.ExecuteStub = func(callback func(ns *os.File) error) error {
 				Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(0))
-				callback(nil)
+				err := callback(nil)
 				Expect(linkFactory.DeleteLinkByNameCallCount()).To(Equal(1))
-				Expect(linkFactory.DeleteLinkByNameArgsForCall(0)).To(Equal(cleanupSandboxCommand.VxlanDeviceName))
-				return nil
+				return err
 			}
 
 			err := cleanupSandboxCommand.Execute(context)
 			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sandboxNS.ExecuteCallCount()).To(Equal(1))
+			Expect(linkFactory.DeleteLinkByNameArgsForCall(0)).To(Equal("some-vxlan"))
+		})
+
+		It("destroys the sandbox", func() {
+			err := cleanupSandboxCommand.Execute(context)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sandboxRepo.DestroyCallCount()).To(Equal(1))
+			Expect(sandboxRepo.DestroyArgsForCall(0)).To(Equal("sandbox-name"))
+		})
+
+		Context("when destroy fails with AlreadyDestroyedError", func() {
+			BeforeEach(func() {
+				sandboxRepo.DestroyReturns(sandbox.AlreadyDestroyedError)
+			})
+
+			It("does not fail", func() {
+				err := cleanupSandboxCommand.Execute(context)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when destroy fails with a NotFoundError", func() {
+			BeforeEach(func() {
+				sandboxRepo.DestroyReturns(sandbox.NotFoundError)
+			})
+
+			It("does not fail", func() {
+				err := cleanupSandboxCommand.Execute(context)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when destroy fails", func() {
+			BeforeEach(func() {
+				sandboxRepo.DestroyReturns(errors.New("potato"))
+			})
+
+			It("wraps and returns the error", func() {
+				err := cleanupSandboxCommand.Execute(context)
+				Expect(err).To(MatchError("sandbox destroy: potato"))
+			})
 		})
 
 		Context("when there is an error destroying vxlan device", func() {
@@ -230,32 +248,6 @@ var _ = Describe("CleanupSandbox", func() {
 					Expect(err).To(MatchError("in namespace sandbox-name: callback failed: destroying vxlan some-vxlan: some-error"))
 				})
 			})
-		})
-
-		It("destroys the namespace", func() {
-			err := cleanupSandboxCommand.Execute(context)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(namespaceRepository.DestroyCallCount()).To(Equal(1))
-			Expect(namespaceRepository.DestroyArgsForCall(0)).To(Equal(sandboxNS))
-		})
-
-		Context("when theres an error destroying namespace", func() {
-			BeforeEach(func() {
-				namespaceRepository.DestroyReturns(errors.New("some-destroy-error"))
-			})
-
-			It("wraps and propogates the error", func() {
-				Expect(cleanupSandboxCommand.Execute(context)).To(MatchError("destroying sandbox sandbox-name: some-destroy-error"))
-			})
-		})
-
-		It("removes the sandbox from the repo when no links are remaining", func() {
-			err := cleanupSandboxCommand.Execute(context)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(sandboxRepo.RemoveCallCount()).To(Equal(1))
-			Expect(sandboxRepo.RemoveArgsForCall(0)).To(Equal("sandbox-name"))
 		})
 	})
 

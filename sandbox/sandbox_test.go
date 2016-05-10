@@ -195,6 +195,28 @@ var _ = Describe("Sandbox", func() {
 			Expect(targetNS).To(Equal(sbNamespace))
 		})
 
+		Context("when the DNS server has been launched", func() {
+			var process *fakes.Process
+
+			BeforeEach(func() {
+				process = &fakes.Process{}
+				invoker.InvokeReturns(process)
+
+				runner := &fakes.Runner{}
+				err := sb.LaunchDNS(runner)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("stops the DNS server", func() {
+				err := sb.Teardown()
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(process.SignalCallCount()).To(Equal(1))
+				sig := process.SignalArgsForCall(0)
+				Expect(sig).To(Equal(os.Kill))
+			})
+		})
+
 		Context("when the sandbox has already been torn down", func() {
 			BeforeEach(func() {
 				err := sb.Teardown()

@@ -17,15 +17,6 @@ import (
 var NotFoundError = errors.New("not found")
 var AlreadyExistsError = errors.New("already exists")
 
-//go:generate counterfeiter -o ../fakes/sandbox_repository.go --fake-name SandboxRepository . Repository
-type Repository interface {
-	Create(sandboxName string) (Sandbox, error)
-	Get(sandboxName string) (Sandbox, error)
-	Remove(sandboxName string)
-	Load(string) error
-	ForEach(SandboxCallback) error
-}
-
 //go:generate counterfeiter -o ../fakes/invoker.go --fake-name Invoker . Invoker
 type Invoker interface {
 	Invoke(ifrit.Runner) ifrit.Process
@@ -42,38 +33,20 @@ func (i InvokeFunc) Invoke(r ifrit.Runner) ifrit.Process {
 	return i(r)
 }
 
-type repository struct {
-	logger        lager.Logger
-	sandboxes     map[string]*sandbox
-	locker        sync.Locker
-	namespaceRepo namespace.Repository
-	invoker       Invoker
-	linkFactory   linkFactory
-	watcher       watcher.MissWatcher
+type Repository struct {
+	Logger        lager.Logger
+	Locker        sync.Locker
+	NamespaceRepo namespace.Repository
+	Invoker       Invoker
+	LinkFactory   linkFactory
+	Watcher       watcher.MissWatcher
+
+	Sandboxes map[string]Sandbox
 }
 
-func NewRepository(
-	logger lager.Logger,
-	locker sync.Locker,
-	namespaceRepo namespace.Repository,
-	invoker Invoker,
-	linkFactory linkFactory,
-	watcher watcher.MissWatcher,
-) Repository {
-	return &repository{
-		logger:        logger,
-		sandboxes:     map[string]*sandbox{},
-		locker:        locker,
-		namespaceRepo: namespaceRepo,
-		invoker:       invoker,
-		linkFactory:   linkFactory,
-		watcher:       watcher,
-	}
-}
-
-func (r *repository) Load(sandboxRepoDir string) error {
-	r.locker.Lock()
-	defer r.locker.Unlock()
+func (r *Repository) Load(sandboxRepoDir string) error {
+	r.Locker.Lock()
+	defer r.Locker.Unlock()
 
 	err := filepath.Walk(sandboxRepoDir, func(filePath string, f os.FileInfo, err error) error {
 		// skip root dir
@@ -83,12 +56,13 @@ func (r *repository) Load(sandboxRepoDir string) error {
 
 		sandboxName := path.Base(filePath)
 
-		ns, err := r.namespaceRepo.Get(sandboxName)
+		ns, err := r.NamespaceRepo.Get(sandboxName)
 		if err != nil {
 			return fmt.Errorf("loading sandbox repo: %s", err)
 		}
-		sandbox := New(r.logger, ns, r.invoker, r.linkFactory)
-		r.sandboxes[sandboxName] = sandbox
+
+		sandbox := New(r.Logger, ns, r.Invoker, r.LinkFactory, r.Watcher)
+		r.Sandboxes[sandboxName] = sandbox
 
 		return nil
 	})
@@ -99,11 +73,11 @@ func (r *repository) Load(sandboxRepoDir string) error {
 	return nil
 }
 
-func (r *repository) ForEach(s SandboxCallback) error {
-	r.locker.Lock()
-	defer r.locker.Unlock()
+func (r *Repository) ForEach(s SandboxCallback) error {
+	r.Locker.Lock()
+	defer r.Locker.Unlock()
 
-	for _, sbox := range r.sandboxes {
+	for _, sbox := range r.Sandboxes {
 		err := s.Callback(sbox.Namespace())
 		if err != nil {
 			return fmt.Errorf("callback: %s", err)
@@ -112,39 +86,69 @@ func (r *repository) ForEach(s SandboxCallback) error {
 	return nil
 }
 
-func (r *repository) Create(sandboxName string) (Sandbox, error) {
-	r.locker.Lock()
-	defer r.locker.Unlock()
+func (r *Repository) Create(sandboxName string) (Sandbox, error) {
+	logger := r.Logger.Session("create", lager.Data{"name": sandboxName})
+	logger.Info("starting")
+	defer logger.Info("complete")
 
-	if _, exists := r.sandboxes[sandboxName]; exists {
-		return nil, fmt.Errorf("sandbox %q already exists", sandboxName)
+	r.Locker.Lock()
+	defer r.Locker.Unlock()
+
+	if _, exists := r.Sandboxes[sandboxName]; exists {
+		return nil, AlreadyExistsError
 	}
 
-	ns, err := r.namespaceRepo.Create(sandboxName)
+	ns, err := r.NamespaceRepo.Create(sandboxName)
 	if err != nil {
 		return nil, fmt.Errorf("create namespace: %s", err)
 	}
 
-	sandbox := New(r.logger, ns, r.invoker, r.linkFactory, r.watcher)
-	r.sandboxes[sandboxName] = sandbox
+	sandbox := New(r.Logger, ns, r.Invoker, r.LinkFactory, r.Watcher)
+	r.Sandboxes[sandboxName] = sandbox
 
 	return sandbox, nil
 }
 
-func (r *repository) Get(sandboxName string) (Sandbox, error) {
-	r.locker.Lock()
-	sbox, exists := r.sandboxes[sandboxName]
-	r.locker.Unlock()
+func (r *Repository) Get(sandboxName string) (Sandbox, error) {
+	r.Locker.Lock()
+	defer r.Locker.Unlock()
 
+	return r.get(sandboxName)
+}
+
+func (r *Repository) get(sandboxName string) (Sandbox, error) {
+	sbox, exists := r.Sandboxes[sandboxName]
 	if !exists {
 		return nil, NotFoundError
 	}
+
 	return sbox, nil
 }
 
-func (r *repository) Remove(sandboxName string) {
-	r.locker.Lock()
-	delete(r.sandboxes, sandboxName)
-	r.locker.Unlock()
-	return
+func (r *Repository) Destroy(sandboxName string) error {
+	logger := r.Logger.Session("destroy", lager.Data{"name": sandboxName})
+	logger.Info("starting")
+	defer logger.Info("complete")
+
+	r.Locker.Lock()
+	defer r.Locker.Unlock()
+
+	sbox, err := r.get(sandboxName)
+	if err != nil {
+		return err
+	}
+
+	err = sbox.Teardown()
+	if err != nil {
+		return fmt.Errorf("teardown: %s", err)
+	}
+
+	err = r.NamespaceRepo.Destroy(sbox.Namespace())
+	if err != nil {
+		return fmt.Errorf("namespace destroy: %s", err)
+	}
+
+	delete(r.Sandboxes, sandboxName)
+
+	return nil
 }
