@@ -17,19 +17,21 @@ var _ = Describe("Sandbox", func() {
 		logger      *lagertest.TestLogger
 		sbNamespace *fakes.Namespace
 		invoker     *fakes.Invoker
+		watcher     *fakes.MissWatcher
 		linkFactory *fakes.LinkFactory
 	)
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 		invoker = &fakes.Invoker{}
+		watcher = &fakes.MissWatcher{}
 		linkFactory = &fakes.LinkFactory{}
 		sbNamespace = &fakes.Namespace{}
 		sbNamespace.ExecuteStub = func(callback func(*os.File) error) error {
 			return callback(nil)
 		}
 
-		sb = sandbox.New(logger, sbNamespace, invoker, linkFactory)
+		sb = sandbox.New(logger, sbNamespace, invoker, linkFactory, watcher)
 	})
 
 	Describe("Setup", func() {
@@ -131,6 +133,93 @@ var _ = Describe("Sandbox", func() {
 			It("return the exit error", func() {
 				err := sb.LaunchDNS(runner)
 				Expect(err).To(MatchError("launch dns: unexpected server exit"))
+			})
+		})
+	})
+
+	Describe("VethDeviceCount", func() {
+		BeforeEach(func() {
+			linkFactory.VethDeviceCountReturns(99, nil)
+		})
+
+		It("returns gets veth device count from the sandbox", func() {
+			sbNamespace.ExecuteStub = func(callback func(*os.File) error) error {
+				Expect(linkFactory.VethDeviceCountCallCount()).To(Equal(0))
+				err := callback(nil)
+				Expect(linkFactory.VethDeviceCountCallCount()).To(Equal(1))
+				return err
+			}
+
+			count, err := sb.VethDeviceCount()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(99))
+
+			Expect(sbNamespace.ExecuteCallCount()).To(Equal(1))
+		})
+
+		Context("when namespace execute fails", func() {
+			BeforeEach(func() {
+				sbNamespace.ExecuteReturns(errors.New("meatballs"))
+			})
+
+			It("returns a meaningful error", func() {
+				_, err := sb.VethDeviceCount()
+				Expect(err).To(MatchError("namespace execute: meatballs"))
+			})
+		})
+
+		Context("when the link factory fails to return the veth device count", func() {
+			BeforeEach(func() {
+				linkFactory.VethDeviceCountReturns(0, errors.New("tomato"))
+			})
+
+			It("returns a meaningful error", func() {
+				_, err := sb.VethDeviceCount()
+				Expect(err).To(MatchError("veth device count: tomato"))
+			})
+		})
+	})
+
+	Describe("Teardown", func() {
+		It("tears down the sandbox", func() {
+			err := sb.Teardown()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("stops the arp miss monitor", func() {
+			err := sb.Teardown()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(watcher.StopMonitorCallCount()).To(Equal(1))
+			targetNS := watcher.StopMonitorArgsForCall(0)
+			Expect(targetNS).To(Equal(sbNamespace))
+		})
+
+		Context("when the sandbox has already been torn down", func() {
+			BeforeEach(func() {
+				err := sb.Teardown()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns an AlreadyDestroyedError", func() {
+				err := sb.Teardown()
+				Expect(err).To(Equal(sandbox.AlreadyDestroyedError))
+			})
+
+			It("does NOT try to stop the monitor AGAIN", func() {
+				err := sb.Teardown()
+				Expect(err).To(HaveOccurred())
+
+				Expect(watcher.StopMonitorCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when there is an error stopping the miss watcher", func() {
+			It("returns a meaningful error", func() {
+				watcher.StopMonitorReturns(errors.New("spaghetti"))
+
+				err := sb.Teardown()
+				Expect(err).To(MatchError("stop monitor: spaghetti"))
 			})
 		})
 	})

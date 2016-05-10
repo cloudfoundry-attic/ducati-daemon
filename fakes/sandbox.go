@@ -36,6 +36,19 @@ type Sandbox struct {
 	launchDNSReturns struct {
 		result1 error
 	}
+	VethDeviceCountStub        func() (int, error)
+	vethDeviceCountMutex       sync.RWMutex
+	vethDeviceCountArgsForCall []struct{}
+	vethDeviceCountReturns     struct {
+		result1 int
+		result2 error
+	}
+	TeardownStub        func() error
+	teardownMutex       sync.RWMutex
+	teardownArgsForCall []struct{}
+	teardownReturns     struct {
+		result1 error
+	}
 }
 
 func (fake *Sandbox) Lock() {
@@ -144,6 +157,55 @@ func (fake *Sandbox) LaunchDNSArgsForCall(i int) ifrit.Runner {
 func (fake *Sandbox) LaunchDNSReturns(result1 error) {
 	fake.LaunchDNSStub = nil
 	fake.launchDNSReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Sandbox) VethDeviceCount() (int, error) {
+	fake.vethDeviceCountMutex.Lock()
+	fake.vethDeviceCountArgsForCall = append(fake.vethDeviceCountArgsForCall, struct{}{})
+	fake.vethDeviceCountMutex.Unlock()
+	if fake.VethDeviceCountStub != nil {
+		return fake.VethDeviceCountStub()
+	} else {
+		return fake.vethDeviceCountReturns.result1, fake.vethDeviceCountReturns.result2
+	}
+}
+
+func (fake *Sandbox) VethDeviceCountCallCount() int {
+	fake.vethDeviceCountMutex.RLock()
+	defer fake.vethDeviceCountMutex.RUnlock()
+	return len(fake.vethDeviceCountArgsForCall)
+}
+
+func (fake *Sandbox) VethDeviceCountReturns(result1 int, result2 error) {
+	fake.VethDeviceCountStub = nil
+	fake.vethDeviceCountReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Sandbox) Teardown() error {
+	fake.teardownMutex.Lock()
+	fake.teardownArgsForCall = append(fake.teardownArgsForCall, struct{}{})
+	fake.teardownMutex.Unlock()
+	if fake.TeardownStub != nil {
+		return fake.TeardownStub()
+	} else {
+		return fake.teardownReturns.result1
+	}
+}
+
+func (fake *Sandbox) TeardownCallCount() int {
+	fake.teardownMutex.RLock()
+	defer fake.teardownMutex.RUnlock()
+	return len(fake.teardownArgsForCall)
+}
+
+func (fake *Sandbox) TeardownReturns(result1 error) {
+	fake.TeardownStub = nil
+	fake.teardownReturns = struct {
 		result1 error
 	}{result1}
 }

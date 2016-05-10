@@ -106,14 +106,6 @@ func main() {
 		log.Fatalf("unable to make repo: %s", err) // not tested
 	}
 
-	sandboxRepo := sandbox.NewRepository(
-		logger,
-		&sync.Mutex{},
-		sandboxNamespaceRepo,
-		sandbox.InvokeFunc(ifrit.Invoke),
-		linkFactory,
-	)
-
 	namespaceOpener := &namespace.PathOpener{
 		Logger:       logger,
 		ThreadLocker: osThreadLocker,
@@ -143,6 +135,15 @@ func main() {
 	reloader := &reloader.Reloader{
 		Watcher: missWatcher,
 	}
+
+	sandboxRepo := sandbox.NewRepository(
+		logger,
+		&sync.Mutex{},
+		sandboxNamespaceRepo,
+		sandbox.InvokeFunc(ifrit.Invoke),
+		linkFactory,
+		missWatcher,
+	)
 
 	hostNamespace, err := namespaceOpener.OpenPath("/proc/self/ns/net")
 	if err != nil {

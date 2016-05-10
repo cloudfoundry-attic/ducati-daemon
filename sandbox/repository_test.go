@@ -37,12 +37,14 @@ var _ = Describe("Sandbox Repository", func() {
 		namespaceRepo.CreateReturns(sboxNamespace, nil)
 		linkFactory = &fakes.LinkFactory{}
 		sandboxCallback = &fakes.SandboxCallback{}
+		watcher := &fakes.MissWatcher{}
 		sandboxRepo = sandbox.NewRepository(
 			logger,
 			locker,
 			namespaceRepo,
 			invoker,
 			linkFactory,
+			watcher,
 		)
 	})
 

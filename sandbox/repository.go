@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
+	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 )
@@ -48,6 +49,7 @@ type repository struct {
 	namespaceRepo namespace.Repository
 	invoker       Invoker
 	linkFactory   linkFactory
+	watcher       watcher.MissWatcher
 }
 
 func NewRepository(
@@ -56,6 +58,7 @@ func NewRepository(
 	namespaceRepo namespace.Repository,
 	invoker Invoker,
 	linkFactory linkFactory,
+	watcher watcher.MissWatcher,
 ) Repository {
 	return &repository{
 		logger:        logger,
@@ -64,6 +67,7 @@ func NewRepository(
 		namespaceRepo: namespaceRepo,
 		invoker:       invoker,
 		linkFactory:   linkFactory,
+		watcher:       watcher,
 	}
 }
 
@@ -121,7 +125,7 @@ func (r *repository) Create(sandboxName string) (Sandbox, error) {
 		return nil, fmt.Errorf("create namespace: %s", err)
 	}
 
-	sandbox := New(r.logger, ns, r.invoker, r.linkFactory)
+	sandbox := New(r.logger, ns, r.invoker, r.linkFactory, r.watcher)
 	r.sandboxes[sandboxName] = sandbox
 
 	return sandbox, nil
