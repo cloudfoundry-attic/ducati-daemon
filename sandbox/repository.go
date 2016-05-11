@@ -22,11 +22,17 @@ type Repository interface {
 	Get(sandboxName string) (Sandbox, error)
 	Remove(sandboxName string)
 	Load(string) error
+	ForEach(SandboxCallback) error
 }
 
 //go:generate counterfeiter -o ../fakes/invoker.go --fake-name Invoker . Invoker
 type Invoker interface {
 	Invoke(ifrit.Runner) ifrit.Process
+}
+
+//go:generate counterfeiter -o ../fakes/sandbox_callback.go --fake-name SandboxCallback . SandboxCallback
+type SandboxCallback interface {
+	Callback(ns namespace.Namespace) error
 }
 
 type InvokeFunc func(ifrit.Runner) ifrit.Process
@@ -86,6 +92,19 @@ func (r *repository) Load(sandboxRepoDir string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (r *repository) ForEach(s SandboxCallback) error {
+	r.locker.Lock()
+	defer r.locker.Unlock()
+
+	for _, sbox := range r.sandboxes {
+		err := s.Callback(sbox.Namespace())
+		if err != nil {
+			return fmt.Errorf("callback: %s", err)
+		}
+	}
 	return nil
 }
 
