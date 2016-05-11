@@ -22,7 +22,7 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
-var _ = FDescribe("Sandbox Consistency", func() {
+var _ = Describe("Sandbox Consistency", func() {
 	var (
 		session        *gexec.Session
 		ducatiCmd      *exec.Cmd

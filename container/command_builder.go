@@ -16,7 +16,7 @@ type CommandBuilder struct {
 	HostNamespace namespace.Namespace
 }
 
-func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName, dnsAddress string) executor.Command {
+func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, dnsAddress string) executor.Command {
 	return commands.Unless{
 		Condition: conditions.SandboxExists{
 			Name: sandboxName,

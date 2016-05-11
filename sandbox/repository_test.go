@@ -25,6 +25,7 @@ var _ = Describe("Sandbox Repository", func() {
 		invoker          *fakes.Invoker
 		sandboxRepo      sandbox.Repository
 		linkFactory      *fakes.LinkFactory
+		sandboxCallback  *fakes.SandboxCallback
 	)
 
 	BeforeEach(func() {
@@ -35,6 +36,7 @@ var _ = Describe("Sandbox Repository", func() {
 		namespaceRepo = &fakes.Repository{}
 		namespaceRepo.CreateReturns(sboxNamespace, nil)
 		linkFactory = &fakes.LinkFactory{}
+		sandboxCallback = &fakes.SandboxCallback{}
 		sandboxRepo = sandbox.NewRepository(
 			logger,
 			locker,
@@ -42,6 +44,46 @@ var _ = Describe("Sandbox Repository", func() {
 			invoker,
 			linkFactory,
 		)
+	})
+
+	Describe("ForEach", func() {
+		BeforeEach(func() {
+			sbox, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sbox).NotTo(BeNil())
+
+			sandboxCallback.CallbackReturns(nil)
+			sboxNamespace.NameReturns("some-sandbox-name")
+		})
+
+		It("executes the callback for each sandbox in the repo", func() {
+			err := sandboxRepo.ForEach(sandboxCallback)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sandboxCallback.CallbackCallCount()).To(Equal(1))
+			ns := sandboxCallback.CallbackArgsForCall(0)
+			Expect(ns.Name()).To(Equal("some-sandbox-name"))
+		})
+
+		It("locks and unlocks", func() {
+			Expect(locker.LockCallCount()).To(Equal(1))
+			Expect(locker.UnlockCallCount()).To(Equal(1))
+
+			err := sandboxRepo.ForEach(sandboxCallback)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(locker.LockCallCount()).To(Equal(2))
+			Expect(locker.UnlockCallCount()).To(Equal(2))
+		})
+
+		Context("when the callback fails", func() {
+			It("returns an error", func() {
+				sandboxCallback.CallbackReturns(errors.New("potato"))
+
+				err := sandboxRepo.ForEach(sandboxCallback)
+				Expect(err).To(MatchError("callback: potato"))
+			})
+		})
 	})
 
 	Describe("Load", func() {

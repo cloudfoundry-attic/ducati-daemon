@@ -16,10 +16,15 @@ type Writer struct {
 }
 
 func (fake *Writer) Write(p []byte) (n int, err error) {
+	var pCopy []byte
+	if p != nil {
+		pCopy = make([]byte, len(p))
+		copy(pCopy, p)
+	}
 	fake.writeMutex.Lock()
 	fake.writeArgsForCall = append(fake.writeArgsForCall, struct {
 		p []byte
-	}{p})
+	}{pCopy})
 	fake.writeMutex.Unlock()
 	if fake.WriteStub != nil {
 		return fake.WriteStub(p)

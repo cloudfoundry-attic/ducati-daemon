@@ -155,9 +155,8 @@ var _ = Describe("Creator", func() {
 
 		Expect(ex.ExecuteArgsForCall(0)).To(Equal(createSandboxResult))
 
-		sandboxName, vxlanDeviceName, dnsAddress := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
+		sandboxName, dnsAddress := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
 		Expect(sandboxName).To(Equal("vni-99"))
-		Expect(vxlanDeviceName).To(Equal("vxlan99"))
 		Expect(dnsAddress).To(Equal("some-dns-address"))
 	})
 

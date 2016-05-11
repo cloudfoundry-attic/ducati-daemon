@@ -30,6 +30,7 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/subscriber"
 	"github.com/cloudfoundry-incubator/ducati-daemon/network"
 	"github.com/cloudfoundry-incubator/ducati-daemon/ossupport"
+	"github.com/cloudfoundry-incubator/ducati-daemon/reloader"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
 	"github.com/cloudfoundry-incubator/ducati-daemon/store"
 	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
@@ -112,10 +113,6 @@ func main() {
 		sandbox.InvokeFunc(ifrit.Invoke),
 		linkFactory,
 	)
-	err = sandboxRepo.Load(conf.SandboxRepoDir)
-	if err != nil {
-		log.Fatalf("unable to load sandboxRepo: %s", err)
-	}
 
 	namespaceOpener := &namespace.PathOpener{
 		Logger:       logger,
@@ -142,6 +139,10 @@ func main() {
 		arpInserter,
 	)
 	networkMapper := &network.FixedNetworkMapper{DefaultNetworkID: "default"}
+
+	reloader := &reloader.Reloader{
+		Watcher: missWatcher,
+	}
 
 	hostNamespace, err := namespaceOpener.OpenPath("/proc/self/ns/net")
 	if err != nil {
@@ -243,6 +244,16 @@ func main() {
 	rataRouter, err := rata.NewRouter(routes, rataHandlers)
 	if err != nil {
 		log.Fatalf("unable to create rata Router: %s", err) // not tested
+	}
+
+	err = sandboxRepo.Load(conf.SandboxRepoDir)
+	if err != nil {
+		log.Fatalf("unable to load sandboxRepo: %s", err)
+	}
+
+	err = sandboxRepo.ForEach(reloader)
+	if err != nil {
+		log.Fatalf("unable to restart monitors: %s", err)
 	}
 
 	httpServer := http_server.New(conf.ListenAddress, rataRouter)

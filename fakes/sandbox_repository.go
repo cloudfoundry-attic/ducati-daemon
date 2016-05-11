@@ -39,6 +39,14 @@ type SandboxRepository struct {
 	loadReturns struct {
 		result1 error
 	}
+	ForEachStub        func(sandbox.SandboxCallback) error
+	forEachMutex       sync.RWMutex
+	forEachArgsForCall []struct {
+		arg1 sandbox.SandboxCallback
+	}
+	forEachReturns struct {
+		result1 error
+	}
 }
 
 func (fake *SandboxRepository) Create(sandboxName string) (sandbox.Sandbox, error) {
@@ -158,6 +166,38 @@ func (fake *SandboxRepository) LoadArgsForCall(i int) string {
 func (fake *SandboxRepository) LoadReturns(result1 error) {
 	fake.LoadStub = nil
 	fake.loadReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *SandboxRepository) ForEach(arg1 sandbox.SandboxCallback) error {
+	fake.forEachMutex.Lock()
+	fake.forEachArgsForCall = append(fake.forEachArgsForCall, struct {
+		arg1 sandbox.SandboxCallback
+	}{arg1})
+	fake.forEachMutex.Unlock()
+	if fake.ForEachStub != nil {
+		return fake.ForEachStub(arg1)
+	} else {
+		return fake.forEachReturns.result1
+	}
+}
+
+func (fake *SandboxRepository) ForEachCallCount() int {
+	fake.forEachMutex.RLock()
+	defer fake.forEachMutex.RUnlock()
+	return len(fake.forEachArgsForCall)
+}
+
+func (fake *SandboxRepository) ForEachArgsForCall(i int) sandbox.SandboxCallback {
+	fake.forEachMutex.RLock()
+	defer fake.forEachMutex.RUnlock()
+	return fake.forEachArgsForCall[i].arg1
+}
+
+func (fake *SandboxRepository) ForEachReturns(result1 error) {
+	fake.ForEachStub = nil
+	fake.forEachReturns = struct {
 		result1 error
 	}{result1}
 }
