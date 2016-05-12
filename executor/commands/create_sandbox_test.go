@@ -45,21 +45,7 @@ var _ = Describe("CreateSandbox", func() {
 		Expect(sandboxRepository.CreateArgsForCall(0)).To(Equal("my-namespace"))
 	})
 
-	It("sets up the sandbox while holding the locks", func() {
-		sbox.SetupStub = func() error {
-			Expect(sbox.LockCallCount()).To(Equal(1))
-			Expect(sbox.UnlockCallCount()).To(Equal(0))
-			return nil
-		}
-
-		err := createSandbox.Execute(context)
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(sbox.SetupCallCount()).To(Equal(1))
-		Expect(sbox.UnlockCallCount()).To(Equal(1))
-	})
-
-	Context("when creating the namespace fails", func() {
+	Context("when creating the sandbox fails", func() {
 		BeforeEach(func() {
 			sandboxRepository.CreateReturns(nil, errors.New("welp"))
 		})
@@ -67,17 +53,6 @@ var _ = Describe("CreateSandbox", func() {
 		It("wraps and propogates the error", func() {
 			err := createSandbox.Execute(context)
 			Expect(err).To(MatchError("create sandbox: welp"))
-		})
-	})
-
-	Context("when the sandbox setup fails", func() {
-		BeforeEach(func() {
-			sbox.SetupReturns(errors.New("mango"))
-		})
-
-		It("wraps and propogates the error", func() {
-			err := createSandbox.Execute(context)
-			Expect(err).To(MatchError("setup sandbox: mango"))
 		})
 	})
 

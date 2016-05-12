@@ -22,15 +22,30 @@ type Invoker interface {
 	Invoke(ifrit.Runner) ifrit.Process
 }
 
+type InvokeFunc func(ifrit.Runner) ifrit.Process
+
+func (i InvokeFunc) Invoke(r ifrit.Runner) ifrit.Process { return i(r) }
+
+//go:generate counterfeiter -o ../fakes/sandbox_factory.go --fake-name SandboxFactory . sandboxFactory
+type sandboxFactory interface {
+	New(lager.Logger, namespace.Namespace, Invoker, LinkFactory, watcher.MissWatcher) Sandbox
+}
+
+type NewSandboxFunc func(lager.Logger, namespace.Namespace, Invoker, LinkFactory, watcher.MissWatcher) Sandbox
+
+func (n NewSandboxFunc) New(
+	logger lager.Logger,
+	ns namespace.Namespace,
+	invoker Invoker,
+	linkFactory LinkFactory,
+	missWatcher watcher.MissWatcher,
+) Sandbox {
+	return n(logger, ns, invoker, linkFactory, missWatcher)
+}
+
 //go:generate counterfeiter -o ../fakes/sandbox_callback.go --fake-name SandboxCallback . SandboxCallback
 type SandboxCallback interface {
 	Callback(ns namespace.Namespace) error
-}
-
-type InvokeFunc func(ifrit.Runner) ifrit.Process
-
-func (i InvokeFunc) Invoke(r ifrit.Runner) ifrit.Process {
-	return i(r)
 }
 
 type Repository struct {
@@ -38,10 +53,11 @@ type Repository struct {
 	Locker        sync.Locker
 	NamespaceRepo namespace.Repository
 	Invoker       Invoker
-	LinkFactory   linkFactory
+	LinkFactory   LinkFactory
 	Watcher       watcher.MissWatcher
 
-	Sandboxes map[string]Sandbox
+	SandboxFactory sandboxFactory
+	Sandboxes      map[string]Sandbox
 }
 
 func (r *Repository) Load(sandboxRepoDir string) error {
@@ -61,7 +77,7 @@ func (r *Repository) Load(sandboxRepoDir string) error {
 			return fmt.Errorf("loading sandbox repo: %s", err)
 		}
 
-		sandbox := New(r.Logger, ns, r.Invoker, r.LinkFactory, r.Watcher)
+		sandbox := r.SandboxFactory.New(r.Logger, ns, r.Invoker, r.LinkFactory, r.Watcher)
 		r.Sandboxes[sandboxName] = sandbox
 
 		return nil
@@ -103,8 +119,13 @@ func (r *Repository) Create(sandboxName string) (Sandbox, error) {
 		return nil, fmt.Errorf("create namespace: %s", err)
 	}
 
-	sandbox := New(r.Logger, ns, r.Invoker, r.LinkFactory, r.Watcher)
+	sandbox := r.SandboxFactory.New(r.Logger, ns, r.Invoker, r.LinkFactory, r.Watcher)
 	r.Sandboxes[sandboxName] = sandbox
+
+	err = sandbox.Setup()
+	if err != nil {
+		return nil, fmt.Errorf("setup sandbox: %s", err)
+	}
 
 	return sandbox, nil
 }

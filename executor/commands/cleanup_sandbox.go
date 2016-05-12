@@ -6,13 +6,11 @@ import (
 
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/sandbox"
-	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 	"github.com/pivotal-golang/lager"
 )
 
 type CleanupSandbox struct {
 	SandboxName     string
-	Watcher         watcher.MissWatcher
 	VxlanDeviceName string
 }
 

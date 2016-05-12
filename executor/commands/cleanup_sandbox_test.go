@@ -57,7 +57,6 @@ var _ = Describe("CleanupSandbox", func() {
 
 		cleanupSandboxCommand = commands.CleanupSandbox{
 			SandboxName:     "sandbox-name",
-			Watcher:         missWatcher,
 			VxlanDeviceName: "some-vxlan",
 		}
 

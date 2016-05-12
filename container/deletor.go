@@ -6,12 +6,10 @@ import (
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor"
 	"github.com/cloudfoundry-incubator/ducati-daemon/executor/commands"
 	"github.com/cloudfoundry-incubator/ducati-daemon/lib/namespace"
-	"github.com/cloudfoundry-incubator/ducati-daemon/watcher"
 )
 
 type Deletor struct {
 	Executor        executor.Executor
-	Watcher         watcher.MissWatcher
 	NamespaceOpener namespace.Opener
 }
 
@@ -37,7 +35,6 @@ func (d *Deletor) Delete(
 
 			commands.CleanupSandbox{
 				SandboxName:     sandboxName,
-				Watcher:         d.Watcher,
 				VxlanDeviceName: vxlanDeviceName,
 			},
 		),

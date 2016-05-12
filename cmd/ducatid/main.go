@@ -137,13 +137,14 @@ func main() {
 	}
 
 	sandboxRepo := &sandbox.Repository{
-		Logger:        logger.Session("sandbox-repository"),
-		Locker:        &sync.Mutex{},
-		NamespaceRepo: sandboxNamespaceRepo,
-		Invoker:       sandbox.InvokeFunc(ifrit.Invoke),
-		LinkFactory:   linkFactory,
-		Watcher:       missWatcher,
-		Sandboxes:     map[string]sandbox.Sandbox{},
+		Logger:         logger.Session("sandbox-repository"),
+		Locker:         &sync.Mutex{},
+		NamespaceRepo:  sandboxNamespaceRepo,
+		Invoker:        sandbox.InvokeFunc(ifrit.Invoke),
+		LinkFactory:    linkFactory,
+		Watcher:        missWatcher,
+		SandboxFactory: sandbox.NewSandboxFunc(sandbox.New),
+		Sandboxes:      map[string]sandbox.Sandbox{},
 	}
 
 	hostNamespace, err := namespaceOpener.OpenPath("/proc/self/ns/net")
@@ -182,7 +183,6 @@ func main() {
 	}
 	deletor := &container.Deletor{
 		Executor:        executor,
-		Watcher:         missWatcher,
 		NamespaceOpener: namespaceOpener,
 	}
 

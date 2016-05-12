@@ -16,17 +16,16 @@ import (
 
 var _ = Describe("Sandbox Repository", func() {
 	var (
-		logger           *lagertest.TestLogger
-		locker           *fakes.Locker
-		sboxNamespaceDir string
-		sboxFile         *os.File
-		sboxFileName     string
-		sboxNamespace    *fakes.Namespace
-		namespaceRepo    *fakes.Repository
-		invoker          *fakes.Invoker
-		sandboxRepo      *sandbox.Repository
-		linkFactory      *fakes.LinkFactory
-		sandboxCallback  *fakes.SandboxCallback
+		logger          *lagertest.TestLogger
+		locker          *fakes.Locker
+		sboxNamespace   *fakes.Namespace
+		namespaceRepo   *fakes.Repository
+		invoker         *fakes.Invoker
+		sandboxRepo     *sandbox.Repository
+		linkFactory     *fakes.LinkFactory
+		missWatcher     *fakes.MissWatcher
+		sandboxCallback *fakes.SandboxCallback
+		sandboxFactory  *fakes.SandboxFactory
 	)
 
 	BeforeEach(func() {
@@ -38,15 +37,20 @@ var _ = Describe("Sandbox Repository", func() {
 		namespaceRepo.CreateReturns(sboxNamespace, nil)
 		linkFactory = &fakes.LinkFactory{}
 		sandboxCallback = &fakes.SandboxCallback{}
-		watcher := &fakes.MissWatcher{}
+		missWatcher = &fakes.MissWatcher{}
+
+		sandboxFactory = &fakes.SandboxFactory{}
+		sandboxFactory.NewStub = sandbox.New
+
 		sandboxRepo = &sandbox.Repository{
-			Logger:        logger,
-			Locker:        locker,
-			NamespaceRepo: namespaceRepo,
-			Invoker:       invoker,
-			LinkFactory:   linkFactory,
-			Watcher:       watcher,
-			Sandboxes:     map[string]sandbox.Sandbox{},
+			Logger:         logger,
+			Locker:         locker,
+			NamespaceRepo:  namespaceRepo,
+			Invoker:        invoker,
+			LinkFactory:    linkFactory,
+			Watcher:        missWatcher,
+			SandboxFactory: sandboxFactory,
+			Sandboxes:      map[string]sandbox.Sandbox{},
 		}
 	})
 
@@ -66,7 +70,7 @@ var _ = Describe("Sandbox Repository", func() {
 
 			Expect(sandboxCallback.CallbackCallCount()).To(Equal(1))
 			ns := sandboxCallback.CallbackArgsForCall(0)
-			Expect(ns.Name()).To(Equal("some-sandbox-name"))
+			Expect(ns).To(Equal(sboxNamespace))
 		})
 
 		It("locks and unlocks", func() {
@@ -91,6 +95,12 @@ var _ = Describe("Sandbox Repository", func() {
 	})
 
 	Describe("Load", func() {
+		var (
+			sboxFile         *os.File
+			sboxFileName     string
+			sboxNamespaceDir string
+		)
+
 		BeforeEach(func() {
 			var err error
 			sboxNamespaceDir, err = ioutil.TempDir("", "")
@@ -137,6 +147,13 @@ var _ = Describe("Sandbox Repository", func() {
 	})
 
 	Describe("Create", func() {
+		var fakeSandbox *fakes.Sandbox
+
+		BeforeEach(func() {
+			fakeSandbox = &fakes.Sandbox{}
+			sandboxFactory.NewReturns(fakeSandbox)
+		})
+
 		It("returns the created sandbox", func() {
 			sbox, err := sandboxRepo.Create("some-sandbox-name")
 			Expect(err).NotTo(HaveOccurred())
@@ -168,22 +185,24 @@ var _ = Describe("Sandbox Repository", func() {
 			Expect(nsName).To(Equal("some-sandbox-name"))
 		})
 
-		It("populates the namespace on the sandbox", func() {
-			sbox, err := sandboxRepo.Create("some-sandbox-name")
+		It("injects the correct dependencies to the sandbox", func() {
+			_, err := sandboxRepo.Create("some-sandbox-name")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sbox.Namespace()).To(Equal(sboxNamespace))
+			Expect(sandboxFactory.NewCallCount()).To(Equal(1))
+			log, ns, i, lf, w := sandboxFactory.NewArgsForCall(0)
+			Expect(log).To(Equal(logger))
+			Expect(ns).To(Equal(sboxNamespace))
+			Expect(i).To(Equal(invoker))
+			Expect(lf).To(Equal(linkFactory))
+			Expect(w).To(Equal(missWatcher))
 		})
 
-		Context("when creating the namespace fails", func() {
-			BeforeEach(func() {
-				namespaceRepo.CreateReturns(nil, errors.New("watermelon"))
-			})
+		It("drives setup on the sandbox", func() {
+			_, err := sandboxRepo.Create("some-sandbox-name")
+			Expect(err).NotTo(HaveOccurred())
 
-			It("returns a meaningful error", func() {
-				_, err := sandboxRepo.Create("some-sandbox-name")
-				Expect(err).To(MatchError("create namespace: watermelon"))
-			})
+			Expect(fakeSandbox.SetupCallCount()).To(Equal(1))
 		})
 
 		Context("if the sandbox already exists", func() {
@@ -202,6 +221,28 @@ var _ = Describe("Sandbox Repository", func() {
 
 				Expect(locker.LockCallCount()).To(Equal(2))
 				Expect(locker.UnlockCallCount()).To(Equal(2))
+			})
+		})
+
+		Context("when creating the namespace fails", func() {
+			BeforeEach(func() {
+				namespaceRepo.CreateReturns(nil, errors.New("watermelon"))
+			})
+
+			It("returns a meaningful error", func() {
+				_, err := sandboxRepo.Create("some-sandbox-name")
+				Expect(err).To(MatchError("create namespace: watermelon"))
+			})
+		})
+
+		Context("when setup fails", func() {
+			BeforeEach(func() {
+				fakeSandbox.SetupReturns(errors.New("dingleberry"))
+			})
+
+			It("returns a meaningful error", func() {
+				_, err := sandboxRepo.Create("some-sandbox-name")
+				Expect(err).To(MatchError("setup sandbox: dingleberry"))
 			})
 		})
 	})

@@ -26,7 +26,7 @@ type process interface {
 	ifrit.Process
 }
 
-type linkFactory interface {
+type LinkFactory interface {
 	SetUp(name string) error
 	VethDeviceCount() (int, error)
 }
@@ -47,7 +47,7 @@ type NetworkSandbox struct {
 	namespace   namespace.Namespace
 	invoker     Invoker
 	logger      lager.Logger
-	linkFactory linkFactory
+	linkFactory LinkFactory
 	watcher     watcher.MissWatcher
 
 	dnsProcess ifrit.Process
@@ -58,9 +58,9 @@ func New(
 	logger lager.Logger,
 	namespace namespace.Namespace,
 	invoker Invoker,
-	linkFactory linkFactory,
+	linkFactory LinkFactory,
 	watcher watcher.MissWatcher,
-) *NetworkSandbox {
+) Sandbox {
 	logger = logger.Session("network-sandbox", lager.Data{"namespace": namespace.Name()})
 
 	return &NetworkSandbox{

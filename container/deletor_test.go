@@ -16,14 +16,12 @@ var _ = Describe("Delete", func() {
 	var (
 		deletor         container.Deletor
 		executor        *fakes.Executor
-		watcher         *fakes.MissWatcher
 		containerNS     namespace.Namespace
 		namespaceOpener *fakes.Opener
 	)
 
 	BeforeEach(func() {
 		executor = &fakes.Executor{}
-		watcher = &fakes.MissWatcher{}
 
 		namespaceOpener = &fakes.Opener{}
 		containerNS = &fakes.Namespace{NameStub: func() string { return "container ns sentinel" }}
@@ -31,7 +29,6 @@ var _ = Describe("Delete", func() {
 
 		deletor = container.Deletor{
 			Executor:        executor,
-			Watcher:         watcher,
 			NamespaceOpener: namespaceOpener,
 		}
 	})
@@ -70,7 +67,6 @@ var _ = Describe("Delete", func() {
 
 				commands.CleanupSandbox{
 					SandboxName:     "sandbox-name",
-					Watcher:         watcher,
 					VxlanDeviceName: "some-vxlan",
 				},
 			),
