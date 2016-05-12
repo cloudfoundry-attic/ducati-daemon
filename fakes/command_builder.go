@@ -11,20 +11,21 @@ import (
 )
 
 type CommandBuilder struct {
-	IdempotentlyCreateSandboxStub        func(sandboxName, dnsAddress string) executor.Command
+	IdempotentlyCreateSandboxStub        func(sandboxName, vxlanName string, vni int, dnsAddress string) executor.Command
 	idempotentlyCreateSandboxMutex       sync.RWMutex
 	idempotentlyCreateSandboxArgsForCall []struct {
 		sandboxName string
+		vxlanName   string
+		vni         int
 		dnsAddress  string
 	}
 	idempotentlyCreateSandboxReturns struct {
 		result1 executor.Command
 	}
-	IdempotentlyCreateVxlanStub        func(vxlanName string, vni int, sandboxName string, sandboxNS namespace.Namespace) executor.Command
+	IdempotentlyCreateVxlanStub        func(vxlanName string, sandboxName string, sandboxNS namespace.Namespace) executor.Command
 	idempotentlyCreateVxlanMutex       sync.RWMutex
 	idempotentlyCreateVxlanArgsForCall []struct {
 		vxlanName   string
-		vni         int
 		sandboxName string
 		sandboxNS   namespace.Namespace
 	}
@@ -40,14 +41,14 @@ type CommandBuilder struct {
 	addRoutesReturns struct {
 		result1 executor.Command
 	}
-	SetupVethStub        func(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxNS namespace.Namespace, routeCommand executor.Command) executor.Command
+	SetupVethStub        func(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command
 	setupVethMutex       sync.RWMutex
 	setupVethArgsForCall []struct {
 		containerNS       namespace.Namespace
 		sandboxLinkName   string
 		containerLinkName string
 		address           net.IPNet
-		sandboxNS         namespace.Namespace
+		sandboxName       string
 		routeCommand      executor.Command
 	}
 	setupVethReturns struct {
@@ -67,15 +68,17 @@ type CommandBuilder struct {
 	}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string, dnsAddress string) executor.Command {
+func (fake *CommandBuilder) IdempotentlyCreateSandbox(sandboxName string, vxlanName string, vni int, dnsAddress string) executor.Command {
 	fake.idempotentlyCreateSandboxMutex.Lock()
 	fake.idempotentlyCreateSandboxArgsForCall = append(fake.idempotentlyCreateSandboxArgsForCall, struct {
 		sandboxName string
+		vxlanName   string
+		vni         int
 		dnsAddress  string
-	}{sandboxName, dnsAddress})
+	}{sandboxName, vxlanName, vni, dnsAddress})
 	fake.idempotentlyCreateSandboxMutex.Unlock()
 	if fake.IdempotentlyCreateSandboxStub != nil {
-		return fake.IdempotentlyCreateSandboxStub(sandboxName, dnsAddress)
+		return fake.IdempotentlyCreateSandboxStub(sandboxName, vxlanName, vni, dnsAddress)
 	} else {
 		return fake.idempotentlyCreateSandboxReturns.result1
 	}
@@ -87,10 +90,10 @@ func (fake *CommandBuilder) IdempotentlyCreateSandboxCallCount() int {
 	return len(fake.idempotentlyCreateSandboxArgsForCall)
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateSandboxArgsForCall(i int) (string, string) {
+func (fake *CommandBuilder) IdempotentlyCreateSandboxArgsForCall(i int) (string, string, int, string) {
 	fake.idempotentlyCreateSandboxMutex.RLock()
 	defer fake.idempotentlyCreateSandboxMutex.RUnlock()
-	return fake.idempotentlyCreateSandboxArgsForCall[i].sandboxName, fake.idempotentlyCreateSandboxArgsForCall[i].dnsAddress
+	return fake.idempotentlyCreateSandboxArgsForCall[i].sandboxName, fake.idempotentlyCreateSandboxArgsForCall[i].vxlanName, fake.idempotentlyCreateSandboxArgsForCall[i].vni, fake.idempotentlyCreateSandboxArgsForCall[i].dnsAddress
 }
 
 func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 executor.Command) {
@@ -100,17 +103,16 @@ func (fake *CommandBuilder) IdempotentlyCreateSandboxReturns(result1 executor.Co
 	}{result1}
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string, sandboxNS namespace.Namespace) executor.Command {
+func (fake *CommandBuilder) IdempotentlyCreateVxlan(vxlanName string, sandboxName string, sandboxNS namespace.Namespace) executor.Command {
 	fake.idempotentlyCreateVxlanMutex.Lock()
 	fake.idempotentlyCreateVxlanArgsForCall = append(fake.idempotentlyCreateVxlanArgsForCall, struct {
 		vxlanName   string
-		vni         int
 		sandboxName string
 		sandboxNS   namespace.Namespace
-	}{vxlanName, vni, sandboxName, sandboxNS})
+	}{vxlanName, sandboxName, sandboxNS})
 	fake.idempotentlyCreateVxlanMutex.Unlock()
 	if fake.IdempotentlyCreateVxlanStub != nil {
-		return fake.IdempotentlyCreateVxlanStub(vxlanName, vni, sandboxName, sandboxNS)
+		return fake.IdempotentlyCreateVxlanStub(vxlanName, sandboxName, sandboxNS)
 	} else {
 		return fake.idempotentlyCreateVxlanReturns.result1
 	}
@@ -122,10 +124,10 @@ func (fake *CommandBuilder) IdempotentlyCreateVxlanCallCount() int {
 	return len(fake.idempotentlyCreateVxlanArgsForCall)
 }
 
-func (fake *CommandBuilder) IdempotentlyCreateVxlanArgsForCall(i int) (string, int, string, namespace.Namespace) {
+func (fake *CommandBuilder) IdempotentlyCreateVxlanArgsForCall(i int) (string, string, namespace.Namespace) {
 	fake.idempotentlyCreateVxlanMutex.RLock()
 	defer fake.idempotentlyCreateVxlanMutex.RUnlock()
-	return fake.idempotentlyCreateVxlanArgsForCall[i].vxlanName, fake.idempotentlyCreateVxlanArgsForCall[i].vni, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxName, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxNS
+	return fake.idempotentlyCreateVxlanArgsForCall[i].vxlanName, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxName, fake.idempotentlyCreateVxlanArgsForCall[i].sandboxNS
 }
 
 func (fake *CommandBuilder) IdempotentlyCreateVxlanReturns(result1 executor.Command) {
@@ -168,19 +170,19 @@ func (fake *CommandBuilder) AddRoutesReturns(result1 executor.Command) {
 	}{result1}
 }
 
-func (fake *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxNS namespace.Namespace, routeCommand executor.Command) executor.Command {
+func (fake *CommandBuilder) SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command {
 	fake.setupVethMutex.Lock()
 	fake.setupVethArgsForCall = append(fake.setupVethArgsForCall, struct {
 		containerNS       namespace.Namespace
 		sandboxLinkName   string
 		containerLinkName string
 		address           net.IPNet
-		sandboxNS         namespace.Namespace
+		sandboxName       string
 		routeCommand      executor.Command
-	}{containerNS, sandboxLinkName, containerLinkName, address, sandboxNS, routeCommand})
+	}{containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommand})
 	fake.setupVethMutex.Unlock()
 	if fake.SetupVethStub != nil {
-		return fake.SetupVethStub(containerNS, sandboxLinkName, containerLinkName, address, sandboxNS, routeCommand)
+		return fake.SetupVethStub(containerNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommand)
 	} else {
 		return fake.setupVethReturns.result1
 	}
@@ -192,10 +194,10 @@ func (fake *CommandBuilder) SetupVethCallCount() int {
 	return len(fake.setupVethArgsForCall)
 }
 
-func (fake *CommandBuilder) SetupVethArgsForCall(i int) (namespace.Namespace, string, string, net.IPNet, namespace.Namespace, executor.Command) {
+func (fake *CommandBuilder) SetupVethArgsForCall(i int) (namespace.Namespace, string, string, net.IPNet, string, executor.Command) {
 	fake.setupVethMutex.RLock()
 	defer fake.setupVethMutex.RUnlock()
-	return fake.setupVethArgsForCall[i].containerNS, fake.setupVethArgsForCall[i].sandboxLinkName, fake.setupVethArgsForCall[i].containerLinkName, fake.setupVethArgsForCall[i].address, fake.setupVethArgsForCall[i].sandboxNS, fake.setupVethArgsForCall[i].routeCommand
+	return fake.setupVethArgsForCall[i].containerNS, fake.setupVethArgsForCall[i].sandboxLinkName, fake.setupVethArgsForCall[i].containerLinkName, fake.setupVethArgsForCall[i].address, fake.setupVethArgsForCall[i].sandboxName, fake.setupVethArgsForCall[i].routeCommand
 }
 
 func (fake *CommandBuilder) SetupVethReturns(result1 executor.Command) {

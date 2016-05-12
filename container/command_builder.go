@@ -16,7 +16,7 @@ type CommandBuilder struct {
 	HostNamespace namespace.Namespace
 }
 
-func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, dnsAddress string) executor.Command {
+func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, vxlanName string, vni int, dnsAddress string) executor.Command {
 	return commands.Unless{
 		Condition: conditions.SandboxExists{
 			Name: sandboxName,
@@ -24,6 +24,14 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, dnsAddress strin
 		Command: commands.All(
 			commands.CreateSandbox{
 				Name: sandboxName,
+			},
+			commands.CreateVxlan{
+				Name: vxlanName,
+				VNI:  vni,
+			},
+			commands.MoveLink{
+				Name:        vxlanName,
+				SandboxName: sandboxName,
 			},
 			commands.StartDNSServer{
 				SandboxName:   sandboxName,
@@ -35,46 +43,24 @@ func (b *CommandBuilder) IdempotentlyCreateSandbox(sandboxName, dnsAddress strin
 
 func (b *CommandBuilder) IdempotentlyCreateVxlan(
 	vxlanName string,
-	vni int,
 	sandboxName string,
 	sandboxNS namespace.Namespace,
 ) executor.Command {
 
-	return commands.InNamespace{
-		Namespace: sandboxNS,
-		Command: commands.Unless{
-			Condition: conditions.LinkExists{
-				Name: vxlanName,
+	return commands.All(
+		commands.InNamespace{
+			Namespace: sandboxNS,
+			Command: commands.SetLinkUp{
+				LinkName: vxlanName,
 			},
-			Command: commands.All(
-				commands.InNamespace{
-					Namespace: b.HostNamespace,
-					Command: commands.All(
-						commands.CreateVxlan{
-							Name: vxlanName,
-							VNI:  vni,
-						},
-						commands.MoveLink{
-							Namespace: sandboxNS,
-							Name:      vxlanName,
-						},
-					),
-				},
-				commands.InNamespace{
-					Namespace: sandboxNS,
-					Command: commands.SetLinkUp{
-						LinkName: vxlanName,
-					},
-				},
-				commands.StartMonitor{
-					HostNamespace: b.HostNamespace,
-					Watcher:       b.MissWatcher,
-					SandboxName:   sandboxName,
-					VxlanLinkName: vxlanName,
-				},
-			),
 		},
-	}
+		commands.StartMonitor{
+			HostNamespace: b.HostNamespace,
+			Watcher:       b.MissWatcher,
+			SandboxName:   sandboxName,
+			VxlanLinkName: vxlanName,
+		},
+	)
 }
 
 func (b *CommandBuilder) AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command {
@@ -101,7 +87,7 @@ func (b *CommandBuilder) SetupVeth(
 	sandboxLinkName string,
 	containerLinkName string,
 	address net.IPNet,
-	sandboxNS namespace.Namespace,
+	sandboxName string,
 	routeCommand executor.Command,
 ) executor.Command {
 	return commands.InNamespace{
@@ -115,8 +101,8 @@ func (b *CommandBuilder) SetupVeth(
 						MTU:      1450,
 					},
 					commands.MoveLink{
-						Name:      sandboxLinkName,
-						Namespace: sandboxNS,
+						Name:        sandboxLinkName,
+						SandboxName: sandboxName,
 					},
 					commands.AddAddress{
 						InterfaceName: containerLinkName,

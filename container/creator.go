@@ -17,10 +17,10 @@ import (
 
 //go:generate counterfeiter -o ../fakes/command_builder.go --fake-name CommandBuilder . commandBuilder
 type commandBuilder interface {
-	IdempotentlyCreateSandbox(sandboxName, dnsAddress string) executor.Command
-	IdempotentlyCreateVxlan(vxlanName string, vni int, sandboxName string, sandboxNS namespace.Namespace) executor.Command
+	IdempotentlyCreateSandbox(sandboxName, vxlanName string, vni int, dnsAddress string) executor.Command
+	IdempotentlyCreateVxlan(vxlanName string, sandboxName string, sandboxNS namespace.Namespace) executor.Command
 	AddRoutes(interfaceName string, ipConfig *types.IPConfig) executor.Command
-	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxNS namespace.Namespace, routeCommand executor.Command) executor.Command
+	SetupVeth(containerNS namespace.Namespace, sandboxLinkName string, containerLinkName string, address net.IPNet, sandboxName string, routeCommand executor.Command) executor.Command
 	IdempotentlySetupBridge(vxlanName, sandboxLinkName, bridgeName string, sandboxNS namespace.Namespace, ipamResult *types.Result) executor.Command
 }
 
@@ -68,7 +68,7 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 
 	var routeCommands = c.CommandBuilder.AddRoutes(config.InterfaceName, config.IPAMResult.IP4)
 
-	err = c.Executor.Execute(c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName, c.DNSAddress))
+	err = c.Executor.Execute(c.CommandBuilder.IdempotentlyCreateSandbox(sandboxName, vxlanName, config.VNI, c.DNSAddress))
 	if err != nil {
 		return models.Container{}, fmt.Errorf("executing command: create sandbox: %s", err)
 	}
@@ -83,8 +83,8 @@ func (c *Creator) Setup(config CreatorConfig) (models.Container, error) {
 	sandboxNS := sandbox.Namespace()
 	err = c.Executor.Execute(
 		commands.All(
-			c.CommandBuilder.IdempotentlyCreateVxlan(vxlanName, config.VNI, sandboxName, sandboxNS),
-			c.CommandBuilder.SetupVeth(containerNS, sandboxLinkName, config.InterfaceName, config.IPAMResult.IP4.IP, sandboxNS, routeCommands),
+			c.CommandBuilder.IdempotentlyCreateVxlan(vxlanName, sandboxName, sandboxNS),
+			c.CommandBuilder.SetupVeth(containerNS, sandboxLinkName, config.InterfaceName, config.IPAMResult.IP4.IP, sandboxName, routeCommands),
 			c.CommandBuilder.IdempotentlySetupBridge(vxlanName, sandboxLinkName, bridgeName, sandboxNS, config.IPAMResult),
 		),
 	)

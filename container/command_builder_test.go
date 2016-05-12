@@ -24,7 +24,7 @@ var _ = Describe("CommandBuilder", func() {
 		})
 
 		It("should return a command group that idempotently creates the sandbox", func() {
-			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name", "some-dns-address")
+			cmd := b.IdempotentlyCreateSandbox("some-sandbox-name", "some-vxlan-name", 99, "some-dns-address")
 
 			Expect(cmd).To(Equal(
 				commands.Unless{
@@ -34,6 +34,14 @@ var _ = Describe("CommandBuilder", func() {
 					Command: commands.All(
 						commands.CreateSandbox{
 							Name: "some-sandbox-name",
+						},
+						commands.CreateVxlan{
+							Name: "some-vxlan-name",
+							VNI:  99,
+						},
+						commands.MoveLink{
+							Name:        "some-vxlan-name",
+							SandboxName: "some-sandbox-name",
 						},
 						commands.StartDNSServer{
 							SandboxName:   "some-sandbox-name",
@@ -59,44 +67,23 @@ var _ = Describe("CommandBuilder", func() {
 				MissWatcher:   missWatcher,
 			}
 
-			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", 1234, "some-sandbox-name", sandboxNS)
+			cmd := b.IdempotentlyCreateVxlan("some-vxlan-name", "some-sandbox-name", sandboxNS)
 
 			Expect(cmd).To(Equal(
-				commands.InNamespace{
-					Namespace: sandboxNS,
-					Command: commands.Unless{
-						Condition: conditions.LinkExists{
-							Name: "some-vxlan-name",
+				commands.All(
+					commands.InNamespace{
+						Namespace: sandboxNS,
+						Command: commands.SetLinkUp{
+							LinkName: "some-vxlan-name",
 						},
-						Command: commands.All(
-							commands.InNamespace{
-								Namespace: hostNamespace,
-								Command: commands.All(
-									commands.CreateVxlan{
-										Name: "some-vxlan-name",
-										VNI:  1234,
-									},
-									commands.MoveLink{
-										Namespace: sandboxNS,
-										Name:      "some-vxlan-name",
-									},
-								),
-							},
-							commands.InNamespace{
-								Namespace: sandboxNS,
-								Command: commands.SetLinkUp{
-									LinkName: "some-vxlan-name",
-								},
-							},
-							commands.StartMonitor{
-								HostNamespace: hostNamespace,
-								Watcher:       missWatcher,
-								SandboxName:   "some-sandbox-name",
-								VxlanLinkName: "some-vxlan-name",
-							},
-						),
 					},
-				},
+					commands.StartMonitor{
+						HostNamespace: hostNamespace,
+						Watcher:       missWatcher,
+						SandboxName:   "some-sandbox-name",
+						VxlanLinkName: "some-vxlan-name",
+					},
+				),
 			))
 		})
 	})
@@ -198,7 +185,7 @@ var _ = Describe("CommandBuilder", func() {
 				"sandbox-veth",
 				"container-veth",
 				address,
-				sandboxNS,
+				"some-sandbox-name",
 				routeCommand,
 			)
 
@@ -214,8 +201,8 @@ var _ = Describe("CommandBuilder", func() {
 									MTU:      1450,
 								},
 								commands.MoveLink{
-									Name:      "sandbox-veth",
-									Namespace: sandboxNS,
+									Name:        "sandbox-veth",
+									SandboxName: "some-sandbox-name",
 								},
 								commands.AddAddress{
 									InterfaceName: "container-veth",

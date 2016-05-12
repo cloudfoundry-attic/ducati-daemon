@@ -155,8 +155,10 @@ var _ = Describe("Creator", func() {
 
 		Expect(ex.ExecuteArgsForCall(0)).To(Equal(createSandboxResult))
 
-		sandboxName, dnsAddress := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
+		sandboxName, vxlanName, vni, dnsAddress := commandBuilder.IdempotentlyCreateSandboxArgsForCall(0)
 		Expect(sandboxName).To(Equal("vni-99"))
+		Expect(vxlanName).To(Equal("vxlan99"))
+		Expect(vni).To(Equal(99))
 		Expect(dnsAddress).To(Equal("some-dns-address"))
 	})
 
@@ -197,9 +199,8 @@ var _ = Describe("Creator", func() {
 		commandGroup := (ex.ExecuteArgsForCall(1)).(commands.Group)
 		Expect(commandGroup[0]).To(Equal(createVxlanResult))
 
-		vxlanName, vni, sandboxName, sbNS := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
+		vxlanName, sandboxName, sbNS := commandBuilder.IdempotentlyCreateVxlanArgsForCall(0)
 		Expect(vxlanName).To(Equal("vxlan99"))
-		Expect(vni).To(Equal(99))
 		Expect(sandboxName).To(Equal("vni-99"))
 		Expect(sbNS).To(Equal(sandboxNS))
 	})
@@ -217,12 +218,12 @@ var _ = Describe("Creator", func() {
 		commandGroup := (ex.ExecuteArgsForCall(1)).(commands.Group)
 		Expect(commandGroup[1]).To(Equal(setupContainerResult))
 
-		contNS, sandboxLinkName, containerLinkName, address, sbNS, routeCommands := commandBuilder.SetupVethArgsForCall(0)
+		contNS, sandboxLinkName, containerLinkName, address, sandboxName, routeCommands := commandBuilder.SetupVethArgsForCall(0)
 		Expect(contNS).To(Equal(containerNS))
 		Expect(sandboxLinkName).To(Equal("MXGEYC3M7HCW4KR"))
 		Expect(containerLinkName).To(Equal("container-link"))
 		Expect(address).To(Equal(ipamResult.IP4.IP))
-		Expect(sbNS).To(Equal(sandboxNS))
+		Expect(sandboxName).To(Equal("vni-99"))
 		Expect(routeCommands).To(BeIdenticalTo(fakeRouteCommands))
 	})
 
